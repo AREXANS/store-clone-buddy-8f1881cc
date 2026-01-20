@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import PackageSelection from '@/components/PackageSelection';
 import OrderForm from '@/components/OrderForm';
 import PaymentQR from '@/components/PaymentQR';
@@ -89,11 +89,14 @@ const Index = () => {
     localStorage.removeItem(STORAGE_KEY);
   };
 
+  // Load stored state on mount
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
         const state: StoredState = JSON.parse(stored);
+        
+        // Check if payment expired
         if (state.paymentData?.expiresAt) {
           const expiresAt = new Date(state.paymentData.expiresAt);
           if (expiresAt < new Date()) {
@@ -101,11 +104,21 @@ const Index = () => {
             return;
           }
         }
+        
+        // Restore state based on step
         if (state.step === 4 && state.finalData) {
           setStep(4);
           setSelectedPkg(state.selectedPkg);
           setFormData(state.formData);
           setFinalData(state.finalData);
+          setDaysToAdd(state.daysToAdd);
+        } else if (state.step === 3 && state.paymentData) {
+          setStep(3);
+          setSelectedPkg(state.selectedPkg);
+          setFormData(state.formData);
+          setPaymentData(state.paymentData);
+          setDaysToAdd(state.daysToAdd);
+          setStatusMsg("Menunggu pembayaran...");
         }
       } catch {
         clearStoredState();
@@ -113,6 +126,7 @@ const Index = () => {
     }
   }, []);
 
+  // Load ads and packages
   useEffect(() => {
     const loadAds = async () => {
       const { data } = await supabase.from('ads').select('*').eq('is_active', true).order('sort_order');
@@ -143,9 +157,76 @@ const Index = () => {
     return { days, text: label };
   };
 
+  // Check payment status
+  const checkPaymentStatus = useCallback(async (transactionId: string, days: number) => {
+    try {
+      const response = await supabase.functions.invoke('check-payment', {
+        body: { transactionId }
+      });
+
+      if (response.error) {
+        console.error('Check payment error:', response.error);
+        return;
+      }
+
+      const data = response.data;
+
+      if (data.expired) {
+        if (checkInterval.current) clearInterval(checkInterval.current);
+        setErrorMsg("Transaksi telah expired. Silakan buat pesanan baru.");
+        setStatusMsg('');
+        clearStoredState();
+        return;
+      }
+
+      if (data.paid) {
+        if (checkInterval.current) clearInterval(checkInterval.current);
+        
+        const expiredDate = new Date();
+        expiredDate.setDate(expiredDate.getDate() + days);
+        
+        const newFinalData = {
+          key: formData.key,
+          package: selectedPkg || 'NORMAL',
+          expired: expiredDate.toISOString(),
+          expiredDisplay: expiredDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+          days: days
+        };
+        
+        setFinalData(newFinalData);
+        setStep(4);
+        saveState(4, null, newFinalData, days);
+        setStatusMsg('');
+        
+        toast({ 
+          title: "Pembayaran Berhasil!", 
+          description: "Terima kasih atas pembelian Anda." 
+        });
+      }
+    } catch (error) {
+      console.error('Check payment error:', error);
+    }
+  }, [formData.key, selectedPkg]);
+
+  // Start payment status polling
   useEffect(() => {
-    return () => { if (checkInterval.current) clearInterval(checkInterval.current); };
-  }, []);
+    if (step === 3 && paymentData) {
+      // Initial check
+      checkPaymentStatus(paymentData.transactionId, daysToAdd);
+      
+      // Poll every 3 seconds
+      checkInterval.current = window.setInterval(() => {
+        checkPaymentStatus(paymentData.transactionId, daysToAdd);
+      }, 3000);
+    }
+
+    return () => {
+      if (checkInterval.current) {
+        clearInterval(checkInterval.current);
+        checkInterval.current = null;
+      }
+    };
+  }, [step, paymentData, daysToAdd, checkPaymentStatus]);
 
   const handlePackageSelect = (pkg: 'NORMAL' | 'VIP') => {
     setSelectedPkg(pkg);
@@ -187,43 +268,69 @@ const Index = () => {
       return;
     }
 
-    // Demo mode - simulate payment flow
-    const transactionId = `TRX-${Date.now()}`;
-    const newPaymentData = {
-      transactionId,
-      qr_string: 'DEMO-QRIS-' + transactionId,
-      qris_url: `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=DEMO-${transactionId}`,
-      totalAmount: calculatedAmount,
-      expiresAt: new Date(Date.now() + 30 * 60000).toISOString()
-    };
+    try {
+      // Call create-payment edge function
+      const response = await supabase.functions.invoke('create-payment', {
+        body: {
+          amount: calculatedAmount,
+          customerName: formData.key,
+          packageName: selectedPkg || 'NORMAL',
+          packageDuration: durationData.days,
+          licenseKey: formData.key
+        }
+      });
 
-    setPaymentData(newPaymentData);
-    setDaysToAdd(durationData.days);
-    setStep(3);
-    saveState(3, newPaymentData, null, durationData.days);
-    setLoading(false);
-    
-    // Auto-complete after 5 seconds for demo
-    setTimeout(() => {
-      const expiredDate = new Date();
-      expiredDate.setDate(expiredDate.getDate() + durationData.days);
-      const newFinalData = {
-        key: formData.key,
-        package: selectedPkg || 'NORMAL',
-        expired: expiredDate.toISOString(),
-        expiredDisplay: expiredDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
-        days: durationData.days
+      if (response.error) {
+        console.error('Create payment error:', response.error);
+        setErrorMsg("Gagal membuat pembayaran: " + (response.error.message || "Unknown error"));
+        setLoading(false);
+        return;
+      }
+
+      const data = response.data;
+
+      if (!data.success) {
+        setErrorMsg(data.error || "Gagal membuat pembayaran");
+        setLoading(false);
+        return;
+      }
+
+      const newPaymentData: PaymentData = {
+        transactionId: data.transactionId,
+        qr_string: data.qr_string,
+        qris_url: data.qris_url,
+        totalAmount: data.totalAmount,
+        expiresAt: data.expiresAt
       };
-      setFinalData(newFinalData);
-      setStep(4);
-      saveState(4, null, newFinalData, durationData.days);
-    }, 5000);
 
-    setStatusMsg("Menunggu pembayaran...");
+      setPaymentData(newPaymentData);
+      setDaysToAdd(durationData.days);
+      setStep(3);
+      saveState(3, newPaymentData, null, durationData.days);
+      setStatusMsg("Menunggu pembayaran...");
+
+    } catch (error) {
+      console.error('Form submit error:', error);
+      setErrorMsg("Terjadi kesalahan. Silakan coba lagi.");
+    }
+
+    setLoading(false);
   };
 
-  const handleCancelOrder = () => {
+  const handleCancelOrder = async () => {
     if (checkInterval.current) clearInterval(checkInterval.current);
+    
+    // Cancel payment in backend
+    if (paymentData?.transactionId) {
+      try {
+        await supabase.functions.invoke('cancel-payment', {
+          body: { transactionId: paymentData.transactionId }
+        });
+      } catch (error) {
+        console.error('Cancel payment error:', error);
+      }
+    }
+    
     clearStoredState();
     setPaymentData(null);
     setStep(1);

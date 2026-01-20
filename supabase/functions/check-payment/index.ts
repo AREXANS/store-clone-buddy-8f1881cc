@@ -44,13 +44,14 @@ serve(async (req) => {
     const { data: settings } = await supabase
       .from("site_settings")
       .select("key, value")
-      .in("key", ["cashify_api_key", "cashify_qris_id", "payment_mode"]);
+      .in("key", ["cashify_license_key", "payment_mode", "discord_webhook_url", "create_key_api_url"]);
 
     const settingsMap = Object.fromEntries(
       (settings || []).map((s: { key: string; value: string }) => [s.key, s.value])
     );
 
     const paymentMode = settingsMap.payment_mode || "demo";
+    const licenseKey = settingsMap.cashify_license_key || "";
 
     // If already paid, return success
     if (transaction.status === "paid") {
@@ -84,45 +85,48 @@ serve(async (req) => {
     }
 
     // In live mode, check with Cashify API
-    if (paymentMode === "live" && settingsMap.cashify_api_key && settingsMap.cashify_qris_id) {
+    if (paymentMode === "live" && licenseKey) {
       try {
-        const cashifyResponse = await fetch(
-          `https://gateway.okeconnect.com/api/mutasi/qris/${settingsMap.cashify_qris_id}/${settingsMap.cashify_api_key}`,
-          { method: "GET" }
-        );
+        console.log("Checking payment status for:", transactionId);
+        
+        const cashifyResponse = await fetch("https://cashify.my.id/api/generate/check-status", {
+          method: "POST",
+          headers: {
+            "x-license-key": licenseKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            transactionId: transactionId,
+          }),
+        });
 
         const cashifyData = await cashifyResponse.json();
-        
-        // Check if transaction is found in mutations
-        if (cashifyData.data && Array.isArray(cashifyData.data)) {
-          const found = cashifyData.data.find(
-            (m: { amount: number; ref?: string }) =>
-              m.amount === transaction.total_amount ||
-              m.ref === transactionId
+        console.log("Cashify check-status response:", JSON.stringify(cashifyData));
+
+        if (cashifyData.status === 200 && cashifyData.data?.status === "paid") {
+          // Update transaction status
+          await supabase
+            .from("transactions")
+            .update({ 
+              status: "paid", 
+              paid_at: new Date().toISOString() 
+            })
+            .eq("transaction_id", transactionId);
+
+          // Create license key via external API
+          await createLicenseKey(transaction, settingsMap);
+
+          // Send Discord webhook notification
+          await sendDiscordNotification(transaction, settingsMap);
+
+          return new Response(
+            JSON.stringify({
+              success: true,
+              paid: true,
+              transaction: { ...transaction, status: "paid" },
+            }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
-
-          if (found) {
-            // Update transaction status
-            await supabase
-              .from("transactions")
-              .update({ 
-                status: "paid", 
-                paid_at: new Date().toISOString() 
-              })
-              .eq("transaction_id", transactionId);
-
-            // Send Discord webhook notification
-            await sendDiscordNotification(supabase, transaction);
-
-            return new Response(
-              JSON.stringify({
-                success: true,
-                paid: true,
-                transaction: { ...transaction, status: "paid" },
-              }),
-              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
         }
       } catch (cashifyError) {
         console.error("Cashify check error:", cashifyError);
@@ -144,6 +148,9 @@ serve(async (req) => {
             paid_at: new Date().toISOString() 
           })
           .eq("transaction_id", transactionId);
+
+        // Create license key via external API
+        await createLicenseKey(transaction, settingsMap);
 
         return new Response(
           JSON.stringify({
@@ -174,34 +181,74 @@ serve(async (req) => {
   }
 });
 
-async function sendDiscordNotification(supabase: any, transaction: any) {
+async function createLicenseKey(transaction: any, settingsMap: Record<string, string>) {
   try {
-    const { data: webhookSetting } = await supabase
-      .from("site_settings")
-      .select("value")
-      .eq("key", "discord_webhook_url")
-      .maybeSingle();
-
-    if (webhookSetting?.value) {
-      const embed = {
-        title: "💰 Pembayaran Berhasil!",
-        color: 0x00ff00,
-        fields: [
-          { name: "Transaction ID", value: transaction.transaction_id, inline: true },
-          { name: "Customer", value: transaction.customer_name, inline: true },
-          { name: "Package", value: `${transaction.package_name} (${transaction.package_duration} hari)`, inline: true },
-          { name: "Amount", value: `Rp ${transaction.total_amount.toLocaleString("id-ID")}`, inline: true },
-          { name: "License Key", value: transaction.license_key || "-", inline: false },
-        ],
-        timestamp: new Date().toISOString(),
-      };
-
-      await fetch(webhookSetting.value, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ embeds: [embed] }),
-      });
+    const createKeyApiUrl = settingsMap.create_key_api_url || "https://tvnoeugyucdanyjsrkvg.supabase.co/functions/v1/create-key";
+    
+    if (!transaction.license_key) {
+      console.log("No license key to create");
+      return;
     }
+
+    // Calculate expiry date
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + (transaction.package_duration || 30));
+
+    console.log("Creating license key:", {
+      key: transaction.license_key,
+      role: transaction.package_name,
+      expired: expiryDate.toISOString(),
+    });
+
+    const response = await fetch(createKeyApiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        key: transaction.license_key,
+        role: transaction.package_name || "NORMAL",
+        expired: expiryDate.toISOString(),
+        max_hwid: 1,
+      }),
+    });
+
+    const result = await response.json();
+    console.log("Create key result:", result);
+  } catch (error) {
+    console.error("Create key error:", error);
+  }
+}
+
+async function sendDiscordNotification(transaction: any, settingsMap: Record<string, string>) {
+  try {
+    const webhookUrl = settingsMap.discord_webhook_url;
+
+    if (!webhookUrl) {
+      console.log("No Discord webhook URL configured");
+      return;
+    }
+
+    const embed = {
+      title: "💰 Pembayaran Berhasil!",
+      color: 0x00ff00,
+      fields: [
+        { name: "Transaction ID", value: transaction.transaction_id, inline: true },
+        { name: "Customer", value: transaction.customer_name, inline: true },
+        { name: "Package", value: `${transaction.package_name} (${transaction.package_duration} hari)`, inline: true },
+        { name: "Amount", value: `Rp ${transaction.total_amount?.toLocaleString("id-ID") || 0}`, inline: true },
+        { name: "License Key", value: transaction.license_key || "-", inline: false },
+      ],
+      timestamp: new Date().toISOString(),
+    };
+
+    await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ embeds: [embed] }),
+    });
+
+    console.log("Discord notification sent");
   } catch (error) {
     console.error("Discord webhook error:", error);
   }

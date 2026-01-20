@@ -20,7 +20,7 @@ serve(async (req) => {
     const { data: settings } = await supabase
       .from("site_settings")
       .select("key, value")
-      .in("key", ["cashify_license_key", "cashify_qris_id", "cashify_api_key", "payment_mode"]);
+      .in("key", ["cashify_license_key", "cashify_qris_id", "payment_mode"]);
 
     const settingsMap = Object.fromEntries(
       (settings || []).map((s: { key: string; value: string }) => [s.key, s.value])
@@ -29,13 +29,11 @@ serve(async (req) => {
     const paymentMode = settingsMap.payment_mode || "demo";
     const licenseKey = settingsMap.cashify_license_key || "";
     const qrisId = settingsMap.cashify_qris_id || "";
-    const apiKey = settingsMap.cashify_api_key || "";
 
     const body = await req.json();
     const { 
       amount, 
       customerName, 
-      customerWhatsapp, 
       packageName, 
       packageDuration,
       licenseKey: customerLicenseKey 
@@ -49,61 +47,78 @@ serve(async (req) => {
     }
 
     const transactionId = `TRX-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-    const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     let qrString = "";
     let qrisUrl = "";
+    let totalAmount = amount;
+    let cashifyTransactionId = "";
 
-    if (paymentMode === "live" && licenseKey && qrisId && apiKey) {
-      // Call Cashify API
+    if (paymentMode === "live" && licenseKey && qrisId) {
+      // Call Cashify API v2
       try {
-        const cashifyResponse = await fetch("https://gateway.okeconnect.com/api/mutasi/qris/v2", {
+        console.log("Calling Cashify API with:", { qrisId, amount, licenseKey: licenseKey.substring(0, 20) + "..." });
+        
+        const cashifyResponse = await fetch("https://cashify.my.id/api/generate/v2/qris", {
           method: "POST",
           headers: {
+            "x-license-key": licenseKey,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            api: apiKey,
-            id: qrisId,
+            qr_id: qrisId,
             amount: amount,
-            exp: 30, // 30 minutes
-            ref: transactionId,
+            useUniqueCode: true,
+            packageIds: ["id.dana"],
+            expiredInMinutes: 15,
+            qrType: "dynamic",
+            paymentMethod: "qris",
+            useQris: true,
           }),
         });
 
         const cashifyData = await cashifyResponse.json();
+        console.log("Cashify response:", JSON.stringify(cashifyData));
 
-        if (cashifyData.status === "success" || cashifyData.qr_string) {
-          qrString = cashifyData.qr_string || cashifyData.data?.qr_string || "";
-          qrisUrl = cashifyData.qris_url || cashifyData.data?.qris_url || 
-            `https://larabert-qrgen.hf.space/v1/create-qr-code?size=500x500&style=2&color=0D8BA5&data=${encodeURIComponent(qrString)}`;
+        if (cashifyData.status === 200 && cashifyData.data) {
+          qrString = cashifyData.data.qr_string || "";
+          cashifyTransactionId = cashifyData.data.transactionId || "";
+          totalAmount = cashifyData.data.totalAmount || amount;
+          
+          // Generate stylish QR code URL
+          qrisUrl = `https://larabert-qrgen.hf.space/v1/create-qr-code?size=500x500&style=2&color=0D8BA5&data=${encodeURIComponent(qrString)}`;
         } else {
           console.error("Cashify API error:", cashifyData);
-          // Fallback to demo mode
-          qrString = `DEMO-${transactionId}`;
-          qrisUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=DEMO-${transactionId}`;
+          return new Response(
+            JSON.stringify({ 
+              error: cashifyData.message || "Failed to generate QRIS", 
+              details: cashifyData 
+            }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
         }
       } catch (cashifyError) {
         console.error("Cashify API call failed:", cashifyError);
-        // Fallback to demo mode
-        qrString = `DEMO-${transactionId}`;
-        qrisUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=DEMO-${transactionId}`;
+        return new Response(
+          JSON.stringify({ error: "Cashify API connection failed", details: String(cashifyError) }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
     } else {
       // Demo mode
       qrString = `DEMO-${transactionId}`;
       qrisUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=DEMO-${transactionId}`;
+      cashifyTransactionId = transactionId;
     }
 
     // Save transaction to database
     const { error: insertError } = await supabase.from("transactions").insert({
-      transaction_id: transactionId,
+      transaction_id: cashifyTransactionId || transactionId,
       customer_name: customerName || "Customer",
-      customer_whatsapp: customerWhatsapp || null,
       package_name: packageName || "NORMAL",
       package_duration: packageDuration || 1,
       original_amount: amount,
-      total_amount: amount,
+      total_amount: totalAmount,
       status: "pending",
       qr_string: qrString,
       license_key: customerLicenseKey || null,
@@ -121,10 +136,11 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        transactionId,
+        transactionId: cashifyTransactionId || transactionId,
         qr_string: qrString,
         qris_url: qrisUrl,
-        totalAmount: amount,
+        originalAmount: amount,
+        totalAmount: totalAmount,
         expiresAt: expiresAt.toISOString(),
         mode: paymentMode,
       }),
