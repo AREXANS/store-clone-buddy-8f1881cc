@@ -11,9 +11,12 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   Settings, Package, Image, List, CreditCard, LogOut, Save, 
-  Plus, Trash2, Edit2, Eye, EyeOff, RefreshCw, MessageSquare 
+  Plus, Trash2, Edit2, Eye, EyeOff, RefreshCw, MessageSquare, Shield 
 } from 'lucide-react';
 import GlobalBackground from '@/components/GlobalBackground';
+import DeviceApprovalScreen from '@/components/DeviceApprovalScreen';
+import DeviceManagement from '@/components/DeviceManagement';
+import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 
 interface SiteSetting {
   id: string;
@@ -84,6 +87,19 @@ const Admin = () => {
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Device detection hook
+  const {
+    deviceId,
+    deviceName,
+    deviceStatus,
+    allSessions,
+    isChecking,
+    registerDevice,
+    loadAllSessions,
+    approveDevice,
+    removeDevice
+  } = useDeviceDetection();
 
   // Settings state
   const [settings, setSettings] = useState<SiteSetting[]>([]);
@@ -250,13 +266,25 @@ const Admin = () => {
 
   const paymentKeys = ['cashify_license_key', 'cashify_qris_id', 'cashify_webhook_key', 'cashify_api_key', 'discord_webhook_url', 'payment_mode'];
 
+  // Show device approval screen if device is not approved
+  if (deviceStatus === 'loading' || deviceStatus === 'new' || deviceStatus === 'pending') {
+    return (
+      <DeviceApprovalScreen
+        deviceId={deviceId}
+        deviceName={deviceName}
+        onRegister={registerDevice}
+        status={isChecking ? 'loading' : deviceStatus}
+      />
+    );
+  }
+
   if (!authenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-background relative overflow-hidden">
         <GlobalBackground />
         <Card className="w-full max-w-md z-10 glass-card">
           <CardHeader className="text-center">
-            <CardTitle className="font-display text-2xl text-primary">Admin Login</CardTitle>
+            <CardTitle className="font-display text-2xl text-primary">Developer Login</CardTitle>
             <CardDescription>Masukkan password admin untuk melanjutkan</CardDescription>
           </CardHeader>
           <CardContent>
@@ -306,7 +334,7 @@ const Admin = () => {
           </div>
 
           <Tabs defaultValue="settings" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid bg-muted/50">
+            <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid bg-muted/50">
               <TabsTrigger value="settings" className="gap-2">
                 <Settings className="w-4 h-4" />
                 <span className="hidden sm:inline">Settings</span>
@@ -330,6 +358,10 @@ const Admin = () => {
               <TabsTrigger value="social" className="gap-2">
                 <MessageSquare className="w-4 h-4" />
                 <span className="hidden sm:inline">Social</span>
+              </TabsTrigger>
+              <TabsTrigger value="devices" className="gap-2">
+                <Shield className="w-4 h-4" />
+                <span className="hidden sm:inline">Devices</span>
               </TabsTrigger>
             </TabsList>
 
@@ -1002,6 +1034,17 @@ const Admin = () => {
                   </Card>
                 ))}
               </div>
+            </TabsContent>
+
+            {/* Devices Tab */}
+            <TabsContent value="devices" className="space-y-4">
+              <DeviceManagement
+                sessions={allSessions}
+                currentDeviceId={deviceId}
+                onApprove={approveDevice}
+                onRemove={removeDevice}
+                onRefresh={loadAllSessions}
+              />
             </TabsContent>
           </Tabs>
         </div>
