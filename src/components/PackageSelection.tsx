@@ -118,7 +118,7 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
         {/* Header */}
         <div className="text-center mb-6 md:mb-8">
           <div className="relative inline-block mb-3 md:mb-4">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-display font-black gradient-text tracking-wider">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-display font-black tracking-wider animate-title-gradient bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 bg-clip-text text-transparent bg-[length:200%_auto]">
               AREXANS TOOLS
             </h1>
             <span className="absolute -top-1 md:-top-2 -right-2 md:-right-8 bg-primary text-primary-foreground text-[8px] md:text-[10px] font-bold px-1.5 md:px-2 py-0.5 md:py-1 transform rotate-12 rounded shadow-lg border border-primary/50 font-display animate-glow">
