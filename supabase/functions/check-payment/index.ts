@@ -183,40 +183,48 @@ serve(async (req) => {
 
 async function createLicenseKey(transaction: any, settingsMap: Record<string, string>) {
   try {
-    const createKeyApiUrl = settingsMap.create_key_api_url || "https://tvnoeugyucdanyjsrkvg.supabase.co/functions/v1/create-key";
+    // Use external AXS Key System API
+    const createKeyApiUrl = "https://tvnoeugyucdanyjsrkvg.supabase.co/functions/v1/create-key";
     
     if (!transaction.license_key) {
       console.log("No license key to create");
       return;
     }
 
-    // Calculate expiry date
+    // Calculate expiry date based on package duration
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + (transaction.package_duration || 30));
 
-    console.log("Creating license key:", {
+    const keyData = {
       key: transaction.license_key,
-      role: transaction.package_name,
+      role: transaction.package_name || "NORMAL",
       expired: expiryDate.toISOString(),
-    });
+      max_hwid: 1
+    };
+
+    console.log("Creating license key via AXS API:", keyData);
 
     const response = await fetch(createKeyApiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        key: transaction.license_key,
-        role: transaction.package_name || "NORMAL",
-        expired: expiryDate.toISOString(),
-        max_hwid: 1,
-      }),
+      body: JSON.stringify(keyData),
     });
 
     const result = await response.json();
-    console.log("Create key result:", result);
+    console.log("AXS Create key result:", result);
+    
+    if (result.success) {
+      console.log("License key created successfully:", result.key);
+    } else {
+      console.error("Failed to create license key:", result.error);
+    }
+    
+    return result;
   } catch (error) {
     console.error("Create key error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
   }
 }
 
