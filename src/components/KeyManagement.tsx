@@ -174,6 +174,42 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
     }
   };
 
+  const handleDeleteAllKeys = async () => {
+    if (!confirm(`⚠️ PERINGATAN!\n\nAnda akan menghapus SEMUA ${keys.length} keys!\n\nAksi ini tidak dapat dibatalkan.\n\nLanjutkan?`)) return;
+    if (!confirm(`Ketik "HAPUS SEMUA" untuk konfirmasi:\n\nApakah Anda yakin ingin menghapus semua keys?`)) return;
+    
+    setLoading(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const keyItem of keys) {
+      try {
+        const response = await fetch(`${API_BASE}/delete-key`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: keyItem.key })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+          successCount++;
+        } else {
+          errorCount++;
+        }
+      } catch {
+        errorCount++;
+      }
+    }
+
+    toast({ 
+      title: 'Delete All Selesai', 
+      description: `${successCount} berhasil dihapus, ${errorCount} gagal`,
+      variant: errorCount > 0 ? 'destructive' : 'default'
+    });
+    fetchKeys();
+    setLoading(false);
+  };
+
   const toggleFreezeKey = async (keyItem: KeyItem) => {
     setLoading(true);
     try {
@@ -354,9 +390,22 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
     setIsNewKey(true);
   };
 
-  // Export keys to JSON file
+  // Export keys to JSON file with complete format
   const exportKeys = () => {
-    const dataStr = JSON.stringify(keys, null, 2);
+    const exportData = keys.map(k => ({
+      key: k.key,
+      expired: k.expired,
+      created: new Date().toISOString(), // Add created field
+      role: k.role,
+      maxHwid: k.maxHwid,
+      Freeze: k.frozenUntil ? true : false, // Add Freeze status
+      frozenUntil: k.frozenUntil,
+      frozenRemainingMs: k.frozenRemainingMs,
+      hwids: k.hwids,
+      robloxUsers: k.robloxUsers
+    }));
+    
+    const dataStr = JSON.stringify(exportData, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -469,6 +518,14 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
             onChange={handleImportFile}
             className="hidden"
           />
+          <Button 
+            variant="destructive" 
+            onClick={handleDeleteAllKeys}
+            disabled={loading || keys.length === 0}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete All
+          </Button>
           <Button onClick={startNewKey}>
             <Plus className="w-4 h-4 mr-2" />
             Add Key

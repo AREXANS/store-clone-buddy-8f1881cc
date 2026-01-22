@@ -29,13 +29,19 @@ async function getAllKeys() {
   //     {
   //       key: "AXSTOOLS-XXXX-XXXX",
   //       expired: "2026-01-30T00:00:00.000Z",
+  //       created: "2026-01-20T00:00:00.000Z",
   //       role: "VIP",
   //       maxHwid: 1,
+  //       Freeze: false,
   //       frozenUntil: null,
   //       frozenRemainingMs: null,
   //       hwids: ["hwid-1", "hwid-2"],
   //       robloxUsers: [
-  //         { hwid: "hwid-1", username: "Player1", registeredAt: "..." }
+  //         { 
+  //           hwid: "hwid-1", 
+  //           username: "Player1", 
+  //           registeredAt: "2026-01-21T06:59:04.478Z" 
+  //         }
   //       ]
   //     }
   //   ],
@@ -43,6 +49,30 @@ async function getAllKeys() {
   // }
   
   return data;
+}
+
+// DELETE ALL KEYS - Menghapus semua key
+async function deleteAllKeys() {
+  const allKeys = await getAllKeys();
+  const results = { success: 0, failed: 0 };
+  
+  for (const keyItem of allKeys.keys) {
+    try {
+      const res = await fetch('${API_BASE}/delete-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: keyItem.key })
+      });
+      const data = await res.json();
+      if (data.success) results.success++;
+      else results.failed++;
+    } catch {
+      results.failed++;
+    }
+  }
+  
+  console.log('Delete All Result:', results);
+  return results;
 }`,
 
     createKey: `// CREATE KEY - Membuat key baru
@@ -54,7 +84,8 @@ async function createKey(options = {}) {
       key: options.key || '',  // Kosong = auto generate AXSTOOLS-XXXX-XXXX
       role: options.role || 'VIP',  // Developer, VIP, NORMAL, Free
       expired: options.expired || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      max_hwid: options.maxHwid || 1
+      max_hwid: options.maxHwid || 1,
+      Freeze: options.freeze || false  // Status freeze awal
     })
   });
   
@@ -68,7 +99,8 @@ async function createKey(options = {}) {
 // Contoh penggunaan:
 await createKey(); // Auto generate key VIP 7 hari
 await createKey({ role: 'Developer', maxHwid: 3 }); // Developer dengan 3 HWID
-await createKey({ key: 'CUSTOM-KEY-123', expired: '2026-12-31T23:59:59Z' });`,
+await createKey({ key: 'CUSTOM-KEY-123', expired: '2026-12-31T23:59:59Z' });
+await createKey({ key: 'axstoolsdev', role: 'Developer', maxHwid: 1, freeze: false });`,
 
     updateKey: `// UPDATE KEY - Mengubah data key
 async function updateKey(keyName, updates) {
@@ -97,20 +129,65 @@ await updateKey('AXSTOOLS-XXXX-XXXX', {
 // Rename key
 await updateKey('AXSTOOLS-XXXX-XXXX', { newKey: 'PREMIUM-USER-001' });
 
-// Reset HWID
+// Reset HWID dan Roblox Users
 await updateKey('AXSTOOLS-XXXX-XXXX', { hwids: [], robloxUsers: [] });
 
-// Freeze key (pause expiry)
+// ============ FREEZE CONTROL ============
+
+// Freeze key (pause expiry countdown)
+// Saat di-freeze, sisa waktu disimpan dan countdown berhenti
+const keyInfo = await getKeyInfo('AXSTOOLS-XXXX-XXXX');
+const now = new Date();
+const expiredDate = new Date(keyInfo.expired);
+const remainingMs = expiredDate.getTime() - now.getTime();
+
 await updateKey('AXSTOOLS-XXXX-XXXX', { 
-  frozenUntil: 'frozen',
-  frozenRemainingMs: remainingTime  // Sisa waktu dalam ms
+  Freeze: true,
+  frozenUntil: now.toISOString(),
+  frozenRemainingMs: remainingMs > 0 ? remainingMs : 0
 });
 
-// Unfreeze key
+// Unfreeze key (resume expiry countdown)
+// Saat di-unfreeze, expired dihitung ulang dari sisa waktu
+const keyData = await getKeyInfo('AXSTOOLS-XXXX-XXXX');
+const frozenRemainingMs = keyData.frozenRemainingMs || 0;
+const newExpiry = new Date(Date.now() + frozenRemainingMs);
+
 await updateKey('AXSTOOLS-XXXX-XXXX', { 
+  Freeze: false,
   frozenUntil: null,
-  expired: new Date(Date.now() + frozenRemainingMs).toISOString()
-});`,
+  frozenRemainingMs: null,
+  expired: newExpiry.toISOString()
+});
+
+// Toggle freeze status
+async function toggleFreeze(keyName) {
+  const keys = await getAllKeys();
+  const keyData = keys.keys.find(k => k.key === keyName);
+  
+  if (!keyData) return { success: false, error: 'Key not found' };
+  
+  if (keyData.Freeze || keyData.frozenUntil) {
+    // Unfreeze
+    const remainingMs = keyData.frozenRemainingMs || 0;
+    return await updateKey(keyName, {
+      Freeze: false,
+      frozenUntil: null,
+      frozenRemainingMs: null,
+      expired: new Date(Date.now() + remainingMs).toISOString()
+    });
+  } else {
+    // Freeze
+    const now = new Date();
+    const expiredDate = new Date(keyData.expired);
+    const remainingMs = expiredDate.getTime() - now.getTime();
+    return await updateKey(keyName, {
+      Freeze: true,
+      frozenUntil: now.toISOString(),
+      frozenRemainingMs: remainingMs > 0 ? remainingMs : 0
+    });
+  }
+}`,
 
     deleteKey: `// DELETE KEY - Menghapus key
 async function deleteKey(keyName) {
