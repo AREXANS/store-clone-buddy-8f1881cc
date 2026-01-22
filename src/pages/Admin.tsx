@@ -11,12 +11,13 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   Settings, Package, Image, List, CreditCard, LogOut, Save, 
-  Plus, Trash2, Edit2, Eye, EyeOff, RefreshCw, MessageSquare, Shield, Key 
+  Plus, Trash2, Edit2, Eye, EyeOff, RefreshCw, MessageSquare, Shield, Key, FileText 
 } from 'lucide-react';
 import GlobalBackground from '@/components/GlobalBackground';
 import DeviceApprovalScreen from '@/components/DeviceApprovalScreen';
 import DeviceManagement from '@/components/DeviceManagement';
 import KeyManagement from '@/components/KeyManagement';
+import ApiDocumentation from '@/components/ApiDocumentation';
 import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 
 interface SiteSetting {
@@ -360,7 +361,7 @@ const Admin = () => {
           </div>
 
           <Tabs defaultValue="settings" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-grid bg-muted/50">
+            <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:inline-grid bg-muted/50">
               <TabsTrigger value="settings" className="gap-2">
                 <Settings className="w-4 h-4" />
                 <span className="hidden sm:inline">Settings</span>
@@ -372,6 +373,10 @@ const Admin = () => {
               <TabsTrigger value="keys" className="gap-2">
                 <Key className="w-4 h-4" />
                 <span className="hidden sm:inline">Keys</span>
+              </TabsTrigger>
+              <TabsTrigger value="docs" className="gap-2">
+                <FileText className="w-4 h-4" />
+                <span className="hidden sm:inline">API Docs</span>
               </TabsTrigger>
               <TabsTrigger value="ads" className="gap-2">
                 <Image className="w-4 h-4" />
@@ -643,6 +648,11 @@ const Admin = () => {
             {/* Keys Tab */}
             <TabsContent value="keys" className="space-y-4">
               <KeyManagement />
+            </TabsContent>
+
+            {/* API Documentation Tab */}
+            <TabsContent value="docs" className="space-y-4">
+              <ApiDocumentation />
             </TabsContent>
 
             {/* Ads Tab */}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -31,6 +31,51 @@ const KeySystem = () => {
   const [keyData, setKeyData] = useState<KeyData | null>(null);
   const [loadstring, setLoadstring] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [timeRemaining, setTimeRemaining] = useState({ text: '', className: '' });
+
+  // Real-time countdown effect
+  useEffect(() => {
+    if (!keyData) return;
+
+    const updateCountdown = () => {
+      if (keyData.frozenUntil) {
+        setTimeRemaining({ text: '⏸️ FROZEN', className: 'text-blue-400' });
+        return;
+      }
+
+      const now = new Date();
+      const expired = new Date(keyData.expired);
+      const diff = expired.getTime() - now.getTime();
+
+      if (diff <= 0) {
+        setTimeRemaining({ text: 'EXPIRED', className: 'text-destructive' });
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      if (days > 0) {
+        setTimeRemaining({ text: `${days}d ${hours}h ${minutes}m ${seconds}s`, className: 'text-secondary' });
+      } else if (hours > 0) {
+        setTimeRemaining({ text: `${hours}h ${minutes}m ${seconds}s`, className: 'text-yellow-400' });
+      } else if (minutes > 0) {
+        setTimeRemaining({ text: `${minutes}m ${seconds}s`, className: 'text-orange-400' });
+      } else {
+        setTimeRemaining({ text: `${seconds}s`, className: 'text-destructive' });
+      }
+    };
+
+    // Initial update
+    updateCountdown();
+
+    // Update every second
+    const interval = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(interval);
+  }, [keyData]);
 
   const validateKey = async () => {
     if (!keyInput.trim()) {
@@ -128,31 +173,7 @@ const KeySystem = () => {
     });
   };
 
-  const getTimeRemaining = (expiredDate: string, frozenUntil: string | null) => {
-    if (frozenUntil) {
-      return { text: '⏸️ FROZEN', className: 'text-blue-400' };
-    }
-    
-    const now = new Date();
-    const expired = new Date(expiredDate);
-    const diff = expired.getTime() - now.getTime();
-    
-    if (diff <= 0) {
-      return { text: 'EXPIRED', className: 'text-destructive' };
-    }
-    
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (days > 0) {
-      return { text: `${days}d ${hours}h ${minutes}m`, className: 'text-secondary' };
-    } else if (hours > 0) {
-      return { text: `${hours}h ${minutes}m`, className: 'text-yellow-400' };
-    } else {
-      return { text: `${minutes}m`, className: 'text-destructive' };
-    }
-  };
+  // getRoleColor is still used, getTimeRemaining replaced by state
 
   const getRoleColor = (role: string) => {
     switch (role.toLowerCase()) {
@@ -249,8 +270,8 @@ const KeySystem = () => {
                         <Clock className="w-4 h-4" />
                         <span className="text-xs">Sisa Waktu</span>
                       </div>
-                      <p className={`text-lg font-bold ${getTimeRemaining(keyData.expired, keyData.frozenUntil).className}`}>
-                        {getTimeRemaining(keyData.expired, keyData.frozenUntil).text}
+                      <p className={`text-lg font-bold ${timeRemaining.className}`}>
+                        {timeRemaining.text}
                       </p>
                     </div>
                   </div>
