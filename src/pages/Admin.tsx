@@ -344,61 +344,63 @@ const Admin = () => {
       <div className="relative z-10 p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
-              <h1 className="text-3xl font-display font-bold text-primary">Admin Dashboard</h1>
-              <p className="text-muted-foreground">Kelola toko AREXANS TOOLS</p>
+              <h1 className="text-2xl md:text-3xl font-display font-bold text-primary">Admin Dashboard</h1>
+              <p className="text-sm text-muted-foreground">Kelola toko AREXANS TOOLS</p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => navigate('/')}>
+              <Button variant="outline" size="sm" onClick={() => navigate('/')}>
                 Ke Toko
               </Button>
-              <Button variant="destructive" onClick={handleLogout}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
+              <Button variant="destructive" size="sm" onClick={handleLogout}>
+                <LogOut className="w-4 h-4 mr-1" />
+                <span className="hidden sm:inline">Logout</span>
               </Button>
             </div>
           </div>
 
           <Tabs defaultValue="settings" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:inline-grid bg-muted/50">
-              <TabsTrigger value="settings" className="gap-2">
-                <Settings className="w-4 h-4" />
-                <span className="hidden sm:inline">Settings</span>
-              </TabsTrigger>
-              <TabsTrigger value="packages" className="gap-2">
-                <Package className="w-4 h-4" />
-                <span className="hidden sm:inline">Packages</span>
-              </TabsTrigger>
-              <TabsTrigger value="keys" className="gap-2">
-                <Key className="w-4 h-4" />
-                <span className="hidden sm:inline">Keys</span>
-              </TabsTrigger>
-              <TabsTrigger value="docs" className="gap-2">
-                <FileText className="w-4 h-4" />
-                <span className="hidden sm:inline">API Docs</span>
-              </TabsTrigger>
-              <TabsTrigger value="ads" className="gap-2">
-                <Image className="w-4 h-4" />
-                <span className="hidden sm:inline">Ads</span>
-              </TabsTrigger>
-              <TabsTrigger value="backgrounds" className="gap-2">
-                <Image className="w-4 h-4" />
-                <span className="hidden sm:inline">BG</span>
-              </TabsTrigger>
-              <TabsTrigger value="transactions" className="gap-2">
-                <CreditCard className="w-4 h-4" />
-                <span className="hidden sm:inline">Transaksi</span>
-              </TabsTrigger>
-              <TabsTrigger value="social" className="gap-2">
-                <MessageSquare className="w-4 h-4" />
-                <span className="hidden sm:inline">Social</span>
-              </TabsTrigger>
-              <TabsTrigger value="devices" className="gap-2">
-                <Shield className="w-4 h-4" />
-                <span className="hidden sm:inline">Devices</span>
-              </TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0">
+              <TabsList className="inline-flex w-max min-w-full md:w-auto bg-muted/50 gap-1">
+                <TabsTrigger value="settings" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <Settings className="w-4 h-4" />
+                  <span className="hidden xs:inline">Settings</span>
+                </TabsTrigger>
+                <TabsTrigger value="packages" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <Package className="w-4 h-4" />
+                  <span className="hidden xs:inline">Packages</span>
+                </TabsTrigger>
+                <TabsTrigger value="keys" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <Key className="w-4 h-4" />
+                  <span className="hidden xs:inline">Keys</span>
+                </TabsTrigger>
+                <TabsTrigger value="docs" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <FileText className="w-4 h-4" />
+                  <span className="hidden xs:inline">API</span>
+                </TabsTrigger>
+                <TabsTrigger value="ads" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <Image className="w-4 h-4" />
+                  <span className="hidden xs:inline">Ads</span>
+                </TabsTrigger>
+                <TabsTrigger value="backgrounds" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <Image className="w-4 h-4" />
+                  <span className="hidden xs:inline">BG</span>
+                </TabsTrigger>
+                <TabsTrigger value="transactions" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <CreditCard className="w-4 h-4" />
+                  <span className="hidden xs:inline">Trans</span>
+                </TabsTrigger>
+                <TabsTrigger value="social" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <MessageSquare className="w-4 h-4" />
+                  <span className="hidden xs:inline">Social</span>
+                </TabsTrigger>
+                <TabsTrigger value="devices" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <Shield className="w-4 h-4" />
+                  <span className="hidden xs:inline">Devices</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             {/* Settings Tab */}
             <TabsContent value="settings" className="space-y-6">

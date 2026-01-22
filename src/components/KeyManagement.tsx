@@ -478,37 +478,50 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center flex-wrap gap-4">
-        <div className="flex items-center gap-4">
-          <h2 className="text-xl font-display font-semibold flex items-center gap-2">
-            <Key className="w-5 h-5 text-primary" />
-            License Keys
-          </h2>
-          <span className="text-sm text-muted-foreground">
-            Total: {keys.length} keys | Frozen: {frozenCount}
-          </span>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Input
-            placeholder="Search key, role, username..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-64 bg-background/50"
-          />
-          <Button variant="outline" onClick={fetchKeys} disabled={loading}>
+      {/* Header dengan info */}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <h2 className="text-lg md:text-xl font-display font-semibold flex items-center gap-2">
+              <Key className="w-5 h-5 text-primary" />
+              License Keys
+            </h2>
+            <span className="text-xs sm:text-sm text-muted-foreground">
+              Total: {keys.length} | Frozen: {frozenCount}
+            </span>
+          </div>
+          
+          {/* Refresh button standalone untuk mobile */}
+          <Button variant="outline" size="sm" onClick={fetchKeys} disabled={loading} className="w-fit">
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button variant="outline" onClick={exportKeys} disabled={keys.length === 0}>
-            <Download className="w-4 h-4 mr-2" />
+        </div>
+        
+        {/* Search bar - full width on mobile */}
+        <div className="w-full">
+          <Input
+            placeholder="🔍 Search key, role, username..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-background/50"
+          />
+        </div>
+        
+        {/* Action buttons - scrollable on mobile */}
+        <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+          <Button variant="outline" size="sm" onClick={exportKeys} disabled={keys.length === 0} className="whitespace-nowrap">
+            <Download className="w-4 h-4 mr-1" />
             Export
           </Button>
           <Button 
             variant="outline" 
+            size="sm"
             onClick={() => fileInputRef.current?.click()} 
             disabled={loading}
+            className="whitespace-nowrap"
           >
-            <Upload className="w-4 h-4 mr-2" />
+            <Upload className="w-4 h-4 mr-1" />
             Import
           </Button>
           <input
@@ -520,14 +533,16 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
           />
           <Button 
             variant="destructive" 
+            size="sm"
             onClick={handleDeleteAllKeys}
             disabled={loading || keys.length === 0}
+            className="whitespace-nowrap"
           >
-            <Trash2 className="w-4 h-4 mr-2" />
+            <Trash2 className="w-4 h-4 mr-1" />
             Delete All
           </Button>
-          <Button onClick={startNewKey}>
-            <Plus className="w-4 h-4 mr-2" />
+          <Button size="sm" onClick={startNewKey} className="whitespace-nowrap">
+            <Plus className="w-4 h-4 mr-1" />
             Add Key
           </Button>
         </div>
