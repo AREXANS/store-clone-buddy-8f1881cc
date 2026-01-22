@@ -131,19 +131,13 @@ const Admin = () => {
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   const [editingSocialLink, setEditingSocialLink] = useState<SocialLink | null>(null);
 
-  // Load data if already logged in
-  const loadDataOnMount = async () => {
-    if (isLoggedIn) {
-      loadAllData();
-    }
-  };
-  
-  // Effect to load data on mount if logged in
-  useState(() => {
+  // Effect to load data on mount if already logged in
+  useEffect(() => {
     if (isLoggedIn) {
       setAuthenticated(true);
+      loadAllData();
     }
-  });
+  }, [isLoggedIn]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
