@@ -265,7 +265,7 @@ const Admin = () => {
 
   const formatRupiah = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
 
-  const paymentKeys = ['cashify_license_key', 'cashify_qris_id', 'cashify_webhook_key', 'cashify_api_key', 'discord_webhook_url', 'payment_mode'];
+  const paymentKeys = ['cashify_license_key', 'cashify_qris_id', 'cashify_webhook_key', 'cashify_api_key', 'discord_webhook_url', 'payment_mode', 'payment_simulation'];
 
   // Show device approval screen if device is not approved
   if (deviceStatus === 'loading' || deviceStatus === 'new' || deviceStatus === 'pending') {
@@ -416,6 +416,16 @@ const Admin = () => {
                           >
                             Live Mode
                           </Button>
+                        </div>
+                      ) : setting.key === 'payment_simulation' ? (
+                        <div className="flex items-center gap-4">
+                          <Switch
+                            checked={setting.value === 'on'}
+                            onCheckedChange={(checked) => updateSetting(setting.key, checked ? 'on' : 'off')}
+                          />
+                          <span className={`text-sm font-medium ${setting.value === 'on' ? 'text-secondary' : 'text-muted-foreground'}`}>
+                            {setting.value === 'on' ? 'Simulasi AKTIF - Pembayaran otomatis sukses' : 'Simulasi OFF - Pembayaran normal'}
+                          </span>
                         </div>
                       ) : (
                         <div className="flex gap-2">

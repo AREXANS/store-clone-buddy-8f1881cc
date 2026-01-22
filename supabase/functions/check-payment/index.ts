@@ -44,7 +44,7 @@ serve(async (req) => {
     const { data: settings } = await supabase
       .from("site_settings")
       .select("key, value")
-      .in("key", ["cashify_license_key", "payment_mode", "discord_webhook_url", "create_key_api_url"]);
+      .in("key", ["cashify_license_key", "payment_mode", "discord_webhook_url", "create_key_api_url", "payment_simulation"]);
 
     const settingsMap = Object.fromEntries(
       (settings || []).map((s: { key: string; value: string }) => [s.key, s.value])
@@ -52,6 +52,7 @@ serve(async (req) => {
 
     const paymentMode = settingsMap.payment_mode || "demo";
     const licenseKey = settingsMap.cashify_license_key || "";
+    const paymentSimulation = settingsMap.payment_simulation || "off";
 
     // If already paid, return success
     if (transaction.status === "paid") {
@@ -131,6 +132,32 @@ serve(async (req) => {
       } catch (cashifyError) {
         console.error("Cashify check error:", cashifyError);
       }
+    }
+
+    // Simulation mode - instant success when enabled
+    if (paymentSimulation === "on") {
+      console.log("Payment simulation enabled - auto completing payment");
+      
+      await supabase
+        .from("transactions")
+        .update({ 
+          status: "paid", 
+          paid_at: new Date().toISOString() 
+        })
+        .eq("transaction_id", transactionId);
+
+      // Create license key via external API
+      await createLicenseKey(transaction, settingsMap);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          paid: true,
+          transaction: { ...transaction, status: "paid" },
+          mode: "simulation",
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Demo mode - auto-complete after checking
