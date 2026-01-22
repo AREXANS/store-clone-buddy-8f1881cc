@@ -6,6 +6,7 @@ import { HashRouter, Routes, Route } from "react-router-dom";
 import { BackgroundProvider } from "./contexts/BackgroundContext";
 import Index from "./pages/Index";
 import Admin from "./pages/Admin";
+import KeySystem from "./pages/KeySystem";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,6 +21,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/developer" element={<Admin />} />
+            <Route path="/key-system" element={<KeySystem />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </HashRouter>
