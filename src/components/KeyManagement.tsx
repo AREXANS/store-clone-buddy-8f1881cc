@@ -8,7 +8,7 @@ import { toast } from '@/hooks/use-toast';
 import { 
   Key, Plus, Trash2, Edit2, RefreshCw, Save, 
   Users, Calendar, Shield, Copy, AlertTriangle,
-  Download, Upload, FileJson
+  Download, Upload, Pause, Play, Clock
 } from 'lucide-react';
 
 const API_BASE = 'https://tvnoeugyucdanyjsrkvg.supabase.co/functions/v1';
@@ -19,6 +19,7 @@ interface KeyItem {
   role: string;
   maxHwid: number;
   frozenUntil: string | null;
+  frozenRemainingMs?: number;
   hwids: string[];
   robloxUsers: {
     hwid: string;
@@ -37,7 +38,16 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   const [editingKey, setEditingKey] = useState<KeyItem | null>(null);
   const [isNewKey, setIsNewKey] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentTime, setCurrentTime] = useState(new Date());
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Realtime countdown timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchKeys = async () => {
     setLoading(true);
@@ -59,16 +69,28 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
     fetchKeys();
   }, []);
 
+  const generateKey = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const randomStr = (length: number) => {
+      let result = '';
+      for (let i = 0; i < length; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+      return result;
+    };
+    return `AXSTOOLS-${randomStr(4)}-${randomStr(4)}`;
+  };
+
   const handleCreateKey = async () => {
     if (!editingKey) return;
     
     setLoading(true);
     try {
+      const keyToCreate = editingKey.key || generateKey();
+      
       const response = await fetch(`${API_BASE}/create-key`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          key: editingKey.key || '',
+          key: keyToCreate,
           role: editingKey.role || 'VIP',
           expired: editingKey.expired,
           max_hwid: editingKey.maxHwid || 1
@@ -104,7 +126,9 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
           key: editingKey.key,
           role: editingKey.role,
           expired: editingKey.expired,
-          max_hwid: editingKey.maxHwid
+          max_hwid: editingKey.maxHwid,
+          frozenUntil: editingKey.frozenUntil,
+          frozenRemainingMs: editingKey.frozenRemainingMs
         })
       });
       
@@ -150,6 +174,92 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
     }
   };
 
+  const toggleFreezeKey = async (keyItem: KeyItem) => {
+    setLoading(true);
+    try {
+      const now = new Date();
+      const expiredDate = new Date(keyItem.expired);
+      
+      let updateData: any = { key: keyItem.key };
+      
+      if (keyItem.frozenUntil) {
+        // Unfreeze: Calculate new expiry based on remaining time
+        const remainingMs = keyItem.frozenRemainingMs || 0;
+        const newExpiry = new Date(now.getTime() + remainingMs);
+        updateData.expired = newExpiry.toISOString();
+        updateData.frozenUntil = null;
+        updateData.frozenRemainingMs = null;
+      } else {
+        // Freeze: Store remaining time
+        const remainingMs = expiredDate.getTime() - now.getTime();
+        updateData.frozenUntil = now.toISOString();
+        updateData.frozenRemainingMs = remainingMs > 0 ? remainingMs : 0;
+      }
+
+      const response = await fetch(`${API_BASE}/update-key`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        toast({ 
+          title: 'Berhasil', 
+          description: keyItem.frozenUntil ? 'Key berhasil di-unfreeze' : 'Key berhasil di-freeze' 
+        });
+        fetchKeys();
+      } else {
+        toast({ title: 'Error', description: result.error || 'Gagal update key', variant: 'destructive' });
+      }
+    } catch (error) {
+      console.error('Failed to toggle freeze:', error);
+      toast({ title: 'Error', description: 'Gagal toggle freeze', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const freezeAllKeys = async (freeze: boolean) => {
+    if (!confirm(freeze ? 'Freeze semua key?' : 'Unfreeze semua key?')) return;
+    
+    setLoading(true);
+    const now = new Date();
+    
+    for (const key of keys) {
+      if (freeze && !key.frozenUntil) {
+        const expiredDate = new Date(key.expired);
+        const remainingMs = expiredDate.getTime() - now.getTime();
+        await fetch(`${API_BASE}/update-key`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            key: key.key,
+            frozenUntil: now.toISOString(),
+            frozenRemainingMs: remainingMs > 0 ? remainingMs : 0
+          })
+        });
+      } else if (!freeze && key.frozenUntil) {
+        const remainingMs = key.frozenRemainingMs || 0;
+        const newExpiry = new Date(now.getTime() + remainingMs);
+        await fetch(`${API_BASE}/update-key`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            key: key.key,
+            expired: newExpiry.toISOString(),
+            frozenUntil: null,
+            frozenRemainingMs: null
+          })
+        });
+      }
+    }
+    
+    toast({ title: 'Berhasil', description: freeze ? 'Semua key di-freeze' : 'Semua key di-unfreeze' });
+    fetchKeys();
+    setLoading(false);
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: 'Copied!', description: 'Key berhasil disalin' });
@@ -166,8 +276,45 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
     });
   };
 
-  const isExpired = (dateStr: string) => {
-    return new Date(dateStr) < new Date();
+  const getTimeRemaining = (keyItem: KeyItem) => {
+    if (keyItem.frozenUntil) {
+      const remainingMs = keyItem.frozenRemainingMs || 0;
+      const days = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
+      return { 
+        text: `⏸️ ${days}d ${hours}h ${minutes}m ${seconds}s`, 
+        className: 'text-blue-400',
+        frozen: true 
+      };
+    }
+    
+    const now = currentTime;
+    const expired = new Date(keyItem.expired);
+    const diff = expired.getTime() - now.getTime();
+    
+    if (diff <= 0) {
+      return { text: 'EXPIRED', className: 'text-destructive', frozen: false };
+    }
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    
+    if (days > 0) {
+      return { text: `${days}d ${hours}h ${minutes}m ${seconds}s`, className: 'text-secondary', frozen: false };
+    } else if (hours > 0) {
+      return { text: `${hours}h ${minutes}m ${seconds}s`, className: 'text-yellow-400', frozen: false };
+    } else {
+      return { text: `${minutes}m ${seconds}s`, className: 'text-destructive', frozen: false };
+    }
+  };
+
+  const isExpired = (keyItem: KeyItem) => {
+    if (keyItem.frozenUntil) return false;
+    return new Date(keyItem.expired) < new Date();
   };
 
   const getRoleColor = (role: string) => {
@@ -188,6 +335,8 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
     k.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
     k.robloxUsers.some(u => u.username.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  const frozenCount = keys.filter(k => k.frozenUntil).length;
 
   const startNewKey = () => {
     const expiryDate = new Date();
@@ -287,7 +436,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
             License Keys
           </h2>
           <span className="text-sm text-muted-foreground">
-            Total: {keys.length} keys
+            Total: {keys.length} keys | Frozen: {frozenCount}
           </span>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -327,13 +476,52 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
         </div>
       </div>
 
+      {/* Freeze All Controls */}
+      <Card className="glass-card border-blue-500/30">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Pause className="w-5 h-5 text-blue-400" />
+              <div>
+                <h3 className="font-medium">Freeze Control</h3>
+                <p className="text-sm text-muted-foreground">
+                  Freeze akan menjeda countdown expiry, unfreeze akan melanjutkan dari sisa waktu
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => freezeAllKeys(true)}
+                disabled={loading || frozenCount === keys.length}
+                className="border-blue-500/50 text-blue-400 hover:bg-blue-500/20"
+              >
+                <Pause className="w-4 h-4 mr-2" />
+                Freeze All
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => freezeAllKeys(false)}
+                disabled={loading || frozenCount === 0}
+                className="border-green-500/50 text-green-400 hover:bg-green-500/20"
+              >
+                <Play className="w-4 h-4 mr-2" />
+                Unfreeze All
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Edit/Create Form */}
       {editingKey && (
         <Card className="glass-card border-primary/50">
           <CardHeader>
             <CardTitle>{isNewKey ? 'Create New Key' : 'Edit Key'}</CardTitle>
             <CardDescription>
-              {isNewKey ? 'Buat license key baru untuk pengguna' : 'Edit data license key'}
+              {isNewKey ? 'Buat license key baru (format: AXSTOOLS-XXXX-XXXX)' : 'Edit data license key'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -343,7 +531,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
                 <Input
                   value={editingKey.key}
                   onChange={(e) => setEditingKey({ ...editingKey, key: e.target.value })}
-                  placeholder="arexanstools2025@XXXX-XXXX"
+                  placeholder="AXSTOOLS-XXXX-XXXX"
                   className="bg-background/50 font-mono"
                   disabled={!isNewKey}
                 />
@@ -439,68 +627,90 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
             </CardContent>
           </Card>
         ) : (
-          filteredKeys.map((k) => (
-            <Card key={k.key} className={`glass-card transition-all hover:border-primary/50 ${isExpired(k.expired) ? 'opacity-60' : ''}`}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <code className="font-mono text-sm bg-muted px-2 py-1 rounded truncate max-w-[300px]">
-                        {k.key}
-                      </code>
-                      <button
-                        onClick={() => copyToClipboard(k.key)}
-                        className="p-1 rounded hover:bg-muted transition-colors"
-                      >
-                        <Copy className="w-4 h-4 text-muted-foreground" />
-                      </button>
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${getRoleColor(k.role)}`}>
-                        {k.role}
-                      </span>
-                      {isExpired(k.expired) && (
-                        <span className="px-2 py-0.5 rounded text-xs bg-destructive/20 text-destructive flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3" />
-                          Expired
+          filteredKeys.map((k) => {
+            const timeRemaining = getTimeRemaining(k);
+            return (
+              <Card key={k.key} className={`glass-card transition-all hover:border-primary/50 ${isExpired(k) ? 'opacity-60' : ''} ${k.frozenUntil ? 'border-blue-500/30' : ''}`}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <code className="font-mono text-sm bg-muted px-2 py-1 rounded truncate max-w-[300px]">
+                          {k.key}
+                        </code>
+                        <button
+                          onClick={() => copyToClipboard(k.key)}
+                          className="p-1 rounded hover:bg-muted transition-colors"
+                        >
+                          <Copy className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${getRoleColor(k.role)}`}>
+                          {k.role}
                         </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {formatDate(k.expired)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="w-4 h-4" />
-                        {k.robloxUsers.length}/{k.maxHwid} HWID
-                      </span>
-                      {k.robloxUsers.length > 0 && (
+                        {k.frozenUntil && (
+                          <span className="px-2 py-0.5 rounded text-xs bg-blue-500/20 text-blue-400 flex items-center gap-1">
+                            <Pause className="w-3 h-3" />
+                            FROZEN
+                          </span>
+                        )}
+                        {isExpired(k) && (
+                          <span className="px-2 py-0.5 rounded text-xs bg-destructive/20 text-destructive flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />
+                            Expired
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
-                          <Shield className="w-4 h-4" />
-                          {k.robloxUsers.map(u => u.username).join(', ')}
+                          <Calendar className="w-4 h-4" />
+                          {formatDate(k.expired)}
                         </span>
-                      )}
+                        <span className={`flex items-center gap-1 font-mono font-bold ${timeRemaining.className}`}>
+                          <Clock className="w-4 h-4" />
+                          {timeRemaining.text}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Users className="w-4 h-4" />
+                          {k.robloxUsers.length}/{k.maxHwid} HWID
+                        </span>
+                        {k.robloxUsers.length > 0 && (
+                          <span className="flex items-center gap-1">
+                            <Shield className="w-4 h-4" />
+                            {k.robloxUsers.map(u => u.username).join(', ')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => toggleFreezeKey(k)}
+                        className={k.frozenUntil ? 'text-green-400 hover:text-green-300' : 'text-blue-400 hover:text-blue-300'}
+                        title={k.frozenUntil ? 'Unfreeze' : 'Freeze'}
+                      >
+                        {k.frozenUntil ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => { setEditingKey(k); setIsNewKey(false); }}
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleDeleteKey(k.key)}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => { setEditingKey(k); setIsNewKey(false); }}
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => handleDeleteKey(k.key)}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                </CardContent>
+              </Card>
+            );
+          })
         )}
       </div>
     </div>

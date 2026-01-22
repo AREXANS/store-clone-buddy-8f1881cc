@@ -85,7 +85,6 @@ interface SocialLink {
 
 const Admin = () => {
   const navigate = useNavigate();
-  const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -96,11 +95,17 @@ const Admin = () => {
     deviceStatus,
     allSessions,
     isChecking,
+    isLoggedIn,
     registerDevice,
     loadAllSessions,
     approveDevice,
-    removeDevice
+    removeDevice,
+    persistLogin,
+    clearLogin
   } = useDeviceDetection();
+  
+  // Use persistent login state
+  const [authenticated, setAuthenticated] = useState(isLoggedIn);
 
   // Settings state
   const [settings, setSettings] = useState<SiteSetting[]>([]);
@@ -125,6 +130,20 @@ const Admin = () => {
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   const [editingSocialLink, setEditingSocialLink] = useState<SocialLink | null>(null);
 
+  // Load data if already logged in
+  const loadDataOnMount = async () => {
+    if (isLoggedIn) {
+      loadAllData();
+    }
+  };
+  
+  // Effect to load data on mount if logged in
+  useState(() => {
+    if (isLoggedIn) {
+      setAuthenticated(true);
+    }
+  });
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -137,11 +156,17 @@ const Admin = () => {
     
     if (data && data.value === password) {
       setAuthenticated(true);
+      persistLogin();
       loadAllData();
     } else {
       toast({ title: "Error", description: "Password salah!", variant: "destructive" });
     }
     setLoading(false);
+  };
+  
+  const handleLogout = () => {
+    setAuthenticated(false);
+    clearLogin();
   };
 
   const loadAllData = async () => {
@@ -327,7 +352,7 @@ const Admin = () => {
               <Button variant="outline" onClick={() => navigate('/')}>
                 Ke Toko
               </Button>
-              <Button variant="destructive" onClick={() => setAuthenticated(false)}>
+              <Button variant="destructive" onClick={handleLogout}>
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
               </Button>

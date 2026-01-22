@@ -100,10 +100,25 @@ export const useDeviceDetection = () => {
     return id;
   });
   
+  // Check for persistent admin session
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return localStorage.getItem('admin_logged_in') === 'true';
+  });
+  
   const [deviceStatus, setDeviceStatus] = useState<'loading' | 'approved' | 'pending' | 'new'>('loading');
   const [currentSession, setCurrentSession] = useState<DeviceSession | null>(null);
   const [allSessions, setAllSessions] = useState<DeviceSession[]>([]);
   const [isChecking, setIsChecking] = useState(true);
+  
+  const persistLogin = () => {
+    localStorage.setItem('admin_logged_in', 'true');
+    setIsLoggedIn(true);
+  };
+  
+  const clearLogin = () => {
+    localStorage.removeItem('admin_logged_in');
+    setIsLoggedIn(false);
+  };
 
   const deviceInfo = getDeviceInfo();
   const deviceName = getDeviceName();
@@ -263,10 +278,13 @@ export const useDeviceDetection = () => {
     currentSession,
     allSessions,
     isChecking,
+    isLoggedIn,
     registerDevice,
     loadAllSessions,
     approveDevice,
     removeDevice,
-    checkDeviceStatus
+    checkDeviceStatus,
+    persistLogin,
+    clearLogin
   };
 };

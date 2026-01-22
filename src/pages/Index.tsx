@@ -241,7 +241,7 @@ const Index = () => {
       for (let i = 0; i < length; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
       return result;
     };
-    setFormData(prev => ({ ...prev, key: `arexanstools2025@${randomStr(4)}${randomStr(4)}` }));
+    setFormData(prev => ({ ...prev, key: `AXSTOOLS-${randomStr(4)}-${randomStr(4)}` }));
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {

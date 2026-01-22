@@ -1,8 +1,10 @@
 import { FC, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AdSlider from './AdSlider';
 import GlobalBackground from './GlobalBackground';
 import { supabase } from '@/integrations/supabase/client';
-import { Link as LinkIcon } from 'lucide-react';
+import { Link as LinkIcon, Key } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Ad {
   id: string;
@@ -83,6 +85,7 @@ const getIconForType = (iconType: string) => {
 };
 
 const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, prices, ads, packages }) => {
+  const navigate = useNavigate();
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
 
   useEffect(() => {
@@ -211,7 +214,17 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
           </div>
         </div>
 
-        {/* Dynamic Social Links Footer */}
+        {/* Key System Button */}
+        <div className="flex justify-center mt-6">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/key-system')}
+            className="gap-2 border-primary/50 hover:bg-primary/10"
+          >
+            <Key className="w-4 h-4" />
+            Key System
+          </Button>
+        </div>
         {socialLinks.length > 0 && (
           <div className="flex items-center justify-center gap-6 mt-8">
             {socialLinks.map((link) => (
