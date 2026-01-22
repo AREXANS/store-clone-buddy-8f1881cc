@@ -374,192 +374,311 @@ client.initialize();`,
 
     robloxScript: `-- ========================================
 -- ROBLOX LUA SCRIPT - KEY VALIDATION
+-- Dengan Freeze Status & HWID Support
 -- ========================================
 
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
-local API_BASE = "${API_BASE}"
+-- ================== CONFIG ==================
+local API_URL = "${API_BASE}/validate-key"
+local API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2bm9ldWd5dWNkYW55anNya3ZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1OTIyNzMsImV4cCI6MjA4NDE2ODI3M30.qBkL2oZCpwYcAwRRXo_LhoaawarDwWec2DIxLpHxSRY"
 
--- Fungsi untuk mendapatkan HWID (unik per executor)
-local function getHWID()
-    -- Gunakan metode HWID dari executor Anda
-    -- Contoh untuk beberapa executor:
+-- URL Script per Role (ganti dengan URL Anda)
+local SCRIPT_URLS = {
+    Developer = "https://raw.githubusercontent.com/yourrepo/developer.lua",
+    VIP = "https://raw.githubusercontent.com/yourrepo/vip.lua",
+    NORMAL = "https://raw.githubusercontent.com/yourrepo/normal.lua"
+}
+
+-- ================== HWID GENERATOR ==================
+local function generateHWID()
+    local hwid = ""
+    local userId = tostring(LocalPlayer.UserId)
     
-    -- Synapse X:
-    -- return syn.hwid()
+    -- Coba dapatkan HWID dari executor
+    if gethwid then
+        pcall(function()
+            hwid = gethwid()
+        end)
+    elseif get_hwid then
+        pcall(function()
+            hwid = get_hwid()
+        end)
+    elseif syn and syn.hwid then
+        pcall(function()
+            hwid = syn.hwid()
+        end)
+    elseif getexecutorname then
+        pcall(function()
+            hwid = "RBLX-" .. userId .. "-" .. getexecutorname()
+        end)
+    else
+        -- Fallback menggunakan UserId
+        hwid = "RBLX-" .. userId
+    end
     
-    -- Script-Ware:
-    -- return identifyexecutor() .. "_" .. game:GetService("RbxAnalyticsService"):GetClientId()
-    
-    -- Fluxus/Krnl:
-    -- return game:GetService("RbxAnalyticsService"):GetClientId()
-    
-    -- Fallback (tidak unik, hanya untuk testing):
-    return game:GetService("RbxAnalyticsService"):GetClientId()
+    return hwid
 end
 
--- Fungsi utama untuk validasi key
-local function validateKey(keyInput)
-    local hwid = getHWID()
-    local username = Players.LocalPlayer.Name
+-- ================== API VALIDATOR ==================
+local function validateKeyWithAPI(keyInput)
+    local hwid = generateHWID()
+    local username = LocalPlayer.Name
     
-    local success, response = pcall(function()
-        return HttpService:RequestAsync({
-            Url = API_BASE .. "/validate-key",
+    -- Gunakan request function yang tersedia
+    local reqFunc = request or syn.request or http_request or HttpService.RequestAsync
+    
+    local success, result = pcall(function()
+        return reqFunc({
+            Url = API_URL,
             Method = "POST",
             Headers = {
-                ["Content-Type"] = "application/json"
+                ["Content-Type"] = "application/json",
+                ["apikey"] = API_KEY,
+                ["Authorization"] = "Bearer " .. API_KEY
             },
             Body = HttpService:JSONEncode({
                 key = keyInput,
                 hwid = hwid,
-                username = username
+                robloxUsername = username
             })
         })
     end)
     
-    if success then
-        local data = HttpService:JSONDecode(response.Body)
-        
-        if data.valid then
-            print("✅ KEY VALID!")
-            print("👤 Role:", data.role)
-            print("🎮 Username:", username)
-            print("💻 HWID:", hwid)
-            return true, data.role
-        else
-            warn("❌ KEY INVALID:", data.error)
-            return false, data.error
-        end
-    else
-        warn("❌ HTTP Error:", response)
-        return false, "Connection error"
+    if not success then
+        return {
+            valid = false,
+            error = "Connection Error",
+            message = "Gagal terhubung ke server"
+        }
     end
+    
+    local responseBody = result.Body or result
+    local data = HttpService:JSONDecode(responseBody)
+    
+    return data
 end
 
--- Fungsi untuk mengecek info key tanpa registrasi HWID
-local function getKeyInfo(keyInput)
-    local success, response = pcall(function()
-        return HttpService:RequestAsync({
-            Url = API_BASE .. "/get-keys",
-            Method = "GET"
-        })
-    end)
+-- ================== MAIN VALIDATION ==================
+local function validateAndExecute(keyInput)
+    print("=" .. string.rep("=", 40))
+    print("🔐 AXS KEY SYSTEM - Validating...")
+    print("=" .. string.rep("=", 40))
     
-    if success then
-        local data = HttpService:JSONDecode(response.Body)
-        
-        for _, key in ipairs(data.keys) do
-            if key.key == keyInput then
-                return true, key
+    local result = validateKeyWithAPI(keyInput)
+    
+    if result.valid then
+        -- Cek apakah key dibekukan (freeze)
+        if result.frozen then
+            warn("=" .. string.rep("=", 40))
+            warn("🥶 KEY FROZEN / DIBEKUKAN!")
+            warn("=" .. string.rep("=", 40))
+            warn("⏸️ Key Anda sedang dibekukan")
+            if result.frozenUntil then
+                warn("📅 Frozen Until: " .. tostring(result.frozenUntil))
             end
+            warn("💡 Hubungi admin untuk membuka freeze")
+            warn("=" .. string.rep("=", 40))
+            
+            return {
+                success = false,
+                reason = "FROZEN",
+                message = "Key sedang dibekukan oleh admin"
+            }
         end
         
-        return false, "Key not found"
+        -- Key valid dan tidak frozen
+        print("=" .. string.rep("=", 40))
+        print("✅ KEY VALID!")
+        print("=" .. string.rep("=", 40))
+        print("🔑 Key: " .. keyInput)
+        print("👤 Role: " .. tostring(result.role))
+        print("🎮 Username: " .. LocalPlayer.Name)
+        print("💻 HWID Registered: " .. tostring(result.hwid))
+        
+        if result.daysRemaining then
+            print("📅 Sisa Waktu: " .. tostring(result.daysRemaining) .. " hari")
+        end
+        
+        print("=" .. string.rep("=", 40))
+        
+        -- Load script berdasarkan role
+        local scriptUrl = SCRIPT_URLS[result.role]
+        if scriptUrl then
+            print("📦 Loading script for role: " .. result.role)
+            local scriptSuccess, scriptError = pcall(function()
+                loadstring(game:HttpGet(scriptUrl))()
+            end)
+            
+            if not scriptSuccess then
+                warn("⚠️ Error loading script: " .. tostring(scriptError))
+            end
+        else
+            print("ℹ️ No script URL configured for role: " .. result.role)
+        end
+        
+        return {
+            success = true,
+            role = result.role,
+            message = "Akses diberikan"
+        }
     else
-        return false, "Connection error"
+        -- Key invalid
+        warn("=" .. string.rep("=", 40))
+        warn("❌ KEY INVALID!")
+        warn("=" .. string.rep("=", 40))
+        warn("Error: " .. tostring(result.error or result.message or "Unknown error"))
+        warn("=" .. string.rep("=", 40))
+        
+        return {
+            success = false,
+            reason = "INVALID",
+            message = result.error or result.message or "Key tidak valid"
+        }
     end
 end
 
--- ========================================
--- CONTOH PENGGUNAAN DI SCRIPT UTAMA
--- ========================================
-
-local KEY_INPUT = "AXSTOOLS-XXXX-XXXX" -- Ganti dengan input user
-
--- Metode 1: Langsung validasi
-local isValid, roleOrError = validateKey(KEY_INPUT)
-
-if isValid then
-    print("✅ Akses diberikan! Role:", roleOrError)
-    
-    -- Load script utama berdasarkan role
-    if roleOrError == "Developer" then
-        -- loadstring(game:HttpGet("URL_SCRIPT_DEVELOPER"))()
-    elseif roleOrError == "VIP" then
-        -- loadstring(game:HttpGet("URL_SCRIPT_VIP"))()
-    else
-        -- loadstring(game:HttpGet("URL_SCRIPT_NORMAL"))()
-    end
-else
-    warn("❌ Akses ditolak:", roleOrError)
-    -- Tampilkan UI error atau kick player
-end
-
--- ========================================
--- UI KEY INPUT (OPSIONAL)
--- ========================================
-
+-- ================== KEY INPUT UI ==================
 local function createKeyUI()
     local ScreenGui = Instance.new("ScreenGui")
-    local Frame = Instance.new("Frame")
-    local TextBox = Instance.new("TextBox")
-    local Button = Instance.new("TextButton")
+    local MainFrame = Instance.new("Frame")
+    local UICorner = Instance.new("UICorner")
     local Title = Instance.new("TextLabel")
+    local KeyInput = Instance.new("TextBox")
+    local ValidateBtn = Instance.new("TextButton")
+    local StatusLabel = Instance.new("TextLabel")
+    local CloseBtn = Instance.new("TextButton")
     
     ScreenGui.Name = "AXSKeySystem"
     ScreenGui.Parent = game.CoreGui
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     
-    Frame.Size = UDim2.new(0, 300, 0, 150)
-    Frame.Position = UDim2.new(0.5, -150, 0.5, -75)
-    Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    Frame.BorderSizePixel = 0
-    Frame.Parent = ScreenGui
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, 320, 0, 200)
+    MainFrame.Position = UDim2.new(0.5, -160, 0.5, -100)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Parent = ScreenGui
+    MainFrame.Active = true
+    MainFrame.Draggable = true
     
-    Title.Size = UDim2.new(1, 0, 0, 30)
+    UICorner.CornerRadius = UDim.new(0, 12)
+    UICorner.Parent = MainFrame
+    
+    Title.Size = UDim2.new(1, -40, 0, 40)
+    Title.Position = UDim2.new(0, 20, 0, 0)
     Title.BackgroundTransparency = 1
-    Title.Text = "AXS KEY SYSTEM"
+    Title.Text = "🔐 AXS KEY SYSTEM"
     Title.TextColor3 = Color3.fromRGB(255, 215, 0)
     Title.Font = Enum.Font.GothamBold
     Title.TextSize = 18
-    Title.Parent = Frame
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.Parent = MainFrame
     
-    TextBox.Size = UDim2.new(0.9, 0, 0, 35)
-    TextBox.Position = UDim2.new(0.05, 0, 0.3, 0)
-    TextBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    TextBox.TextColor3 = Color3.new(1, 1, 1)
-    TextBox.PlaceholderText = "AXSTOOLS-XXXX-XXXX"
-    TextBox.Font = Enum.Font.Code
-    TextBox.TextSize = 14
-    TextBox.Parent = Frame
+    CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+    CloseBtn.Position = UDim2.new(1, -35, 0, 5)
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    CloseBtn.Text = "X"
+    CloseBtn.TextColor3 = Color3.new(1, 1, 1)
+    CloseBtn.Font = Enum.Font.GothamBold
+    CloseBtn.TextSize = 14
+    CloseBtn.Parent = MainFrame
+    Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
     
-    Button.Size = UDim2.new(0.9, 0, 0, 35)
-    Button.Position = UDim2.new(0.05, 0, 0.65, 0)
-    Button.BackgroundColor3 = Color3.fromRGB(0, 170, 127)
-    Button.Text = "VALIDATE"
-    Button.TextColor3 = Color3.new(1, 1, 1)
-    Button.Font = Enum.Font.GothamBold
-    Button.TextSize = 14
-    Button.Parent = Frame
+    CloseBtn.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy()
+    end)
     
-    Button.MouseButton1Click:Connect(function()
-        local key = TextBox.Text
-        if key ~= "" then
-            Button.Text = "Validating..."
-            local isValid, result = validateKey(key)
+    KeyInput.Size = UDim2.new(0.9, 0, 0, 40)
+    KeyInput.Position = UDim2.new(0.05, 0, 0, 50)
+    KeyInput.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+    KeyInput.BorderSizePixel = 0
+    KeyInput.TextColor3 = Color3.new(1, 1, 1)
+    KeyInput.PlaceholderText = "Enter your key..."
+    KeyInput.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+    KeyInput.Font = Enum.Font.Code
+    KeyInput.TextSize = 14
+    KeyInput.ClearTextOnFocus = false
+    KeyInput.Parent = MainFrame
+    Instance.new("UICorner", KeyInput).CornerRadius = UDim.new(0, 8)
+    
+    ValidateBtn.Size = UDim2.new(0.9, 0, 0, 40)
+    ValidateBtn.Position = UDim2.new(0.05, 0, 0, 100)
+    ValidateBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 127)
+    ValidateBtn.BorderSizePixel = 0
+    ValidateBtn.Text = "✓ VALIDATE KEY"
+    ValidateBtn.TextColor3 = Color3.new(1, 1, 1)
+    ValidateBtn.Font = Enum.Font.GothamBold
+    ValidateBtn.TextSize = 14
+    ValidateBtn.Parent = MainFrame
+    Instance.new("UICorner", ValidateBtn).CornerRadius = UDim.new(0, 8)
+    
+    StatusLabel.Size = UDim2.new(0.9, 0, 0, 30)
+    StatusLabel.Position = UDim2.new(0.05, 0, 0, 150)
+    StatusLabel.BackgroundTransparency = 1
+    StatusLabel.Text = ""
+    StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    StatusLabel.Font = Enum.Font.Gotham
+    StatusLabel.TextSize = 12
+    StatusLabel.TextWrapped = true
+    StatusLabel.Parent = MainFrame
+    
+    ValidateBtn.MouseButton1Click:Connect(function()
+        local key = KeyInput.Text
+        
+        if key == "" then
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+            StatusLabel.Text = "❌ Masukkan key terlebih dahulu!"
+            return
+        end
+        
+        ValidateBtn.Text = "⏳ Validating..."
+        ValidateBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        StatusLabel.Text = "Menghubungi server..."
+        
+        local result = validateAndExecute(key)
+        
+        if result.success then
+            ValidateBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+            ValidateBtn.Text = "✅ VALID - " .. result.role
+            StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+            StatusLabel.Text = "Akses diberikan! Role: " .. result.role
             
-            if isValid then
-                Button.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-                Button.Text = "✅ VALID - " .. result
-                wait(2)
-                ScreenGui:Destroy()
-                -- Load script utama
+            wait(2)
+            ScreenGui:Destroy()
+        else
+            if result.reason == "FROZEN" then
+                ValidateBtn.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
+                ValidateBtn.Text = "🥶 KEY FROZEN"
+                StatusLabel.TextColor3 = Color3.fromRGB(100, 150, 255)
+                StatusLabel.Text = "Key dibekukan! Hubungi admin."
             else
-                Button.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-                Button.Text = "❌ " .. result
-                wait(2)
-                Button.BackgroundColor3 = Color3.fromRGB(0, 170, 127)
-                Button.Text = "VALIDATE"
+                ValidateBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+                ValidateBtn.Text = "❌ INVALID"
+                StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+                StatusLabel.Text = result.message
             end
+            
+            wait(3)
+            ValidateBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 127)
+            ValidateBtn.Text = "✓ VALIDATE KEY"
         end
     end)
     
     return ScreenGui
 end
 
--- Uncomment untuk menampilkan UI:
--- createKeyUI()`
+-- ================== PENGGUNAAN ==================
+-- Pilih salah satu metode:
+
+-- Metode 1: Langsung validasi dengan key
+-- local result = validateAndExecute("AXSTOOLS-XXXX-XXXX")
+
+-- Metode 2: Tampilkan UI input key
+createKeyUI()`
   };
 
   const TabButton = ({ id, label, icon: Icon }: { id: typeof activeTab; label: string; icon: any }) => (
