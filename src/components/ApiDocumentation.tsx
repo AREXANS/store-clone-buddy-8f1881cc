@@ -385,13 +385,6 @@ local LocalPlayer = Players.LocalPlayer
 local API_URL = "${API_BASE}/validate-key"
 local API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2bm9ldWd5dWNkYW55anNya3ZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1OTIyNzMsImV4cCI6MjA4NDE2ODI3M30.qBkL2oZCpwYcAwRRXo_LhoaawarDwWec2DIxLpHxSRY"
 
--- URL Script per Role (ganti dengan URL Anda)
-local SCRIPT_URLS = {
-    Developer = "https://raw.githubusercontent.com/yourrepo/developer.lua",
-    VIP = "https://raw.githubusercontent.com/yourrepo/vip.lua",
-    NORMAL = "https://raw.githubusercontent.com/yourrepo/normal.lua"
-}
-
 -- ================== HWID GENERATOR ==================
 local function generateHWID()
     local hwid = ""
@@ -504,19 +497,18 @@ local function validateAndExecute(keyInput)
         
         print("=" .. string.rep("=", 40))
         
-        -- Load script berdasarkan role
-        local scriptUrl = SCRIPT_URLS[result.role]
-        if scriptUrl then
-            print("📦 Loading script for role: " .. result.role)
+        -- Script URL diambil dari response API (dikonfigurasi di dashboard admin)
+        if result.scriptUrl then
+            print("📦 Loading script from server config...")
             local scriptSuccess, scriptError = pcall(function()
-                loadstring(game:HttpGet(scriptUrl))()
+                loadstring(game:HttpGet(result.scriptUrl))()
             end)
             
             if not scriptSuccess then
                 warn("⚠️ Error loading script: " .. tostring(scriptError))
             end
         else
-            print("ℹ️ No script URL configured for role: " .. result.role)
+            print("ℹ️ Script akan dijalankan sesuai konfigurasi server")
         end
         
         return {
