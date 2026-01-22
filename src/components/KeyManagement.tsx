@@ -1,4 +1,4 @@
-import { FC, useState, useEffect } from 'react';
+import { FC, useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,7 +7,8 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import { 
   Key, Plus, Trash2, Edit2, RefreshCw, Save, 
-  Users, Calendar, Shield, Copy, AlertTriangle 
+  Users, Calendar, Shield, Copy, AlertTriangle,
+  Download, Upload, FileJson
 } from 'lucide-react';
 
 const API_BASE = 'https://tvnoeugyucdanyjsrkvg.supabase.co/functions/v1';
@@ -36,6 +37,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   const [editingKey, setEditingKey] = useState<KeyItem | null>(null);
   const [isNewKey, setIsNewKey] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchKeys = async () => {
     setLoading(true);
@@ -203,6 +205,79 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
     setIsNewKey(true);
   };
 
+  // Export keys to JSON file
+  const exportKeys = () => {
+    const dataStr = JSON.stringify(keys, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `axs-keys-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast({ title: 'Berhasil', description: `${keys.length} keys berhasil diekspor` });
+  };
+
+  // Import keys from JSON file
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const importedKeys: KeyItem[] = JSON.parse(text);
+      
+      if (!Array.isArray(importedKeys)) {
+        toast({ title: 'Error', description: 'Format file tidak valid', variant: 'destructive' });
+        return;
+      }
+
+      setLoading(true);
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const keyData of importedKeys) {
+        try {
+          const response = await fetch(`${API_BASE}/create-key`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              key: keyData.key,
+              role: keyData.role || 'VIP',
+              expired: keyData.expired,
+              max_hwid: keyData.maxHwid || 1
+            })
+          });
+          
+          const result = await response.json();
+          if (result.success) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } catch {
+          errorCount++;
+        }
+      }
+
+      toast({ 
+        title: 'Import Selesai', 
+        description: `${successCount} berhasil, ${errorCount} gagal` 
+      });
+      fetchKeys();
+    } catch (error) {
+      console.error('Import error:', error);
+      toast({ title: 'Error', description: 'Gagal membaca file JSON', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center flex-wrap gap-4">
@@ -215,7 +290,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
             Total: {keys.length} keys
           </span>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Input
             placeholder="Search key, role, username..."
             value={searchQuery}
@@ -226,6 +301,25 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
+          <Button variant="outline" onClick={exportKeys} disabled={keys.length === 0}>
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => fileInputRef.current?.click()} 
+            disabled={loading}
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Import
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleImportFile}
+            className="hidden"
+          />
           <Button onClick={startNewKey}>
             <Plus className="w-4 h-4 mr-2" />
             Add Key
