@@ -31,7 +31,7 @@ serve(async (req) => {
     }
 
     // Verify sender
-    const { data: sender } = await supabase.from('xcoins_users').select('*').eq('id', senderId).single();
+    const { data: sender } = await supabase.from('xcoins_balances').select('*').eq('id', senderId).single();
     if (!sender) {
       return new Response(JSON.stringify({ error: "Pengirim tidak ditemukan" }), 
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
