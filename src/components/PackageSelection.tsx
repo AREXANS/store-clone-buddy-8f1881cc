@@ -218,8 +218,8 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
           </div>
         </div>
 
-        {/* Key System Button */}
-        <div className="flex justify-center mt-6">
+        {/* Action Buttons */}
+        <div className="flex justify-center gap-3 mt-6">
           <Button 
             variant="outline" 
             onClick={() => navigate('/key-system')}
@@ -228,6 +228,15 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
             <Key className="w-4 h-4" />
             Key System
           </Button>
+          {xcoinsEnabled && (
+            <Button 
+              onClick={() => navigate('/xcoins')}
+              className="gap-2 bg-gradient-to-r from-primary to-secondary text-white hover:opacity-90"
+            >
+              <Coins className="w-4 h-4" />
+              XCoins
+            </Button>
+          )}
         </div>
         {socialLinks.length > 0 && (
           <div className="flex items-center justify-center gap-6 mt-8">
