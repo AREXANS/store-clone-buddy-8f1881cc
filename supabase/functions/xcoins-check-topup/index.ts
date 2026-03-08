@@ -99,7 +99,7 @@ serve(async (req) => {
 
       // Clean up cashify mapping
       if (gateway === "cashify") {
-        await supabase.from("site_settings").delete().eq("key", `cashify_tx_${transactionId}`);
+        await supabase.from("app_settings").delete().eq("key", `cashify_tx_${transactionId}`);
       }
 
       return new Response(JSON.stringify({ paid: true, balance: newBalance, added: xcoinsAmount }), 

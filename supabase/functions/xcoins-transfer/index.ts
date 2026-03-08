@@ -70,8 +70,8 @@ serve(async (req) => {
     const newRecipientBalance = recipient.balance + amount;
     const refId = `TRF-${Date.now()}`;
 
-    await supabase.from('xcoins_users').update({ balance: newSenderBalance, updated_at: new Date().toISOString() }).eq('id', senderId);
-    await supabase.from('xcoins_users').update({ balance: newRecipientBalance, updated_at: new Date().toISOString() }).eq('id', recipient.id);
+    await supabase.from('xcoins_balances').update({ balance: newSenderBalance, updated_at: new Date().toISOString() }).eq('id', senderId);
+    await supabase.from('xcoins_balances').update({ balance: newRecipientBalance, updated_at: new Date().toISOString() }).eq('id', recipient.id);
 
     // Record transactions
     await supabase.from('xcoins_transactions').insert([

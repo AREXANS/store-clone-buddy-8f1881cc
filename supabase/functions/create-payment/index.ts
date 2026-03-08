@@ -76,7 +76,7 @@ serve(async (req) => {
           if (cashifyTxId) {
             qrString = qrString; // keep qr_string for QR display
             // Store cashify tx id in the order id mapping
-            orderId && await supabase.from("site_settings").upsert({
+            orderId && await supabase.from("app_settings").upsert({
               key: `cashify_tx_${orderId}`,
               value: cashifyTxId,
               description: "Cashify transaction mapping"

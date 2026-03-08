@@ -43,7 +43,7 @@ serve(async (req) => {
             body: JSON.stringify({ transactionId: mapping.value }),
           });
           // Clean up mapping
-          await supabase.from("site_settings").delete().eq("key", `cashify_tx_${transactionId}`);
+          await supabase.from("app_settings").delete().eq("key", `cashify_tx_${transactionId}`);
         }
       } catch (err) {
         console.error("Cashify cancel error:", err);

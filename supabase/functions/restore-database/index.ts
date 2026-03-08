@@ -16,7 +16,7 @@ const RESTORE_ORDER = [
   "admin_sessions",
   "lua_scripts",
   "package_discounts",
-  "xcoins_users",
+  "xcoins_balances",
   "xcoins_otp",
   "xcoins_transactions",
   "transactions",

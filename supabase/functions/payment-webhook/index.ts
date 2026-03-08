@@ -154,7 +154,7 @@ async function handlePostPayment(supabase: any, transaction: any) {
   // Discord notification
   try {
     const { data: discordSetting } = await supabase
-      .from("site_settings").select("value").eq("key", "discord_webhook_url").maybeSingle();
+      .from("app_settings").select("value").eq("key", "discord_webhook_url").maybeSingle();
     if (discordSetting?.value) {
       const embed = {
         title: "💰 Pembayaran Berhasil!",

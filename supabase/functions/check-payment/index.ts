@@ -58,7 +58,7 @@ serve(async (req) => {
       try {
         // Get cashify transaction ID mapping
         const { data: mapping } = await supabase
-          .from("site_settings").select("value").eq("key", `cashify_tx_${transactionId}`).maybeSingle();
+          .from("app_settings").select("value").eq("key", `cashify_tx_${transactionId}`).maybeSingle();
 
         if (mapping?.value) {
           const res = await fetch("https://cashify.my.id/api/generate/check-status", {

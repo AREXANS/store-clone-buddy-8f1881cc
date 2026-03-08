@@ -24,7 +24,7 @@ serve(async (req) => {
       .from("app_settings").select("value").eq("key", "license_keys").single();
 
     const { data: manualData } = await supabase
-      .from("site_settings").select("value").eq("key", "manual_whitelist").single();
+      .from("app_settings").select("value").eq("key", "manual_whitelist").single();
 
     const now = new Date();
     const whitelistedUsers: { username: string; role: string; key: string; expiredAt: string; source: string }[] = [];

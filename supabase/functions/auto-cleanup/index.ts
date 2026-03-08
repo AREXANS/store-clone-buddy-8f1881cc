@@ -63,7 +63,7 @@ serve(async (req) => {
           });
           
           if (filtered.length < before) {
-            await supabase.from("site_settings").update({
+            await supabase.from("app_settings").update({
               value: JSON.stringify(filtered),
               updated_at: new Date().toISOString()
             }).eq("key", "license_keys");

@@ -16,7 +16,7 @@ const TABLES = [
   "admin_sessions",
   "lua_scripts",
   "package_discounts",
-  "xcoins_users",
+  "xcoins_balances",
   "xcoins_transactions",
   "xcoins_otp",
 ];

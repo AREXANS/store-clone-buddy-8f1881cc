@@ -128,7 +128,7 @@ serve(async (req) => {
         hwidStatus = "newly_registered";
         keys[keyIndex] = keyData;
         await supabase
-          .from("site_settings")
+          .from("app_settings")
           .update({ value: JSON.stringify(keys), updated_at: now.toISOString() })
           .eq("key", "license_keys");
       }

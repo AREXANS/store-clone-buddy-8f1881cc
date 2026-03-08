@@ -36,7 +36,7 @@ serve(async (req) => {
 
     // Get leaderboard (top 10)
     const { data: leaderboard } = await supabase
-      .from('xcoins_users')
+      .from('xcoins_balances')
       .select('id, display_name, phone, balance')
       .eq('is_active', true)
       .order('balance', { ascending: false })

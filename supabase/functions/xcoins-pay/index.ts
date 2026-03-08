@@ -45,7 +45,7 @@ serve(async (req) => {
 
     // Deduct balance
     const newBalance = user.balance - amount;
-    await supabase.from('xcoins_users').update({ balance: newBalance, updated_at: new Date().toISOString() }).eq('id', userId);
+    await supabase.from('xcoins_balances').update({ balance: newBalance, updated_at: new Date().toISOString() }).eq('id', userId);
 
     const transactionId = `XPAY-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 

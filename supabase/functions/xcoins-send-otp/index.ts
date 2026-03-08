@@ -37,7 +37,7 @@ serve(async (req) => {
 
     // New user → send OTP
     const { data: tokenSetting } = await supabase
-      .from('site_settings')
+      .from('app_settings')
       .select('value')
       .eq('key', 'fonnte_token')
       .maybeSingle();
