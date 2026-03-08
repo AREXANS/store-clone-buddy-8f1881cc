@@ -418,9 +418,9 @@ const Admin = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <CreditCard className="w-5 h-5 text-primary" />
-                    Payment Gateway (Cashify QRIS)
+                    Payment Gateway
                   </CardTitle>
-                  <CardDescription>Konfigurasi pembayaran QRIS otomatis</CardDescription>
+                  <CardDescription>Pilih dan konfigurasi gateway pembayaran (Cashify / Pakasir)</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {settings.filter(s => paymentKeys.includes(s.key)).map(setting => (
