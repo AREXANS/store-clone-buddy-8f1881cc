@@ -374,6 +374,8 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   );
 
   const frozenCount = keys.filter(k => k.frozenUntil).length;
+  const expiredCount = keys.filter(k => !k.frozenUntil && new Date(k.expired) < new Date()).length;
+  const activeCount = keys.length - frozenCount - expiredCount;
 
   const startNewKey = () => {
     const expiryDate = new Date();
