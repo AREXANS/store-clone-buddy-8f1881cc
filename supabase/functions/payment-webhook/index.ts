@@ -100,7 +100,7 @@ serve(async (req) => {
           await handlePostPayment(supabase, transaction);
         }
         // Clean up mapping
-        await supabase.from("site_settings").delete().eq("key", mapping.key);
+        await supabase.from("app_settings").delete().eq("key", mapping.key);
       }
 
       return new Response(JSON.stringify({ success: true }),
