@@ -516,7 +516,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
               License Keys
             </h2>
             <span className="text-xs sm:text-sm text-muted-foreground">
-              Total: {keys.length} | Frozen: {frozenCount}
+              Total: {keys.length} | Aktif: {activeCount} | Frozen: {frozenCount} | Expired: {expiredCount}
             </span>
           </div>
           
