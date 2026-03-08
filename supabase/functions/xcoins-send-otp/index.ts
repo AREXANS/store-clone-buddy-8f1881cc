@@ -56,9 +56,11 @@ serve(async (req) => {
       expires_at: expiresAt.toISOString()
     });
 
+    const otpMessage = `💠 *XCoins Verification*\n\nKode OTP Anda: *${otp}*\n\nKode ini berlaku 5 menit.\n\nJangan bagikan kode ini kepada siapapun.\n\n> _Sent via tools.arexans.my.id_`;
+
     const formData = new FormData();
     formData.append('target', cleanPhone);
-    formData.append('message', `*XCoins Verification*\n\nKode OTP Anda: *${otp}*\n\nKode ini berlaku 5 menit.\nJangan bagikan kode ini kepada siapapun.`);
+    formData.append('message', otpMessage);
 
     const fonntRes = await fetch('https://api.fonnte.com/send', {
       method: 'POST',
