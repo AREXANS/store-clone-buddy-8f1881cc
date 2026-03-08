@@ -259,75 +259,75 @@ const XCoinsPage = () => {
               <CardTitle className="font-display text-2xl gradient-text">XCoins</CardTitle>
             </div>
             <CardDescription>
-              {authStep === 'login' ? 'Masuk dengan nomor WhatsApp & PIN' : 
-               authStep === 'register' ? 'Daftar akun baru' : 'Verifikasi OTP'}
+              {authStep === 'phone' ? 'Masukkan nomor WhatsApp Anda' : 
+               authStep === 'pin' ? 'Masukkan PIN Anda' : 
+               authStep === 'otp' ? 'Verifikasi kode OTP' : 'Buat PIN baru'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {authStep === 'login' && (
+            {authStep === 'phone' && (
               <>
                 <div>
                   <label className="text-sm text-muted-foreground">Nomor WhatsApp</label>
-                  <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="08xxxxxxxxxx" className="bg-background/50 mt-1" />
+                  <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="08xxxxxxxxxx" className="bg-background/50 mt-1" onKeyDown={e => e.key === 'Enter' && handleCheckPhone()} />
                 </div>
+                <Button className="w-full" onClick={handleCheckPhone} disabled={loading}>
+                  {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <ChevronRight className="w-4 h-4 mr-2" />}
+                  Lanjutkan
+                </Button>
+              </>
+            )}
+
+            {authStep === 'pin' && (
+              <>
+                <p className="text-sm text-muted-foreground text-center">
+                  Nomor: <span className="text-foreground font-mono">{cleanedPhone}</span>
+                </p>
                 <div>
                   <label className="text-sm text-muted-foreground">PIN (6 digit)</label>
-                  <Input type="password" maxLength={6} value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, ''))} placeholder="••••••" className="bg-background/50 mt-1 text-center tracking-[0.5em] font-mono text-lg" />
+                  <Input type="password" maxLength={6} value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, ''))} placeholder="••••••" className="bg-background/50 mt-1 text-center tracking-[0.5em] font-mono text-lg" onKeyDown={e => e.key === 'Enter' && handleLogin()} />
                 </div>
                 <Button className="w-full" onClick={handleLogin} disabled={loading}>
                   {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Coins className="w-4 h-4 mr-2" />}
                   Login
                 </Button>
-                <div className="text-center">
-                  <button className="text-sm text-primary hover:underline" onClick={() => { setAuthStep('register'); setPin(''); }}>
-                    Belum punya akun? Daftar
-                  </button>
-                </div>
-              </>
-            )}
-
-            {authStep === 'register' && (
-              <>
-                <div>
-                  <label className="text-sm text-muted-foreground">Nomor WhatsApp</label>
-                  <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="08xxxxxxxxxx" className="bg-background/50 mt-1" />
-                </div>
-                <div>
-                  <label className="text-sm text-muted-foreground">Nama Tampilan (opsional)</label>
-                  <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Nama kamu" className="bg-background/50 mt-1" />
-                </div>
-                <Button className="w-full" onClick={handleSendOtp} disabled={loading}>
-                  {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                  Kirim OTP ke WhatsApp
-                </Button>
-                <div className="text-center">
-                  <button className="text-sm text-primary hover:underline" onClick={() => setAuthStep('login')}>
-                    Sudah punya akun? Login
-                  </button>
-                </div>
+                <button className="text-sm text-muted-foreground hover:underline w-full text-center" onClick={() => { setAuthStep('phone'); setPin(''); }}>
+                  Ganti nomor
+                </button>
               </>
             )}
 
             {authStep === 'otp' && (
               <>
-                <p className="text-sm text-muted-foreground text-center">OTP telah dikirim ke <span className="text-foreground font-mono">{cleanedPhone}</span></p>
+                <p className="text-sm text-muted-foreground text-center">
+                  OTP telah dikirim ke <span className="text-foreground font-mono">{cleanedPhone}</span>
+                </p>
                 <div>
                   <label className="text-sm text-muted-foreground">Kode OTP</label>
-                  <Input maxLength={6} value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ''))} placeholder="123456" className="bg-background/50 mt-1 text-center tracking-[0.5em] font-mono text-lg" />
+                  <Input maxLength={6} value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ''))} placeholder="123456" className="bg-background/50 mt-1 text-center tracking-[0.5em] font-mono text-lg" onKeyDown={e => e.key === 'Enter' && handleVerifyOtp()} />
                 </div>
+                <Button className="w-full" onClick={handleVerifyOtp} disabled={loading}>
+                  <ChevronRight className="w-4 h-4 mr-2" /> Verifikasi OTP
+                </Button>
+                <button className="text-sm text-muted-foreground hover:underline w-full text-center" onClick={() => { setAuthStep('phone'); setOtp(''); }}>
+                  Kirim ulang / Ganti nomor
+                </button>
+              </>
+            )}
+
+            {authStep === 'create-pin' && (
+              <>
+                <p className="text-sm text-muted-foreground text-center">
+                  Buat PIN untuk akun <span className="text-foreground font-mono">{cleanedPhone}</span>
+                </p>
                 <div>
                   <label className="text-sm text-muted-foreground">Buat PIN (6 digit)</label>
-                  <Input type="password" maxLength={6} value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, ''))} placeholder="••••••" className="bg-background/50 mt-1 text-center tracking-[0.5em] font-mono text-lg" />
+                  <Input type="password" maxLength={6} value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, ''))} placeholder="••••••" className="bg-background/50 mt-1 text-center tracking-[0.5em] font-mono text-lg" onKeyDown={e => e.key === 'Enter' && handleRegister()} />
                 </div>
                 <Button className="w-full" onClick={handleRegister} disabled={loading}>
                   {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Coins className="w-4 h-4 mr-2" />}
-                  Verifikasi & Daftar
+                  Buat Akun
                 </Button>
-                <div className="text-center">
-                  <button className="text-sm text-muted-foreground hover:underline" onClick={() => setAuthStep('register')}>
-                    Kirim ulang OTP
-                  </button>
-                </div>
               </>
             )}
 
