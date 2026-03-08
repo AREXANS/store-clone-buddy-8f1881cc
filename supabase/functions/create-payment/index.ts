@@ -12,123 +12,74 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Get payment settings from database
     const { data: settings } = await supabase
       .from("site_settings")
       .select("key, value")
-      .in("key", ["cashify_license_key", "cashify_qris_id", "payment_mode"]);
+      .in("key", ["pakasir_slug", "pakasir_api_key", "pakasir_mode", "payment_simulation"]);
 
-    const settingsMap = Object.fromEntries(
-      (settings || []).map((s: { key: string; value: string }) => [s.key, s.value])
-    );
-
-    const paymentMode = settingsMap.payment_mode || "demo";
-    const licenseKey = settingsMap.cashify_license_key || "";
-    const qrisId = settingsMap.cashify_qris_id || "";
+    const s = Object.fromEntries((settings || []).map((r: any) => [r.key, r.value]));
+    const pakasirMode = s.pakasir_mode || "sandbox";
+    const slug = s.pakasir_slug || "";
+    const apiKey = s.pakasir_api_key || "";
 
     const body = await req.json();
-    const { 
-      amount, 
-      customerName, 
-      packageName, 
-      packageDuration,
-      licenseKey: customerLicenseKey,
-      promoCode
-    } = body;
+    const { amount, customerName, packageName, packageDuration, licenseKey: customerLicenseKey, promoCode, customerWhatsapp } = body;
 
     if (!amount || amount < 1000) {
-      return new Response(
-        JSON.stringify({ error: "Amount must be at least 1000" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Amount must be at least 1000" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const transactionId = `TRX-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    const orderId = `TRX-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     let qrString = "";
     let qrisUrl = "";
     let totalAmount = amount;
-    let cashifyTransactionId = "";
 
-    if (paymentMode === "live" && licenseKey && qrisId) {
-      // Call Cashify API v2
+    if (pakasirMode === "live" && slug && apiKey) {
+      // Call Pakasir API to create QRIS transaction
       try {
-        console.log("Calling Cashify API with:", { qrisId, amount, licenseKey: licenseKey.substring(0, 20) + "..." });
-        
-        const cashifyResponse = await fetch("https://cashify.my.id/api/generate/v2/qris", {
+        const pakasirRes = await fetch("https://app.pakasir.com/api/transactioncreate/qris", {
           method: "POST",
-          headers: {
-            "x-license-key": licenseKey,
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            qr_id: qrisId,
+            project: slug,
+            order_id: orderId,
             amount: amount,
-            useUniqueCode: true,
-            packageIds: ["id.dana"],
-            expiredInMinutes: 15,
-            qrType: "dynamic",
-            paymentMethod: "qris",
-            useQris: true,
+            api_key: apiKey,
           }),
         });
 
-        const cashifyData = await cashifyResponse.json();
-        console.log("Cashify response:", JSON.stringify(cashifyData));
+        const pakasirData = await pakasirRes.json();
+        console.log("Pakasir response:", JSON.stringify(pakasirData));
 
-        if (cashifyData.status === 200 && cashifyData.data) {
-          qrString = cashifyData.data.qr_string || "";
-          cashifyTransactionId = cashifyData.data.transactionId || "";
-          totalAmount = cashifyData.data.totalAmount || amount;
-          
-          // Generate stylish QR code URL
+        if (pakasirData.payment) {
+          qrString = pakasirData.payment.payment_number || "";
+          totalAmount = pakasirData.payment.total_payment || amount;
           qrisUrl = `https://larabert-qrgen.hf.space/v1/create-qr-code?size=500x500&style=2&color=0D8BA5&data=${encodeURIComponent(qrString)}`;
         } else {
-          console.error("Cashify API error:", cashifyData);
-          return new Response(
-            JSON.stringify({ 
-              error: cashifyData.message || "Failed to generate QRIS", 
-              details: cashifyData 
-            }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          return new Response(JSON.stringify({ error: pakasirData.message || pakasirData.error || "Gagal membuat transaksi Pakasir" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
-      } catch (cashifyError) {
-        console.error("Cashify API call failed:", cashifyError);
-        return new Response(
-          JSON.stringify({ error: "Cashify API connection failed", details: String(cashifyError) }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      } catch (err) {
+        console.error("Pakasir API error:", err);
+        return new Response(JSON.stringify({ error: "Gagal menghubungi Pakasir" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     } else {
-      // Demo mode
-      qrString = `DEMO-${transactionId}`;
-      qrisUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=DEMO-${transactionId}`;
-      cashifyTransactionId = transactionId;
+      // Demo/sandbox mode
+      qrString = `DEMO-${orderId}`;
+      qrisUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=DEMO-${orderId}`;
     }
 
-    // Increment promo code usage if provided
-    if (promoCode) {
-      await supabase.rpc('increment_promo_usage', { promo_code: promoCode }).catch(() => {
-        // Fallback: direct update
-        supabase.from('promo_codes').update({ used_count: totalAmount }).eq('code', promoCode);
-      });
-      // Simple increment via raw update
-      const { data: promoData } = await supabase.from('promo_codes').select('used_count').eq('code', promoCode).maybeSingle();
-      if (promoData) {
-        await supabase.from('promo_codes').update({ used_count: (promoData.used_count || 0) + 1 }).eq('code', promoCode);
-      }
-    }
-
-    // Save transaction to database
-    const { error: insertError } = await supabase.from("transactions").insert({
-      transaction_id: cashifyTransactionId || transactionId,
+    // Save transaction
+    await supabase.from("transactions").insert({
+      transaction_id: orderId,
       customer_name: customerName || "Customer",
+      customer_whatsapp: customerWhatsapp || null,
       package_name: packageName || "NORMAL",
       package_duration: packageDuration || 1,
       original_amount: amount,
@@ -139,32 +90,19 @@ serve(async (req) => {
       expires_at: expiresAt.toISOString(),
     });
 
-    if (insertError) {
-      console.error("Insert error:", insertError);
-      return new Response(
-        JSON.stringify({ error: "Failed to create transaction" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        transactionId: cashifyTransactionId || transactionId,
-        qr_string: qrString,
-        qris_url: qrisUrl,
-        originalAmount: amount,
-        totalAmount: totalAmount,
-        expiresAt: expiresAt.toISOString(),
-        mode: paymentMode,
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({
+      success: true,
+      transactionId: orderId,
+      qr_string: qrString,
+      qris_url: qrisUrl,
+      originalAmount: amount,
+      totalAmount: totalAmount,
+      expiresAt: expiresAt.toISOString(),
+      mode: pakasirMode,
+    }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error: unknown) {
     console.error("Error:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

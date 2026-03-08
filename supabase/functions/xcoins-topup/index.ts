@@ -18,55 +18,48 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Get payment settings
     const { data: settings } = await supabase
-      .from("site_settings")
-      .select("key, value")
-      .in("key", ["cashify_license_key", "cashify_qris_id", "payment_mode"]);
+      .from("site_settings").select("key, value")
+      .in("key", ["pakasir_slug", "pakasir_api_key", "pakasir_mode"]);
 
-    const settingsMap = Object.fromEntries((settings || []).map((s: any) => [s.key, s.value]));
-    const paymentMode = settingsMap.payment_mode || "demo";
-    const licenseKey = settingsMap.cashify_license_key || "";
-    const qrisId = settingsMap.cashify_qris_id || "";
+    const s = Object.fromEntries((settings || []).map((r: any) => [r.key, r.value]));
+    const pakasirMode = s.pakasir_mode || "sandbox";
 
-    const transactionId = `TOPUP-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    const orderId = `TOPUP-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     let qrString = "";
     let qrisUrl = "";
     let totalAmount = amount;
-    let cashifyTransactionId = "";
 
-    if (paymentMode === "live" && licenseKey && qrisId) {
-      const cashifyResponse = await fetch("https://cashify.my.id/api/generate/v2/qris", {
+    if (pakasirMode === "live" && s.pakasir_slug && s.pakasir_api_key) {
+      const pakasirRes = await fetch("https://app.pakasir.com/api/transactioncreate/qris", {
         method: "POST",
-        headers: { "x-license-key": licenseKey, "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          qr_id: qrisId, amount, useUniqueCode: true,
-          packageIds: ["id.dana"], expiredInMinutes: 15,
-          qrType: "dynamic", paymentMethod: "qris", useQris: true,
+          project: s.pakasir_slug,
+          order_id: orderId,
+          amount: amount,
+          api_key: s.pakasir_api_key,
         }),
       });
 
-      const cashifyData = await cashifyResponse.json();
-      if (cashifyData.status === 200 && cashifyData.data) {
-        qrString = cashifyData.data.qr_string || "";
-        cashifyTransactionId = cashifyData.data.transactionId || "";
-        totalAmount = cashifyData.data.totalAmount || amount;
+      const pakasirData = await pakasirRes.json();
+      if (pakasirData.payment) {
+        qrString = pakasirData.payment.payment_number || "";
+        totalAmount = pakasirData.payment.total_payment || amount;
         qrisUrl = `https://larabert-qrgen.hf.space/v1/create-qr-code?size=500x500&style=2&color=0D8BA5&data=${encodeURIComponent(qrString)}`;
       } else {
-        return new Response(JSON.stringify({ error: cashifyData.message || "Gagal generate QRIS" }), 
+        return new Response(JSON.stringify({ error: pakasirData.message || "Gagal generate QRIS" }), 
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     } else {
-      qrString = `DEMO-${transactionId}`;
-      qrisUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=DEMO-${transactionId}`;
-      cashifyTransactionId = transactionId;
+      qrString = `DEMO-${orderId}`;
+      qrisUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=DEMO-${orderId}`;
     }
 
-    // Save as transaction in transactions table for tracking
     await supabase.from("transactions").insert({
-      transaction_id: cashifyTransactionId || transactionId,
+      transaction_id: orderId,
       customer_name: `TOPUP-${userId.slice(0, 8)}`,
       package_name: "XCOINS_TOPUP",
       package_duration: 0,
@@ -80,12 +73,12 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      transactionId: cashifyTransactionId || transactionId,
+      transactionId: orderId,
       qr_string: qrString,
       qris_url: qrisUrl,
       totalAmount,
       expiresAt: expiresAt.toISOString(),
-      mode: paymentMode,
+      mode: pakasirMode,
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (error: unknown) {

@@ -255,7 +255,7 @@ const XCoinsPage = () => {
         <Card className="w-full max-w-md z-10 glass-card">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
-              <Coins className="w-8 h-8 text-primary animate-glow" />
+              <img src="/images/xcoins-default-logo.png" alt="XCoins" className="w-10 h-10 rounded-full object-cover border-2 border-primary/50 shadow-lg" />
               <CardTitle className="font-display text-2xl gradient-text">XCoins</CardTitle>
             </div>
             <CardDescription>
@@ -351,7 +351,7 @@ const XCoinsPage = () => {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2">
-            <Coins className="w-5 h-5 text-primary" />
+            <img src="/images/xcoins-default-logo.png" alt="XCoins" className="w-7 h-7 rounded-full object-cover" />
             <span className="font-display text-lg gradient-text">XCoins</span>
           </div>
           <button onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
@@ -369,7 +369,7 @@ const XCoinsPage = () => {
               </button>
             </div>
             <div className="flex items-baseline gap-2">
-              <Coins className="w-6 h-6 text-primary" />
+              <img src="/images/xcoins-default-logo.png" alt="XCoins" className="w-7 h-7 rounded-full object-cover" />
               <span className="text-3xl font-display font-bold text-foreground">
                 {showBalance ? formatCoins(user.balance) : '•••••'}
               </span>
@@ -484,7 +484,7 @@ const XCoinsPage = () => {
                     <div className="text-center p-3 rounded-lg bg-primary/10">
                       <span className="text-sm text-muted-foreground">Anda akan mendapatkan</span>
                       <div className="flex items-center justify-center gap-1 mt-1">
-                        <Coins className="w-5 h-5 text-primary" />
+                        <img src="/images/xcoins-default-logo.png" alt="XCoins" className="w-5 h-5 rounded-full object-cover" />
                         <span className="text-xl font-display font-bold text-primary">{formatCoins(parseInt(topupAmount))}</span>
                         <span className="text-sm text-muted-foreground">XCoins</span>
                       </div>
@@ -558,7 +558,7 @@ const XCoinsPage = () => {
                     <span className="text-xs text-muted-foreground">{entry.phone}</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Coins className="w-4 h-4 text-primary" />
+                    <img src="/images/xcoins-default-logo.png" alt="XCoins" className="w-4 h-4 rounded-full object-cover" />
                     <span className="font-mono font-bold text-sm">{formatCoins(entry.balance)}</span>
                   </div>
                 </CardContent>
@@ -571,7 +571,7 @@ const XCoinsPage = () => {
         <Card className="glass-card mt-4 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/')}>
           <CardContent className="p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Coins className="w-5 h-5 text-primary" />
+              <img src="/images/xcoins-default-logo.png" alt="XCoins" className="w-6 h-6 rounded-full object-cover" />
               <div>
                 <span className="text-sm font-medium">Beli Paket dengan XCoins</span>
                 <p className="text-xs text-muted-foreground">Bayar langsung dengan saldo XCoins</p>
