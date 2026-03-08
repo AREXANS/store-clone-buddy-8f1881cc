@@ -1405,6 +1405,11 @@ const Admin = () => {
                 onRefresh={loadAllSessions}
               />
             </TabsContent>
+
+            {/* Backup Tab */}
+            <TabsContent value="backup" className="space-y-4">
+              <BackupRestore />
+            </TabsContent>
           </Tabs>
         </div>
       </div>
