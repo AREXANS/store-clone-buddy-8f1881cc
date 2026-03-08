@@ -40,7 +40,7 @@ serve(async (req) => {
     }
 
     const { data: settings } = await supabase
-      .from("site_settings").select("key, value")
+      .from("app_settings").select("key, value")
       .in("key", [
         "payment_gateway", "pakasir_slug", "pakasir_api_key", "pakasir_mode",
         "cashify_license_key", "payment_simulation", "discord_webhook_url"
