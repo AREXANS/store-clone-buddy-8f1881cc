@@ -43,7 +43,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "No license key found" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { data: keysData } = await supabase.from("site_settings").select("value").eq("key", "license_keys").maybeSingle();
+    const { data: keysData } = await supabase.from("app_settings").select("value").eq("key", "license_keys").maybeSingle();
     let keys: any[] = [];
     if (keysData) { try { keys = JSON.parse(keysData.value || "[]"); } catch { keys = []; } }
 
