@@ -399,8 +399,56 @@ const OrderForm: FC<OrderFormProps> = ({
             </div>
           )}
 
-          <Button type="submit" disabled={loading} className={`w-full py-6 font-display font-bold text-lg ${selectedPkg === 'VIP' ? 'btn-secondary' : 'btn-primary'}`}>
-            {loading ? <span className="flex items-center gap-2"><span className="animate-spin">⟳</span> Memproses...</span> : 'Lanjut ke Pembayaran'}
+          {/* Payment Method Selection */}
+          {xcoinsEnabled && !xcoinsOnly && (
+            <div className="animate-slide-in">
+              <label className="block text-sm font-medium mb-2 text-foreground">Metode Pembayaran</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setPaymentMethod('qris')}
+                  className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all ${paymentMethod === 'qris' ? 'border-primary bg-primary/10' : 'border-border bg-muted/50 hover:border-primary/50'}`}>
+                  <CreditCard className={`w-5 h-5 ${paymentMethod === 'qris' ? 'text-primary' : 'text-muted-foreground'}`} />
+                  <span className="text-xs font-medium">QRIS</span>
+                </button>
+                <button type="button" onClick={() => { setPaymentMethod('xcoins'); if (!xcoinsUser) navigate('/xcoins'); }}
+                  className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all ${paymentMethod === 'xcoins' ? 'border-primary bg-primary/10' : 'border-border bg-muted/50 hover:border-primary/50'}`}>
+                  <Coins className={`w-5 h-5 ${paymentMethod === 'xcoins' ? 'text-primary' : 'text-muted-foreground'}`} />
+                  <span className="text-xs font-medium">XCoins</span>
+                  {xcoinsUser && <span className="text-[10px] text-muted-foreground">{new Intl.NumberFormat('id-ID').format(xcoinsUser.balance)}</span>}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* XCoins PIN input */}
+          {(paymentMethod === 'xcoins' || xcoinsOnly) && xcoinsUser && (
+            <div className="animate-slide-in">
+              <label className="block text-sm font-medium mb-2 text-foreground flex items-center gap-2">
+                <Coins className="w-4 h-4 text-primary" />
+                PIN XCoins ({xcoinsUser.display_name})
+              </label>
+              <Input type="password" maxLength={6} value={xcoinsPin} onChange={e => setXcoinsPin(e.target.value.replace(/\D/g, ''))} placeholder="••••••" className="bg-muted/50 border-border text-center tracking-[0.5em] font-mono text-lg" />
+              <p className="text-xs text-muted-foreground mt-1">Saldo: {new Intl.NumberFormat('id-ID').format(xcoinsUser.balance)} XCoins</p>
+            </div>
+          )}
+
+          {(paymentMethod === 'xcoins' || xcoinsOnly) && !xcoinsUser && (
+            <div className="p-4 bg-muted/50 rounded-xl border border-border text-center animate-slide-in">
+              <Coins className="w-8 h-8 text-primary mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground mb-3">Login XCoins untuk membayar</p>
+              <Button type="button" variant="outline" onClick={() => navigate('/xcoins')} className="gap-2">
+                <Coins className="w-4 h-4" /> Login XCoins
+              </Button>
+            </div>
+          )}
+
+          <Button type="submit" disabled={loading || xcoinsPayLoading || ((paymentMethod === 'xcoins' || xcoinsOnly) && !xcoinsUser)} className={`w-full py-6 font-display font-bold text-lg ${selectedPkg === 'VIP' ? 'btn-secondary' : 'btn-primary'}`}>
+            {loading || xcoinsPayLoading ? (
+              <span className="flex items-center gap-2"><span className="animate-spin">⟳</span> Memproses...</span>
+            ) : paymentMethod === 'xcoins' || xcoinsOnly ? (
+              <span className="flex items-center gap-2"><Coins className="w-5 h-5" /> Bayar {durationData ? new Intl.NumberFormat('id-ID').format(finalTotal) : ''} XCoins</span>
+            ) : (
+              'Lanjut ke Pembayaran'
+            )}
           </Button>
         </form>
       </div>
