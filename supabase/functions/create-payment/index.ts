@@ -36,7 +36,8 @@ serve(async (req) => {
       customerName, 
       packageName, 
       packageDuration,
-      licenseKey: customerLicenseKey 
+      licenseKey: customerLicenseKey,
+      promoCode
     } = body;
 
     if (!amount || amount < 1000) {
