@@ -61,10 +61,10 @@ const History = () => {
   const loadTransactions = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase
         .from('transactions')
-        .select('*')
-        .eq('device_id' as any, deviceId)
+        .select('*') as any)
+        .eq('device_id', deviceId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
