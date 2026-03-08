@@ -30,7 +30,7 @@ serve(async (req) => {
     }
 
     const allowedStatuses = ['claimable', 'claimed', 'paid'];
-    if (!forceRecreate && transaction.status !== 'claimable') {
+    if (!forceRecreate && !['claimable', 'paid'].includes(transaction.status)) {
       return new Response(JSON.stringify({ error: "Transaction is not claimable", status: transaction.status }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     if (forceRecreate && !allowedStatuses.includes(transaction.status)) {
