@@ -442,7 +442,24 @@ const Admin = () => {
                       {setting.description && (
                         <p className="text-xs text-muted-foreground">{setting.description}</p>
                       )}
-                      {setting.key === 'payment_mode' ? (
+                      {setting.key === 'payment_gateway' ? (
+                        <div className="flex items-center gap-4">
+                          <Button
+                            variant={setting.value === 'cashify' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => updateSetting(setting.key, 'cashify')}
+                          >
+                            Cashify QRIS
+                          </Button>
+                          <Button
+                            variant={setting.value === 'pakasir' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => updateSetting(setting.key, 'pakasir')}
+                          >
+                            Pakasir
+                          </Button>
+                        </div>
+                      ) : setting.key === 'pakasir_mode' ? (
                         <div className="flex items-center gap-4">
                           <Button
                             variant={setting.value === 'demo' ? 'default' : 'outline'}
@@ -478,7 +495,7 @@ const Admin = () => {
                           <span className={`text-sm font-medium ${setting.value === 'on' ? 'text-primary' : 'text-muted-foreground'}`}>
                             {setting.key === 'xcoins_enabled' 
                               ? (setting.value === 'on' ? 'XCoins AKTIF' : 'XCoins Nonaktif')
-                              : (setting.value === 'on' ? 'HANYA XCoins (QRIS dimatikan)' : 'XCoins + QRIS Cashify')}
+                              : (setting.value === 'on' ? 'HANYA XCoins (QRIS dimatikan)' : 'XCoins + QRIS')}
                           </span>
                         </div>
                       ) : (
