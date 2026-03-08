@@ -56,7 +56,7 @@ serve(async (req) => {
       // === CASHIFY WEBHOOK ===
       // Validate webhook key
       const { data: whSetting } = await supabase
-        .from("site_settings").select("value").eq("key", "cashify_webhook_key").maybeSingle();
+        .from("app_settings").select("value").eq("key", "cashify_webhook_key").maybeSingle();
       
       const providedKey = body.webhook_key || body.key || req.headers.get("X-Webhook-Key");
       if (whSetting?.value && providedKey !== whSetting.value) {
