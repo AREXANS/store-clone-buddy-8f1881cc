@@ -31,7 +31,7 @@ serve(async (req) => {
       // Cancel via Cashify
       try {
         const { data: mapping } = await supabase
-          .from("site_settings").select("value").eq("key", `cashify_tx_${transactionId}`).maybeSingle();
+          .from("app_settings").select("value").eq("key", `cashify_tx_${transactionId}`).maybeSingle();
 
         if (mapping?.value) {
           await fetch("https://cashify.my.id/api/generate/cancel-status", {
