@@ -1,14 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import GlobalBackground from '@/components/GlobalBackground';
-import { Key, RefreshCw, Copy, ArrowLeft, Shield, Calendar, Clock, User } from 'lucide-react';
+import { Key, RefreshCw, Copy, ArrowLeft, Shield, Calendar, Clock, User, Plus, LogOut, ChevronRight, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 
 const API_BASE = 'https://tvnoeugyucdanyjsrkvg.supabase.co/functions/v1';
+const STORAGE_KEY = 'axs_saved_keys';
 
 interface KeyData {
   key: string;
@@ -24,6 +27,24 @@ interface KeyData {
   }[];
 }
 
+interface SavedKey {
+  key: string;
+  role: string;
+  addedAt: string;
+}
+
+function getSavedKeys(): SavedKey[] {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function saveSavedKeys(keys: SavedKey[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(keys));
+}
+
 const KeySystem = () => {
   const navigate = useNavigate();
   const [keyInput, setKeyInput] = useState('');
@@ -32,31 +53,31 @@ const KeySystem = () => {
   const [loadstring, setLoadstring] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [timeRemaining, setTimeRemaining] = useState({ text: '', className: '' });
+  const [savedKeys, setSavedKeys] = useState<SavedKey[]>(getSavedKeys);
+  const [showAddForm, setShowAddForm] = useState(false);
+
+  // Determine current view: 'list' (has saved keys, no active), 'add' (adding new), 'detail' (viewing key)
+  const currentView = keyData ? 'detail' : (savedKeys.length === 0 || showAddForm) ? 'add' : 'list';
 
   // Real-time countdown effect
   useEffect(() => {
     if (!keyData) return;
-
     const updateCountdown = () => {
       if (keyData.frozenUntil) {
         setTimeRemaining({ text: '⏸️ FROZEN', className: 'text-blue-400' });
         return;
       }
-
       const now = new Date();
       const expired = new Date(keyData.expired);
       const diff = expired.getTime() - now.getTime();
-
       if (diff <= 0) {
         setTimeRemaining({ text: 'EXPIRED', className: 'text-destructive' });
         return;
       }
-
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
       if (days > 0) {
         setTimeRemaining({ text: `${days}d ${hours}h ${minutes}m ${seconds}s`, className: 'text-secondary' });
       } else if (hours > 0) {
@@ -67,58 +88,67 @@ const KeySystem = () => {
         setTimeRemaining({ text: `${seconds}s`, className: 'text-destructive' });
       }
     };
-
-    // Initial update
     updateCountdown();
-
-    // Update every second
     const interval = setInterval(updateCountdown, 1000);
-
     return () => clearInterval(interval);
   }, [keyData]);
 
-  const validateKey = async () => {
-    if (!keyInput.trim()) {
+  const fetchKeyData = useCallback(async (keyStr: string): Promise<KeyData | null> => {
+    const response = await fetch(`${API_BASE}/get-keys`);
+    const data = await response.json();
+    if (data.keys) {
+      return data.keys.find((k: KeyData) => k.key === keyStr) || null;
+    }
+    return null;
+  }, []);
+
+  const loadLoadstring = useCallback(async () => {
+    const { data: settings } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'loadstring_script')
+      .maybeSingle();
+    if (settings?.value) setLoadstring(settings.value);
+  }, []);
+
+  const validateAndLogin = async (keyStr?: string) => {
+    const targetKey = (keyStr || keyInput).trim();
+    if (!targetKey) {
       setErrorMsg('Masukkan key terlebih dahulu');
       return;
     }
 
     setLoading(true);
     setErrorMsg('');
-
     try {
-      const response = await fetch(`${API_BASE}/get-keys`);
-      const data = await response.json();
-      
-      if (data.keys) {
-        const foundKey = data.keys.find((k: KeyData) => k.key === keyInput.trim());
-        
-        if (foundKey) {
-          // Check if key is expired
-          const now = new Date();
-          const expiredDate = new Date(foundKey.expired);
-          
-          if (expiredDate < now && !foundKey.frozenUntil) {
-            setErrorMsg('Key sudah expired');
-            setKeyData(null);
-          } else {
-            setKeyData(foundKey);
-            
-            // Load loadstring from settings
-            const { data: settings } = await supabase
-              .from('app_settings')
-              .select('value')
-              .eq('key', 'loadstring_script')
-              .maybeSingle();
-            
-            if (settings?.value) {
-              setLoadstring(settings.value);
-            }
-          }
-        } else {
-          setErrorMsg('Key tidak ditemukan');
+      const foundKey = await fetchKeyData(targetKey);
+      if (foundKey) {
+        const now = new Date();
+        const expiredDate = new Date(foundKey.expired);
+        if (expiredDate < now && !foundKey.frozenUntil) {
+          setErrorMsg('Key sudah expired');
           setKeyData(null);
+        } else {
+          setKeyData(foundKey);
+          await loadLoadstring();
+
+          // Save to persistent list if not already there
+          const existing = getSavedKeys();
+          if (!existing.some(s => s.key === foundKey.key)) {
+            const updated = [...existing, { key: foundKey.key, role: foundKey.role, addedAt: new Date().toISOString() }];
+            saveSavedKeys(updated);
+            setSavedKeys(updated);
+          } else {
+            // Update role if changed
+            const updated = existing.map(s => s.key === foundKey.key ? { ...s, role: foundKey.role } : s);
+            saveSavedKeys(updated);
+            setSavedKeys(updated);
+          }
+          setShowAddForm(false);
         }
+      } else {
+        setErrorMsg('Key tidak ditemukan');
+        setKeyData(null);
       }
     } catch (error) {
       console.error('Validate key error:', error);
@@ -128,21 +158,25 @@ const KeySystem = () => {
     }
   };
 
+  const removeKey = (keyStr: string) => {
+    const updated = getSavedKeys().filter(s => s.key !== keyStr);
+    saveSavedKeys(updated);
+    setSavedKeys(updated);
+    if (keyData?.key === keyStr) {
+      setKeyData(null);
+    }
+    toast({ title: 'Key dihapus', description: 'Key berhasil dihapus dari daftar' });
+  };
+
   const resetHwid = async () => {
     if (!keyData) return;
-    
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE}/update-key`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          key: keyData.key,
-          hwids: [],
-          robloxUsers: []
-        })
+        body: JSON.stringify({ key: keyData.key, hwids: [], robloxUsers: [] })
       });
-      
       const result = await response.json();
       if (result.success) {
         toast({ title: 'Berhasil', description: 'HWID berhasil direset' });
@@ -165,26 +199,17 @@ const KeySystem = () => {
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      day: 'numeric', month: 'long', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
     });
   };
 
-  // getRoleColor is still used, getTimeRemaining replaced by state
-
   const getRoleColor = (role: string) => {
     switch (role.toLowerCase()) {
-      case 'developer':
-        return 'bg-purple-500/20 text-purple-400 border-purple-500/50';
-      case 'vip':
-        return 'bg-secondary/20 text-secondary border-secondary/50';
-      case 'normal':
-        return 'bg-primary/20 text-primary border-primary/50';
-      default:
-        return 'bg-muted text-muted-foreground border-muted';
+      case 'developer': return 'bg-purple-500/20 text-purple-400 border-purple-500/50';
+      case 'vip': return 'bg-secondary/20 text-secondary border-secondary/50';
+      case 'normal': return 'bg-primary/20 text-primary border-primary/50';
+      default: return 'bg-muted text-muted-foreground border-muted';
     }
   };
 
@@ -202,8 +227,71 @@ const KeySystem = () => {
             </Button>
           </div>
 
-          {!keyData ? (
-            /* Key Validation Form */
+          {/* === LIST VIEW === */}
+          {currentView === 'list' && (
+            <Card className="glass-card border-primary/30">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Key className="w-5 h-5 text-primary" />
+                      Key Tersimpan
+                    </CardTitle>
+                    <CardDescription>{savedKeys.length} key tersimpan</CardDescription>
+                  </div>
+                  <Button size="sm" onClick={() => { setShowAddForm(true); setKeyInput(''); setErrorMsg(''); }}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Tambah Key
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className={savedKeys.length > 5 ? 'h-[350px]' : ''}>
+                  <div className="space-y-2">
+                    {savedKeys.map((saved) => (
+                      <div
+                        key={saved.key}
+                        className="flex items-center gap-3 p-3 rounded-lg bg-muted/20 border border-border hover:border-primary/50 transition-colors group"
+                      >
+                        <button
+                          className="flex-1 flex items-center gap-3 text-left"
+                          onClick={() => validateAndLogin(saved.key)}
+                          disabled={loading}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <code className="font-mono text-sm truncate block">{saved.key}</code>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${getRoleColor(saved.role)}`}>
+                                {saved.role}
+                              </Badge>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary shrink-0" />
+                        </button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => { e.stopPropagation(); removeKey(saved.key); }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+                {loading && (
+                  <div className="flex items-center justify-center gap-2 mt-4 text-sm text-muted-foreground">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Memvalidasi key...
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* === ADD KEY FORM === */}
+          {currentView === 'add' && (
             <Card className="glass-card border-primary/30">
               <CardHeader className="text-center">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center">
@@ -219,9 +307,9 @@ const KeySystem = () => {
                     onChange={(e) => setKeyInput(e.target.value)}
                     placeholder="AXSTOOLS-XXXX-XXXX"
                     className="bg-background/50 font-mono"
-                    onKeyDown={(e) => e.key === 'Enter' && validateKey()}
+                    onKeyDown={(e) => e.key === 'Enter' && validateAndLogin()}
                   />
-                  <Button onClick={validateKey} disabled={loading}>
+                  <Button onClick={() => validateAndLogin()} disabled={loading}>
                     {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Validasi'}
                   </Button>
                 </div>
@@ -229,10 +317,19 @@ const KeySystem = () => {
                 {errorMsg && (
                   <p className="text-sm text-destructive text-center">{errorMsg}</p>
                 )}
+
+                {savedKeys.length > 0 && (
+                  <Button variant="outline" className="w-full" onClick={() => setShowAddForm(false)}>
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Kembali ke Daftar Key
+                  </Button>
+                )}
               </CardContent>
             </Card>
-          ) : (
-            /* Key Dashboard */
+          )}
+
+          {/* === DETAIL VIEW === */}
+          {currentView === 'detail' && keyData && (
             <div className="space-y-4">
               {/* Key Info Card */}
               <Card className="glass-card border-primary/30">
@@ -284,8 +381,7 @@ const KeySystem = () => {
                         <span className="text-sm font-medium">HWID Terdaftar ({keyData.robloxUsers.length}/{keyData.maxHwid})</span>
                       </div>
                       <Button 
-                        variant="outline" 
-                        size="sm" 
+                        variant="outline" size="sm" 
                         onClick={resetHwid} 
                         disabled={loading || keyData.robloxUsers.length === 0}
                       >
@@ -329,8 +425,7 @@ const KeySystem = () => {
                         {loadstring}
                       </pre>
                       <Button 
-                        className="absolute top-2 right-2" 
-                        size="sm"
+                        className="absolute top-2 right-2" size="sm"
                         onClick={() => copyToClipboard(loadstring, 'Loadstring')}
                       >
                         <Copy className="w-4 h-4 mr-2" />
@@ -341,14 +436,28 @@ const KeySystem = () => {
                 </Card>
               )}
 
-              {/* Back Button */}
-              <Button 
-                variant="outline" 
-                className="w-full" 
-                onClick={() => { setKeyData(null); setKeyInput(''); }}
-              >
-                Cek Key Lain
-              </Button>
+              {/* Actions */}
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" className="flex-1"
+                  onClick={() => { setKeyData(null); setShowAddForm(false); }}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Kembali ke Daftar
+                </Button>
+                <Button 
+                  variant="outline"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => {
+                    if (keyData) removeKey(keyData.key);
+                    setKeyData(null);
+                    setShowAddForm(false);
+                  }}
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout Key
+                </Button>
+              </div>
             </div>
           )}
         </div>
