@@ -258,7 +258,7 @@ ${rawScript}`;
       const updatedList = [...manualWhitelist, newUser];
 
       const { data: existing } = await supabase
-        .from('site_settings')
+        .from('app_settings')
         .select('id')
         .eq('key', 'manual_whitelist')
         .single();
