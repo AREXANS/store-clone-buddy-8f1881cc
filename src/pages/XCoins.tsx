@@ -558,7 +558,7 @@ const XCoinsPage = () => {
                     <span className="text-xs text-muted-foreground">{entry.phone}</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Coins className="w-4 h-4 text-primary" />
+                    <img src="/images/xcoins-default-logo.png" alt="XCoins" className="w-4 h-4 rounded-full object-cover" />
                     <span className="font-mono font-bold text-sm">{formatCoins(entry.balance)}</span>
                   </div>
                 </CardContent>
