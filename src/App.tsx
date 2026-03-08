@@ -25,6 +25,7 @@ const App = () => (
             <Route path="/developer" element={<Admin />} />
             <Route path="/key-system" element={<KeySystem />} />
             <Route path="/xcoins" element={<XCoins />} />
+            <Route path="/history" element={<History />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

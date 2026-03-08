@@ -154,7 +154,7 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
 
           {/* Right: History */}
           <button
-            onClick={() => navigate('/key-system')}
+            onClick={() => navigate('/history')}
             className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors px-2 py-1.5 rounded-lg hover:bg-primary/10"
           >
             <History className="w-4 h-4" />
