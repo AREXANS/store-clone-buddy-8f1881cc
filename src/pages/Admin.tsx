@@ -232,7 +232,7 @@ const Admin = () => {
     setLoading(true);
     
     const { data } = await supabase
-      .from('site_settings')
+      .from('app_settings')
       .select('value')
       .eq('key', 'admin_key')
       .maybeSingle();
