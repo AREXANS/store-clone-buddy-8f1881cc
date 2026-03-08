@@ -15,14 +15,15 @@ serve(async (req) => {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { data: settings } = await supabase
-      .from("site_settings")
-      .select("key, value")
-      .in("key", ["pakasir_slug", "pakasir_api_key", "pakasir_mode", "payment_simulation"]);
+      .from("site_settings").select("key, value")
+      .in("key", [
+        "payment_gateway", "pakasir_slug", "pakasir_api_key", "pakasir_mode",
+        "cashify_license_key", "cashify_qris_id", "payment_simulation"
+      ]);
 
     const s = Object.fromEntries((settings || []).map((r: any) => [r.key, r.value]));
+    const gateway = s.payment_gateway || "pakasir";
     const pakasirMode = s.pakasir_mode || "sandbox";
-    const slug = s.pakasir_slug || "";
-    const apiKey = s.pakasir_api_key || "";
 
     const body = await req.json();
     const { amount, customerName, packageName, packageDuration, licenseKey: customerLicenseKey, promoCode, customerWhatsapp } = body;
@@ -39,17 +40,68 @@ serve(async (req) => {
     let qrisUrl = "";
     let totalAmount = amount;
 
-    if (pakasirMode === "live" && slug && apiKey) {
-      // Call Pakasir API to create QRIS transaction
+    if (gateway === "cashify" && s.cashify_license_key) {
+      // === CASHIFY v2 QRIS ===
+      try {
+        const cashifyBody: any = {
+          qr_id: s.cashify_qris_id || "",
+          amount: amount,
+          useUniqueCode: true,
+          packageIds: ["id.dana"],
+          expiredInMinutes: 15,
+          qrType: "dynamic",
+          paymentMethod: "qris",
+          useQris: true,
+        };
+
+        const cashifyRes = await fetch("https://cashify.my.id/api/generate/v2/qris", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-license-key": s.cashify_license_key,
+          },
+          body: JSON.stringify(cashifyBody),
+        });
+
+        const cashifyData = await cashifyRes.json();
+        console.log("Cashify response:", JSON.stringify(cashifyData));
+
+        if (cashifyData.status === 200 && cashifyData.data) {
+          qrString = cashifyData.data.qr_string || "";
+          totalAmount = cashifyData.data.totalAmount || amount;
+          qrisUrl = `https://larabert-qrgen.hf.space/v1/create-qr-code?size=500x500&style=2&color=0D8BA5&data=${encodeURIComponent(qrString)}`;
+          // Store cashify transactionId for status checking
+          const cashifyTxId = cashifyData.data.transactionId;
+          // We'll store it in qr_string field alongside, using a separator
+          if (cashifyTxId) {
+            qrString = qrString; // keep qr_string for QR display
+            // Store cashify tx id in the order id mapping
+            orderId && await supabase.from("site_settings").upsert({
+              key: `cashify_tx_${orderId}`,
+              value: cashifyTxId,
+              description: "Cashify transaction mapping"
+            }, { onConflict: "key" });
+          }
+        } else {
+          return new Response(JSON.stringify({ error: cashifyData.message || "Gagal generate QRIS Cashify" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      } catch (err) {
+        console.error("Cashify API error:", err);
+        return new Response(JSON.stringify({ error: "Gagal menghubungi Cashify" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    } else if (gateway === "pakasir" && pakasirMode === "live" && s.pakasir_slug && s.pakasir_api_key) {
+      // === PAKASIR LIVE ===
       try {
         const pakasirRes = await fetch("https://app.pakasir.com/api/transactioncreate/qris", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            project: slug,
+            project: s.pakasir_slug,
             order_id: orderId,
             amount: amount,
-            api_key: apiKey,
+            api_key: s.pakasir_api_key,
           }),
         });
 
@@ -61,7 +113,7 @@ serve(async (req) => {
           totalAmount = pakasirData.payment.total_payment || amount;
           qrisUrl = `https://larabert-qrgen.hf.space/v1/create-qr-code?size=500x500&style=2&color=0D8BA5&data=${encodeURIComponent(qrString)}`;
         } else {
-          return new Response(JSON.stringify({ error: pakasirData.message || pakasirData.error || "Gagal membuat transaksi Pakasir" }),
+          return new Response(JSON.stringify({ error: pakasirData.message || "Gagal membuat transaksi Pakasir" }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
       } catch (err) {
@@ -98,7 +150,8 @@ serve(async (req) => {
       originalAmount: amount,
       totalAmount: totalAmount,
       expiresAt: expiresAt.toISOString(),
-      mode: pakasirMode,
+      mode: gateway === "cashify" ? "live" : pakasirMode,
+      gateway,
     }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error: unknown) {
     console.error("Error:", error);
