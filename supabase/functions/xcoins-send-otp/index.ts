@@ -18,7 +18,6 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Clean phone number
     let cleanPhone = phone.replace(/[^0-9]/g, '');
     if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
     if (!cleanPhone.startsWith('62')) cleanPhone = '62' + cleanPhone;
@@ -31,11 +30,12 @@ serve(async (req) => {
       .maybeSingle();
 
     if (existingUser) {
-      return new Response(JSON.stringify({ error: "Nomor sudah terdaftar. Silakan login dengan PIN.", exists: true }), 
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      // User exists → frontend should show PIN input
+      return new Response(JSON.stringify({ success: true, exists: true, phone: cleanPhone }), 
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Get Fonnte token
+    // New user → send OTP
     const { data: tokenSetting } = await supabase
       .from('site_settings')
       .select('value')
@@ -47,18 +47,15 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    // Save OTP
     await supabase.from('xcoins_otp').insert({
       phone: cleanPhone,
       otp_code: otp,
       expires_at: expiresAt.toISOString()
     });
 
-    // Send via Fonnte
     const formData = new FormData();
     formData.append('target', cleanPhone);
     formData.append('message', `*XCoins Verification*\n\nKode OTP Anda: *${otp}*\n\nKode ini berlaku 5 menit.\nJangan bagikan kode ini kepada siapapun.`);
@@ -77,7 +74,7 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    return new Response(JSON.stringify({ success: true, phone: cleanPhone }), 
+    return new Response(JSON.stringify({ success: true, exists: false, phone: cleanPhone }), 
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (error: unknown) {

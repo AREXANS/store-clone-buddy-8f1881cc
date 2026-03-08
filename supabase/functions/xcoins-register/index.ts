@@ -18,7 +18,7 @@ serve(async (req) => {
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const { phone, otp, pin, displayName } = await req.json();
+    const { phone, otp, pin } = await req.json();
 
     if (!phone || !otp || !pin) {
       return new Response(JSON.stringify({ error: "Data tidak lengkap" }), 
@@ -47,17 +47,15 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Mark OTP as used
     await supabase.from('xcoins_otp').update({ is_used: true }).eq('id', otpData.id);
 
-    // Create user
     const pinHash = await hashPin(pin);
     const { data: user, error: userError } = await supabase
       .from('xcoins_users')
       .insert({
         phone,
         pin_hash: pinHash,
-        display_name: displayName || phone.slice(-4),
+        display_name: phone.slice(-4),
         balance: 0
       })
       .select()
