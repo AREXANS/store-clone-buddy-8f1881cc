@@ -26,7 +26,7 @@ serve(async (req) => {
     }
 
     // Verify user & PIN
-    const { data: user } = await supabase.from('xcoins_users').select('*').eq('id', userId).single();
+    const { data: user } = await supabase.from('xcoins_balances').select('*').eq('id', userId).single();
     if (!user) {
       return new Response(JSON.stringify({ error: "User tidak ditemukan" }), 
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
