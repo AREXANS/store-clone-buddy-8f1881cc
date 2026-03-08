@@ -134,7 +134,7 @@ serve(async (req) => {
       }
     }
 
-    const scriptUrl = `${supabaseUrl}/functions/v1/get-script?name=main`;
+    const scriptUrl = `${supabaseUrl}/functions/v1/get-script?name=main&token=AXS-SECURE-2026-RBLX`;
     const diffMs = expiredDate.getTime() - now.getTime();
     const daysRemaining = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     const hoursRemaining = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
