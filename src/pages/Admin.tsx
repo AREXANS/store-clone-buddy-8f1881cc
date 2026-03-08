@@ -289,7 +289,7 @@ const Admin = () => {
 
   const formatRupiah = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
 
-  const paymentKeys = ['cashify_license_key', 'cashify_qris_id', 'cashify_webhook_key', 'cashify_api_key', 'discord_webhook_url', 'payment_mode', 'payment_simulation'];
+  const paymentKeys = ['cashify_license_key', 'cashify_qris_id', 'cashify_webhook_key', 'cashify_api_key', 'discord_webhook_url', 'payment_mode', 'payment_simulation', 'fonnte_token', 'xcoins_enabled', 'xcoins_only'];
 
   // Show device approval screen if device is not approved
   if (deviceStatus === 'loading' || deviceStatus === 'new' || deviceStatus === 'pending') {
