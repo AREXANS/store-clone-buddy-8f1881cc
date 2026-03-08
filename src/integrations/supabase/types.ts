@@ -353,6 +353,107 @@ export type Database = {
         }
         Relationships: []
       }
+      xcoins_otp: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          is_used: boolean
+          otp_code: string
+          phone: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          is_used?: boolean
+          otp_code: string
+          phone: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          is_used?: boolean
+          otp_code?: string
+          phone?: string
+        }
+        Relationships: []
+      }
+      xcoins_transactions: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string
+          description: string | null
+          id: string
+          reference_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          type?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xcoins_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "xcoins_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      xcoins_users: {
+        Row: {
+          balance: number
+          created_at: string
+          display_name: string | null
+          id: string
+          is_active: boolean
+          phone: string
+          pin_hash: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          phone: string
+          pin_hash: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          phone?: string
+          pin_hash?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

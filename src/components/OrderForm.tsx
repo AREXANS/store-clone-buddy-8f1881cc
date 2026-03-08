@@ -1,8 +1,9 @@
 import { FC, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shuffle, Edit3, Tag, ChevronDown, Gift } from 'lucide-react';
+import { Shuffle, Edit3, Tag, ChevronDown, Gift, Coins, CreditCard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import GlobalBackground from './GlobalBackground';
@@ -55,19 +56,46 @@ const OrderForm: FC<OrderFormProps> = ({
   parseDuration,
   prices
 }) => {
+  const navigate = useNavigate();
   const [keyMode, setKeyMode] = useState<'random' | 'custom'>('random');
   const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<Discount | null>(null);
   const [promoError, setPromoError] = useState('');
   const [showPromoInput, setShowPromoInput] = useState(false);
+  const [xcoinsEnabled, setXcoinsEnabled] = useState(false);
+  const [xcoinsOnly, setXcoinsOnly] = useState(false);
+  const [xcoinsUser, setXcoinsUser] = useState<{id: string; phone: string; balance: number; display_name: string} | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'qris' | 'xcoins'>('qris');
+  const [xcoinsPin, setXcoinsPin] = useState('');
+  const [xcoinsPayLoading, setXcoinsPayLoading] = useState(false);
 
   useEffect(() => {
     const loadDiscounts = async () => {
       const { data } = await supabase.from('package_discounts').select('*').eq('is_active', true);
       if (data) setDiscounts(data as Discount[]);
     };
+
+    const loadXcoinsSettings = async () => {
+      const { data } = await supabase.from('site_settings').select('key, value').in('key', ['xcoins_enabled', 'xcoins_only']);
+      const map = Object.fromEntries((data || []).map((s: any) => [s.key, s.value]));
+      const enabled = map.xcoins_enabled === 'on';
+      const only = map.xcoins_only === 'on';
+      setXcoinsEnabled(enabled);
+      setXcoinsOnly(only);
+      if (only) setPaymentMethod('xcoins');
+
+      // Check XCoins session
+      if (enabled) {
+        const stored = localStorage.getItem('xcoins_session');
+        if (stored) {
+          try { setXcoinsUser(JSON.parse(stored)); } catch {}
+        }
+      }
+    };
+
     loadDiscounts();
+    loadXcoinsSettings();
   }, []);
 
   useEffect(() => {
@@ -169,7 +197,72 @@ const OrderForm: FC<OrderFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(e, appliedPromo?.promo_code || undefined);
+    if (paymentMethod === 'xcoins') {
+      handleXcoinsPay(e);
+    } else {
+      onSubmit(e, appliedPromo?.promo_code || undefined);
+    }
+  };
+
+  const handleXcoinsPay = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!xcoinsUser) {
+      toast({ title: 'Login XCoins dulu', description: 'Silakan login di halaman XCoins', variant: 'destructive' });
+      navigate('/xcoins');
+      return;
+    }
+    if (!xcoinsPin || xcoinsPin.length !== 6) {
+      toast({ title: 'Error', description: 'Masukkan PIN 6 digit', variant: 'destructive' });
+      return;
+    }
+    if (!durationData) {
+      toast({ title: 'Error', description: 'Masukkan durasi terlebih dahulu', variant: 'destructive' });
+      return;
+    }
+
+    setXcoinsPayLoading(true);
+    const res = await supabase.functions.invoke('xcoins-pay', {
+      body: {
+        userId: xcoinsUser.id,
+        pin: xcoinsPin,
+        amount: finalTotal,
+        packageName: selectedPkg || 'NORMAL',
+        packageDuration: durationData.days,
+        licenseKey: formData.key
+      }
+    });
+
+    if (res.data?.success) {
+      // Update stored balance
+      const newBalance = res.data.newBalance;
+      localStorage.setItem('xcoins_session', JSON.stringify({ ...xcoinsUser, balance: newBalance }));
+      toast({ title: '🎉 Pembayaran XCoins Berhasil!', description: `Key: ${formData.key}` });
+      
+      // Trigger payment success flow
+      const expiredDate = new Date();
+      expiredDate.setDate(expiredDate.getDate() + durationData.days);
+      
+      // Store final data and go to success
+      const state = {
+        step: 4,
+        selectedPkg,
+        formData,
+        paymentData: null,
+        finalData: {
+          key: formData.key,
+          package: selectedPkg || 'NORMAL',
+          expired: expiredDate.toISOString(),
+          expiredDisplay: expiredDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+          days: durationData.days
+        },
+        daysToAdd: durationData.days
+      };
+      localStorage.setItem('arexans_payment_state', JSON.stringify(state));
+      window.location.reload();
+    } else {
+      toast({ title: 'Error', description: res.data?.error || 'Gagal bayar', variant: 'destructive' });
+    }
+    setXcoinsPayLoading(false);
   };
 
   const getDiscountRangeText = (d: Discount) => {
@@ -306,8 +399,56 @@ const OrderForm: FC<OrderFormProps> = ({
             </div>
           )}
 
-          <Button type="submit" disabled={loading} className={`w-full py-6 font-display font-bold text-lg ${selectedPkg === 'VIP' ? 'btn-secondary' : 'btn-primary'}`}>
-            {loading ? <span className="flex items-center gap-2"><span className="animate-spin">⟳</span> Memproses...</span> : 'Lanjut ke Pembayaran'}
+          {/* Payment Method Selection */}
+          {xcoinsEnabled && !xcoinsOnly && (
+            <div className="animate-slide-in">
+              <label className="block text-sm font-medium mb-2 text-foreground">Metode Pembayaran</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setPaymentMethod('qris')}
+                  className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all ${paymentMethod === 'qris' ? 'border-primary bg-primary/10' : 'border-border bg-muted/50 hover:border-primary/50'}`}>
+                  <CreditCard className={`w-5 h-5 ${paymentMethod === 'qris' ? 'text-primary' : 'text-muted-foreground'}`} />
+                  <span className="text-xs font-medium">QRIS</span>
+                </button>
+                <button type="button" onClick={() => { setPaymentMethod('xcoins'); if (!xcoinsUser) navigate('/xcoins'); }}
+                  className={`p-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all ${paymentMethod === 'xcoins' ? 'border-primary bg-primary/10' : 'border-border bg-muted/50 hover:border-primary/50'}`}>
+                  <Coins className={`w-5 h-5 ${paymentMethod === 'xcoins' ? 'text-primary' : 'text-muted-foreground'}`} />
+                  <span className="text-xs font-medium">XCoins</span>
+                  {xcoinsUser && <span className="text-[10px] text-muted-foreground">{new Intl.NumberFormat('id-ID').format(xcoinsUser.balance)}</span>}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* XCoins PIN input */}
+          {(paymentMethod === 'xcoins' || xcoinsOnly) && xcoinsUser && (
+            <div className="animate-slide-in">
+              <label className="block text-sm font-medium mb-2 text-foreground flex items-center gap-2">
+                <Coins className="w-4 h-4 text-primary" />
+                PIN XCoins ({xcoinsUser.display_name})
+              </label>
+              <Input type="password" maxLength={6} value={xcoinsPin} onChange={e => setXcoinsPin(e.target.value.replace(/\D/g, ''))} placeholder="••••••" className="bg-muted/50 border-border text-center tracking-[0.5em] font-mono text-lg" />
+              <p className="text-xs text-muted-foreground mt-1">Saldo: {new Intl.NumberFormat('id-ID').format(xcoinsUser.balance)} XCoins</p>
+            </div>
+          )}
+
+          {(paymentMethod === 'xcoins' || xcoinsOnly) && !xcoinsUser && (
+            <div className="p-4 bg-muted/50 rounded-xl border border-border text-center animate-slide-in">
+              <Coins className="w-8 h-8 text-primary mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground mb-3">Login XCoins untuk membayar</p>
+              <Button type="button" variant="outline" onClick={() => navigate('/xcoins')} className="gap-2">
+                <Coins className="w-4 h-4" /> Login XCoins
+              </Button>
+            </div>
+          )}
+
+          <Button type="submit" disabled={loading || xcoinsPayLoading || ((paymentMethod === 'xcoins' || xcoinsOnly) && !xcoinsUser)} className={`w-full py-6 font-display font-bold text-lg ${selectedPkg === 'VIP' ? 'btn-secondary' : 'btn-primary'}`}>
+            {loading || xcoinsPayLoading ? (
+              <span className="flex items-center gap-2"><span className="animate-spin">⟳</span> Memproses...</span>
+            ) : paymentMethod === 'xcoins' || xcoinsOnly ? (
+              <span className="flex items-center gap-2"><Coins className="w-5 h-5" /> Bayar {durationData ? new Intl.NumberFormat('id-ID').format(finalTotal) : ''} XCoins</span>
+            ) : (
+              'Lanjut ke Pembayaran'
+            )}
           </Button>
         </form>
       </div>

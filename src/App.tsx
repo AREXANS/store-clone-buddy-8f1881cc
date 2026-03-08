@@ -7,6 +7,7 @@ import { BackgroundProvider } from "./contexts/BackgroundContext";
 import Index from "./pages/Index";
 import Admin from "./pages/Admin";
 import KeySystem from "./pages/KeySystem";
+import XCoins from "./pages/XCoins";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/developer" element={<Admin />} />
             <Route path="/key-system" element={<KeySystem />} />
+            <Route path="/xcoins" element={<XCoins />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

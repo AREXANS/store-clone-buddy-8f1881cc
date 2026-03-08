@@ -289,7 +289,7 @@ const Admin = () => {
 
   const formatRupiah = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
 
-  const paymentKeys = ['cashify_license_key', 'cashify_qris_id', 'cashify_webhook_key', 'cashify_api_key', 'discord_webhook_url', 'payment_mode', 'payment_simulation'];
+  const paymentKeys = ['cashify_license_key', 'cashify_qris_id', 'cashify_webhook_key', 'cashify_api_key', 'discord_webhook_url', 'payment_mode', 'payment_simulation', 'fonnte_token', 'xcoins_enabled', 'xcoins_only'];
 
   // Show device approval screen if device is not approved
   if (deviceStatus === 'loading' || deviceStatus === 'new' || deviceStatus === 'pending') {
@@ -405,10 +405,6 @@ const Admin = () => {
                   <MessageSquare className="w-4 h-4" />
                   <span className="hidden xs:inline">Social</span>
                 </TabsTrigger>
-                <TabsTrigger value="promo" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
-                  <Tag className="w-4 h-4" />
-                  <span className="hidden xs:inline">Promo</span>
-                </TabsTrigger>
                 <TabsTrigger value="devices" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
                   <Shield className="w-4 h-4" />
                   <span className="hidden xs:inline">Devices</span>
@@ -471,6 +467,18 @@ const Admin = () => {
                           />
                           <span className={`text-sm font-medium ${setting.value === 'on' ? 'text-secondary' : 'text-muted-foreground'}`}>
                             {setting.value === 'on' ? 'Simulasi AKTIF - Pembayaran otomatis sukses' : 'Simulasi OFF - Pembayaran normal'}
+                          </span>
+                        </div>
+                      ) : setting.key === 'xcoins_enabled' || setting.key === 'xcoins_only' ? (
+                        <div className="flex items-center gap-4">
+                          <Switch
+                            checked={setting.value === 'on'}
+                            onCheckedChange={(checked) => updateSetting(setting.key, checked ? 'on' : 'off')}
+                          />
+                          <span className={`text-sm font-medium ${setting.value === 'on' ? 'text-primary' : 'text-muted-foreground'}`}>
+                            {setting.key === 'xcoins_enabled' 
+                              ? (setting.value === 'on' ? 'XCoins AKTIF' : 'XCoins Nonaktif')
+                              : (setting.value === 'on' ? 'HANYA XCoins (QRIS dimatikan)' : 'XCoins + QRIS Cashify')}
                           </span>
                         </div>
                       ) : (
@@ -658,6 +666,11 @@ const Admin = () => {
                     </CardContent>
                   </Card>
                 ))}
+              </div>
+
+              {/* Discount & Promo Section (merged into Packages) */}
+              <div className="border-t border-border pt-6 mt-6">
+                <DiscountManagement />
               </div>
             </TabsContent>
 
@@ -1122,10 +1135,7 @@ const Admin = () => {
               </div>
             </TabsContent>
 
-            {/* Promo Tab */}
-            <TabsContent value="promo" className="space-y-4">
-              <DiscountManagement />
-            </TabsContent>
+            {/* Promo tab removed - merged into Packages */}
 
             {/* Devices Tab */}
             <TabsContent value="devices" className="space-y-4">

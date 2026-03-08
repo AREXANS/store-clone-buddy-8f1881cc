@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AdSlider from './AdSlider';
 import GlobalBackground from './GlobalBackground';
 import { supabase } from '@/integrations/supabase/client';
-import { Link as LinkIcon, Key } from 'lucide-react';
+import { Link as LinkIcon, Key, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface Ad {
@@ -87,6 +87,7 @@ const getIconForType = (iconType: string) => {
 const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, prices, ads, packages }) => {
   const navigate = useNavigate();
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+  const [xcoinsEnabled, setXcoinsEnabled] = useState(false);
 
   useEffect(() => {
     const fetchSocialLinks = async () => {
@@ -96,13 +97,16 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
         .eq('is_active', true)
         .eq('link_location', 'home')
         .order('sort_order');
+      if (data) setSocialLinks(data as SocialLink[]);
+    };
 
-      if (data) {
-        setSocialLinks(data as SocialLink[]);
-      }
+    const checkXcoins = async () => {
+      const { data } = await supabase.from('site_settings').select('value').eq('key', 'xcoins_enabled').maybeSingle();
+      if (data?.value === 'on') setXcoinsEnabled(true);
     };
 
     fetchSocialLinks();
+    checkXcoins();
   }, []);
 
   const normalPkg = packages?.find(p => p.name === 'NORMAL');
@@ -214,8 +218,8 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
           </div>
         </div>
 
-        {/* Key System Button */}
-        <div className="flex justify-center mt-6">
+        {/* Action Buttons */}
+        <div className="flex justify-center gap-3 mt-6">
           <Button 
             variant="outline" 
             onClick={() => navigate('/key-system')}
@@ -224,6 +228,15 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
             <Key className="w-4 h-4" />
             Key System
           </Button>
+          {xcoinsEnabled && (
+            <Button 
+              onClick={() => navigate('/xcoins')}
+              className="gap-2 bg-gradient-to-r from-primary to-secondary text-white hover:opacity-90"
+            >
+              <Coins className="w-4 h-4" />
+              XCoins
+            </Button>
+          )}
         </div>
         {socialLinks.length > 0 && (
           <div className="flex items-center justify-center gap-6 mt-8">
