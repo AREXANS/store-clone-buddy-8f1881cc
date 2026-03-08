@@ -135,6 +135,53 @@ const Admin = () => {
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   const [editingSocialLink, setEditingSocialLink] = useState<SocialLink | null>(null);
 
+  // Transaction editing state
+  const [editingTransaction, setEditingTransaction] = useState<TransactionItem | null>(null);
+
+  const saveTransaction = async (tx: TransactionItem) => {
+    const { error } = await supabase.from('transactions').update({
+      customer_name: tx.customer_name,
+      customer_whatsapp: tx.customer_whatsapp,
+      package_name: tx.package_name,
+      package_duration: tx.package_duration,
+      original_amount: tx.original_amount,
+      total_amount: tx.total_amount,
+      status: tx.status,
+      license_key: tx.license_key,
+    }).eq('id', tx.id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Berhasil", description: "Transaksi berhasil diupdate" });
+      setEditingTransaction(null);
+      loadAllData();
+    }
+  };
+
+  const deleteTransaction = async (id: string) => {
+    if (!confirm('Yakin hapus transaksi ini?')) return;
+    const { error } = await supabase.from('transactions').delete().eq('id', id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Berhasil", description: "Transaksi berhasil dihapus" });
+      loadAllData();
+    }
+  };
+
+  const setTransactionPaid = async (id: string) => {
+    const { error } = await supabase.from('transactions').update({
+      status: 'paid',
+      paid_at: new Date().toISOString()
+    }).eq('id', id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Berhasil", description: "Transaksi berhasil diset paid" });
+      loadAllData();
+    }
+  };
+
   // Effect to load data on mount if already logged in
   useEffect(() => {
     if (isLoggedIn) {
