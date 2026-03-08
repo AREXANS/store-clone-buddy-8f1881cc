@@ -176,7 +176,7 @@ ${rawScript}`;
     setLoading(true);
     try {
       const { data: manualData } = await supabase
-        .from('site_settings')
+        .from('app_settings')
         .select('value')
         .eq('key', 'manual_whitelist')
         .single();
