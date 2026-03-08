@@ -232,6 +232,7 @@ ${rawScript}`;
 
   useEffect(() => {
     fetchWhitelist();
+    fetchScripts();
   }, []);
 
   const handleAddUsername = async () => {
