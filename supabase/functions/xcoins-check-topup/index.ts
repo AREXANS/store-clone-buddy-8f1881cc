@@ -85,7 +85,7 @@ serve(async (req) => {
     if (isPaid) {
       await supabase.from('transactions').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', tx.id);
 
-      const { data: user } = await supabase.from('xcoins_users').select('balance').eq('id', userId).single();
+      const { data: user } = await supabase.from('xcoins_balances').select('balance').eq('id', userId).single();
       const xcoinsAmount = tx.original_amount;
       const newBalance = (user?.balance || 0) + xcoinsAmount;
 
