@@ -3,7 +3,23 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+// Valid columns per table (must match current DB schema)
+const TABLE_COLUMNS: Record<string, string[]> = {
+  app_settings: ["id", "created_at", "updated_at", "key", "value", "description"],
+  packages: ["id", "name", "display_name", "price_per_day", "description", "features", "is_active", "sort_order", "created_at", "updated_at"],
+  ads: ["id", "title", "media_url", "media_type", "link", "link_url", "is_active", "sort_order", "created_at"],
+  backgrounds: ["id", "title", "background_type", "background_url", "is_active", "is_muted", "sort_order", "created_at"],
+  transactions: ["id", "transaction_id", "customer_name", "customer_whatsapp", "package_name", "package_duration", "original_amount", "total_amount", "status", "license_key", "qr_string", "device_id", "paid_at", "expires_at", "created_at"],
+  social_links: ["id", "name", "icon_type", "url", "label", "link_location", "is_active", "sort_order", "created_at"],
+  admin_sessions: ["id", "device_id", "device_name", "device_info", "login_time", "is_current", "is_approved"],
+  lua_scripts: ["id", "name", "display_name", "description", "content", "script_type", "is_active", "created_at", "updated_at"],
+  package_discounts: ["id", "discount_type", "package_name", "min_days", "max_days", "discount_percent", "promo_code", "description", "is_active", "start_date", "end_date", "notify_users", "created_at", "updated_at"],
+  xcoins_balances: ["id", "phone", "pin_hash", "display_name", "balance", "is_active", "created_at", "updated_at"],
+  xcoins_otp: ["id", "phone", "otp_code", "is_used", "expires_at", "created_at"],
+  xcoins_transactions: ["id", "user_id", "type", "amount", "balance_after", "description", "reference_id", "created_at"],
 };
 
 // Order matters for foreign key dependencies
@@ -21,6 +37,24 @@ const RESTORE_ORDER = [
   "xcoins_transactions",
   "transactions",
 ];
+
+// Strip unknown columns from row based on table schema
+function filterColumns(table: string, row: Record<string, any>): Record<string, any> | null {
+  const validCols = TABLE_COLUMNS[table];
+  if (!validCols) return null;
+
+  const filtered: Record<string, any> = {};
+  let hasId = false;
+  for (const col of validCols) {
+    if (col in row) {
+      filtered[col] = row[col];
+      if (col === "id") hasId = true;
+    }
+  }
+  // Must have id for upsert
+  if (!hasId) return null;
+  return filtered;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -44,12 +78,12 @@ serve(async (req) => {
       );
     }
 
-    const results: Record<string, { inserted: number; errors: string[] }> = {};
+    const results: Record<string, { inserted: number; skipped: number; errors: string[] }> = {};
 
     for (const table of RESTORE_ORDER) {
       if (!tables[table] || !Array.isArray(tables[table]) || tables[table].length === 0) continue;
 
-      const tableResults = { inserted: 0, errors: [] as string[] };
+      const tableResults = { inserted: 0, skipped: 0, errors: [] as string[] };
 
       // In replace mode, clear existing data first
       if (mode === "replace") {
@@ -59,10 +93,26 @@ serve(async (req) => {
         }
       }
 
+      // Filter columns and prepare rows
+      const validRows: Record<string, any>[] = [];
+      for (const row of tables[table]) {
+        const filtered = filterColumns(table, row);
+        if (filtered) {
+          validRows.push(filtered);
+        } else {
+          tableResults.skipped++;
+        }
+      }
+
+      if (validRows.length === 0) {
+        tableResults.errors.push(`All ${tables[table].length} rows skipped - incompatible columns`);
+        results[table] = tableResults;
+        continue;
+      }
+
       // Insert in batches of 100
-      const rows = tables[table];
-      for (let i = 0; i < rows.length; i += 100) {
-        const batch = rows.slice(i, i + 100);
+      for (let i = 0; i < validRows.length; i += 100) {
+        const batch = validRows.slice(i, i + 100);
         
         const { error } = await supabase.from(table).upsert(batch, {
           onConflict: "id",
@@ -82,7 +132,7 @@ serve(async (req) => {
     // Handle any tables not in RESTORE_ORDER
     for (const table of Object.keys(tables)) {
       if (RESTORE_ORDER.includes(table)) continue;
-      results[table] = { inserted: 0, errors: [`Table "${table}" not supported for restore`] };
+      results[table] = { inserted: 0, skipped: 0, errors: [`Table "${table}" not supported for restore`] };
     }
 
     return new Response(
