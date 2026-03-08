@@ -1,12 +1,13 @@
-import { FC, useState, useEffect } from 'react';
+import { FC, useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import { 
   Shield, Plus, Trash2, RefreshCw, Users, Copy, Search,
-  CheckCircle, XCircle, User
+  CheckCircle, XCircle, User, Upload, FileCode, Eye, EyeOff, Code
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +29,17 @@ interface KeyData {
   robloxUsers: { hwid: string; username: string; registeredAt: string }[];
 }
 
+interface UploadedScript {
+  id: string;
+  name: string;
+  display_name: string;
+  content: string;
+  rawContent: string;
+  useWhitelist: boolean;
+  is_active: boolean;
+  created_at: string;
+}
+
 const WhitelistManagement: FC = () => {
   const [manualWhitelist, setManualWhitelist] = useState<WhitelistUser[]>([]);
   const [keyWhitelist, setKeyWhitelist] = useState<WhitelistUser[]>([]);
@@ -35,8 +47,130 @@ const WhitelistManagement: FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [uploadedScripts, setUploadedScripts] = useState<UploadedScript[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const SUPABASE_API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+
+  const generateWhitelistWrapper = (rawScript: string) => {
+    return `-- Whitelist Protected Script
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+
+local WHITELIST_URL = "${SUPABASE_API_BASE}/get-whitelist?format=json"
+local whitelistedUsers = {}
+
+local function fetchWhitelist()
+    local ok, result = pcall(function()
+        local response = game:HttpGet(WHITELIST_URL)
+        local data = HttpService:JSONDecode(response)
+        if data and data.usernames then
+            whitelistedUsers = {}
+            for _, name in ipairs(data.usernames) do
+                whitelistedUsers[string.lower(name)] = true
+            end
+        end
+    end)
+    if not ok then warn("[Whitelist] Failed to fetch: " .. tostring(result)) end
+end
+
+local function isWhitelisted(player)
+    return whitelistedUsers[string.lower(player.Name)] == true
+end
+
+fetchWhitelist()
+
+local player = Players.LocalPlayer
+if not isWhitelisted(player) then
+    warn("[Whitelist] " .. player.Name .. " is NOT whitelisted!")
+    return
+end
+
+print("[Whitelist] " .. player.Name .. " verified! Loading script...")
+
+-- Original Script Below --
+${rawScript}`;
+  };
+
+  const fetchScripts = async () => {
+    const { data } = await supabase
+      .from('lua_scripts')
+      .select('*')
+      .eq('script_type', 'whitelist_upload')
+      .order('created_at', { ascending: false });
+    
+    if (data) {
+      setUploadedScripts(data.map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        display_name: s.display_name,
+        content: s.content,
+        rawContent: s.description || s.content, // store raw in description field
+        useWhitelist: s.is_active, // repurpose is_active as whitelist toggle
+        is_active: true,
+        created_at: s.created_at
+      })));
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (ext !== 'lua' && ext !== 'txt') {
+      toast({ title: 'Error', description: 'Hanya file .lua atau .txt', variant: 'destructive' });
+      return;
+    }
+
+    const rawContent = await file.text();
+    const displayName = file.name.replace(/\.(lua|txt)$/, '');
+    const scriptName = displayName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+    const { error } = await supabase.from('lua_scripts').insert({
+      name: scriptName,
+      display_name: displayName,
+      content: rawContent,
+      description: rawContent, // store raw content
+      script_type: 'whitelist_upload',
+      is_active: false // default: no whitelist
+    });
+
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Berhasil', description: `Script "${displayName}" berhasil diupload` });
+      fetchScripts();
+    }
+
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const toggleWhitelist = async (script: UploadedScript) => {
+    const newVal = !script.useWhitelist;
+    const newContent = newVal ? generateWhitelistWrapper(script.rawContent) : script.rawContent;
+    
+    await supabase.from('lua_scripts').update({
+      is_active: newVal,
+      content: newContent,
+      updated_at: new Date().toISOString()
+    }).eq('id', script.id);
+
+    toast({ title: 'Berhasil', description: newVal ? 'Whitelist diaktifkan' : 'Whitelist dinonaktifkan' });
+    fetchScripts();
+  };
+
+  const deleteScript = async (id: string) => {
+    if (!confirm('Yakin hapus script ini?')) return;
+    await supabase.from('lua_scripts').delete().eq('id', id);
+    toast({ title: 'Berhasil', description: 'Script dihapus' });
+    fetchScripts();
+  };
+
+  const copyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: 'Copied!', description: `${label} berhasil disalin` });
+  };
 
   const fetchWhitelist = async () => {
     setLoading(true);
@@ -98,6 +232,7 @@ const WhitelistManagement: FC = () => {
 
   useEffect(() => {
     fetchWhitelist();
+    fetchScripts();
   }, []);
 
   const handleAddUsername = async () => {
@@ -330,6 +465,75 @@ const WhitelistManagement: FC = () => {
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     )}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Script Upload */}
+      <Card className="glass-card">
+        <CardHeader className="pb-3 px-3 sm:px-6">
+          <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+            <Upload className="w-4 h-4 text-primary" />
+            Upload Script Lua
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Upload file .lua/.txt, opsional aktifkan whitelist protection
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-3 sm:px-6 space-y-3">
+          <div className="flex gap-2">
+            <Input
+              ref={fileInputRef}
+              type="file"
+              accept=".lua,.txt"
+              onChange={handleFileUpload}
+              className="flex-1"
+            />
+          </div>
+
+          {uploadedScripts.length > 0 && (
+            <ScrollArea className="h-[300px]">
+              <div className="space-y-3">
+                {uploadedScripts.map(script => (
+                  <div key={script.id} className="p-3 rounded-lg bg-muted/30 border border-border space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileCode className="w-4 h-4 text-primary" />
+                        <span className="font-medium text-sm">{script.display_name}</span>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => deleteScript(script.id)} className="text-destructive hover:text-destructive">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={script.useWhitelist}
+                        onCheckedChange={() => toggleWhitelist(script)}
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        {script.useWhitelist ? '🛡️ Whitelist Aktif' : 'Whitelist Nonaktif'}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" onClick={() => copyText(script.rawContent, 'Source code asli')}>
+                        <Code className="w-3 h-3 mr-1" />
+                        Salin Asli
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => copyText(script.useWhitelist ? script.content : generateWhitelistWrapper(script.rawContent), 'Source code + whitelist')}>
+                        <Shield className="w-3 h-3 mr-1" />
+                        Salin + Whitelist
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => copyText(`${SUPABASE_API_BASE}/get-script?name=${script.name}`, 'URL')}>
+                        <Copy className="w-3 h-3 mr-1" />
+                        Salin URL
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
