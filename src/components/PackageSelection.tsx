@@ -142,13 +142,7 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
               onClick={() => navigate('/xcoins')}
               className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-primary/10 transition-colors"
             >
-              {xcoinsLogoUrl ? (
-                <img src={xcoinsLogoUrl} alt="XCoins" className="w-7 h-7 md:w-8 md:h-8 rounded-full object-cover border-2 border-primary/50 shadow-lg" />
-              ) : (
-                <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center border-2 border-primary/50 shadow-lg">
-                  <Coins className="w-4 h-4 text-primary-foreground" />
-                </div>
-              )}
+              <img src={xcoinsLogoUrl || '/images/xcoins-default-logo.png'} alt="XCoins" className="w-7 h-7 md:w-8 md:h-8 rounded-full object-cover border-2 border-primary/50 shadow-lg" />
               <span className="font-display text-sm md:text-base font-bold gradient-text">XCoins</span>
             </button>
           ) : (
