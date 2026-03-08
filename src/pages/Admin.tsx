@@ -21,6 +21,7 @@ import ApiDocumentation from '@/components/ApiDocumentation';
 import ScriptManagement from '@/components/ScriptManagement';
 import WhitelistManagement from '@/components/WhitelistManagement';
 import LuaUploadManager from '@/components/LuaUploadManager';
+import PromoManagement from '@/components/PromoManagement';
 import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 
 interface SiteSetting {
