@@ -273,7 +273,7 @@ ${rawScript}`;
           .eq('key', 'manual_whitelist');
       } else {
         await supabase
-          .from('site_settings')
+          .from('app_settings')
           .insert({
             key: 'manual_whitelist',
             value: JSON.stringify(updatedList),
