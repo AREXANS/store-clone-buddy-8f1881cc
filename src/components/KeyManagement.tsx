@@ -374,6 +374,8 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   );
 
   const frozenCount = keys.filter(k => k.frozenUntil).length;
+  const expiredCount = keys.filter(k => !k.frozenUntil && new Date(k.expired) < new Date()).length;
+  const activeCount = keys.length - frozenCount - expiredCount;
 
   const startNewKey = () => {
     const expiryDate = new Date();
@@ -514,7 +516,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
               License Keys
             </h2>
             <span className="text-xs sm:text-sm text-muted-foreground">
-              Total: {keys.length} | Frozen: {frozenCount}
+              Total: {keys.length} | Aktif: {activeCount} | Frozen: {frozenCount} | Expired: {expiredCount}
             </span>
           </div>
           
