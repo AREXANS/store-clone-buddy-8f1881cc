@@ -48,7 +48,7 @@ serve(async (req) => {
       const cutoff = new Date(Date.now() - days * 86400000);
 
       const { data: keyData } = await supabase
-        .from("site_settings").select("value").eq("key", "license_keys").maybeSingle();
+        .from("app_settings").select("value").eq("key", "license_keys").maybeSingle();
 
       if (keyData?.value) {
         try {
