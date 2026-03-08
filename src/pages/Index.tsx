@@ -281,7 +281,7 @@ const Index = () => {
           packageName: selectedPkg || 'NORMAL',
           packageDuration: durationData.days,
           licenseKey: formData.key,
-          promoCode: promoCode || undefined
+          promoCode: submittedPromoCode || undefined
         }
       });
 
