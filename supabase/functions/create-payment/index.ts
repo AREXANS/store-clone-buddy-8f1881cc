@@ -140,6 +140,7 @@ serve(async (req) => {
       qr_string: qrString,
       license_key: customerLicenseKey || null,
       expires_at: expiresAt.toISOString(),
+      device_id: deviceId || null,
     });
 
     return new Response(JSON.stringify({
