@@ -376,6 +376,18 @@ const Admin = () => {
                   <FileText className="w-4 h-4" />
                   <span className="hidden xs:inline">API</span>
                 </TabsTrigger>
+                <TabsTrigger value="scripts" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <FileCode className="w-4 h-4" />
+                  <span className="hidden xs:inline">Scripts</span>
+                </TabsTrigger>
+                <TabsTrigger value="whitelist" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <Shield className="w-4 h-4" />
+                  <span className="hidden xs:inline">Whitelist</span>
+                </TabsTrigger>
+                <TabsTrigger value="upload" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <Upload className="w-4 h-4" />
+                  <span className="hidden xs:inline">Upload</span>
+                </TabsTrigger>
                 <TabsTrigger value="ads" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
                   <Image className="w-4 h-4" />
                   <span className="hidden xs:inline">Ads</span>
