@@ -1043,11 +1043,94 @@ const Admin = () => {
 
             {/* Transactions Tab */}
             <TabsContent value="transactions" className="space-y-4">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <h2 className="text-xl font-display font-semibold">Transactions</h2>
-                <Button variant="outline" onClick={loadAllData}>
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Refresh
+                <div className="flex gap-2">
+                  {selectedTxIds.size > 0 && (
+                    <Button variant="destructive" size="sm" onClick={deleteSelectedTransactions}>
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Hapus ({selectedTxIds.size})
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => { loadAllData(); setSelectedTxIds(new Set()); }}>
+                    <RefreshCw className="w-4 h-4 mr-1" />
+                    Refresh
+                  </Button>
+                </div>
+              </div>
+
+              {/* Auto-cleanup settings */}
+              <Card className="glass-card">
+                <CardContent className="pt-4 pb-4 space-y-3">
+                  <p className="text-sm font-medium flex items-center gap-2"><Trash2 className="w-4 h-4 text-muted-foreground" /> Auto-Cleanup</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Hapus transaksi lebih dari (hari)</Label>
+                      <div className="flex gap-2 items-center">
+                        <Switch
+                          checked={settings.find(s => s.key === 'auto_delete_transactions_enabled')?.value === 'on'}
+                          onCheckedChange={checked => {
+                            const key = 'auto_delete_transactions_enabled';
+                            const val = checked ? 'on' : 'off';
+                            const exists = settings.find(s => s.key === key);
+                            if (exists) { updateSetting(key, val); }
+                            else { supabase.from('site_settings').insert({ key, value: val, description: 'Auto delete old transactions' }).then(() => loadAllData()); }
+                          }}
+                        />
+                        <Input
+                          type="number"
+                          className="w-20 bg-background/50"
+                          value={settings.find(s => s.key === 'auto_delete_transactions_days')?.value || '30'}
+                          onChange={e => {
+                            const key = 'auto_delete_transactions_days';
+                            const val = e.target.value;
+                            const exists = settings.find(s => s.key === key);
+                            if (exists) { updateSetting(key, val); }
+                            else { supabase.from('site_settings').insert({ key, value: val, description: 'Days before auto-deleting transactions' }).then(() => loadAllData()); }
+                          }}
+                        />
+                        <span className="text-xs text-muted-foreground">hari</span>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Hapus key expired lebih dari (hari)</Label>
+                      <div className="flex gap-2 items-center">
+                        <Switch
+                          checked={settings.find(s => s.key === 'auto_delete_keys_enabled')?.value === 'on'}
+                          onCheckedChange={checked => {
+                            const key = 'auto_delete_keys_enabled';
+                            const val = checked ? 'on' : 'off';
+                            const exists = settings.find(s => s.key === key);
+                            if (exists) { updateSetting(key, val); }
+                            else { supabase.from('site_settings').insert({ key, value: val, description: 'Auto delete expired keys' }).then(() => loadAllData()); }
+                          }}
+                        />
+                        <Input
+                          type="number"
+                          className="w-20 bg-background/50"
+                          value={settings.find(s => s.key === 'auto_delete_keys_days')?.value || '7'}
+                          onChange={e => {
+                            const key = 'auto_delete_keys_days';
+                            const val = e.target.value;
+                            const exists = settings.find(s => s.key === key);
+                            if (exists) { updateSetting(key, val); }
+                            else { supabase.from('site_settings').insert({ key, value: val, description: 'Days before auto-deleting expired keys' }).then(() => loadAllData()); }
+                          }}
+                        />
+                        <span className="text-xs text-muted-foreground">hari</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Sub-tabs */}
+              <div className="flex gap-2">
+                <Button variant={txTab === 'keysystem' ? 'default' : 'outline'} size="sm" onClick={() => { setTxTab('keysystem'); setSelectedTxIds(new Set()); }}>
+                  KeySystem ({keySystemTx.length})
+                </Button>
+                <Button variant={txTab === 'xcoins' ? 'default' : 'outline'} size="sm" onClick={() => { setTxTab('xcoins'); setSelectedTxIds(new Set()); }}>
+                  XCoins ({xcoinsTx.length})
                 </Button>
               </div>
 
@@ -1113,28 +1196,38 @@ const Admin = () => {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border">
+                      <th className="p-3 w-10">
+                        <input type="checkbox" checked={selectedTxIds.size === currentTxList.length && currentTxList.length > 0} onChange={toggleSelectAll} className="rounded" />
+                      </th>
                       <th className="text-left p-3">ID</th>
                       <th className="text-left p-3">Customer</th>
-                      <th className="text-left p-3">Package</th>
-                      <th className="text-left p-3">Amount</th>
+                      <th className="text-left p-3">{txTab === 'xcoins' ? 'Amount' : 'Package'}</th>
+                      <th className="text-left p-3">Total</th>
                       <th className="text-left p-3">Status</th>
                       <th className="text-left p-3">Date</th>
                       <th className="text-left p-3">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {transactions.map(tx => (
-                      <tr key={tx.id} className="border-b border-border/50 hover:bg-muted/20">
-                        <td className="p-3 font-mono text-xs">{tx.transaction_id}</td>
+                    {currentTxList.map(tx => (
+                      <tr key={tx.id} className={`border-b border-border/50 hover:bg-muted/20 ${selectedTxIds.has(tx.id) ? 'bg-primary/5' : ''}`}>
+                        <td className="p-3">
+                          <input type="checkbox" checked={selectedTxIds.has(tx.id)} onChange={() => toggleSelectTx(tx.id)} className="rounded" />
+                        </td>
+                        <td className="p-3 font-mono text-xs">{tx.transaction_id.slice(-12)}</td>
                         <td className="p-3">
                           <div>{tx.customer_name}</div>
-                          {tx.customer_whatsapp && (
-                            <div className="text-xs text-muted-foreground">{tx.customer_whatsapp}</div>
-                          )}
+                          {tx.customer_whatsapp && <div className="text-xs text-muted-foreground">{tx.customer_whatsapp}</div>}
                         </td>
                         <td className="p-3">
-                          <div>{tx.package_name}</div>
-                          <div className="text-xs text-muted-foreground">{tx.package_duration} hari</div>
+                          {txTab === 'xcoins' ? (
+                            <div>{formatRupiah(tx.original_amount)}</div>
+                          ) : (
+                            <>
+                              <div>{tx.package_name}</div>
+                              <div className="text-xs text-muted-foreground">{tx.package_duration} hari</div>
+                            </>
+                          )}
                         </td>
                         <td className="p-3">{formatRupiah(tx.total_amount)}</td>
                         <td className="p-3">
@@ -1146,9 +1239,7 @@ const Admin = () => {
                             {tx.status}
                           </span>
                         </td>
-                        <td className="p-3 text-xs">
-                          {new Date(tx.created_at).toLocaleString('id-ID')}
-                        </td>
+                        <td className="p-3 text-xs">{new Date(tx.created_at).toLocaleString('id-ID')}</td>
                         <td className="p-3">
                           <div className="flex gap-1">
                             {tx.status !== 'paid' && tx.status !== 'claimed' && (
@@ -1166,6 +1257,9 @@ const Admin = () => {
                         </td>
                       </tr>
                     ))}
+                    {currentTxList.length === 0 && (
+                      <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Tidak ada transaksi</td></tr>
+                    )}
                   </tbody>
                 </table>
               </div>
