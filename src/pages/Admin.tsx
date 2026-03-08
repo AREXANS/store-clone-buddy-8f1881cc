@@ -21,7 +21,7 @@ import ApiDocumentation from '@/components/ApiDocumentation';
 import ScriptManagement from '@/components/ScriptManagement';
 import WhitelistManagement from '@/components/WhitelistManagement';
 import LuaUploadManager from '@/components/LuaUploadManager';
-import PromoManagement from '@/components/PromoManagement';
+import DiscountManagement from '@/components/DiscountManagement';
 import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 
 interface SiteSetting {
@@ -1124,7 +1124,7 @@ const Admin = () => {
 
             {/* Promo Tab */}
             <TabsContent value="promo" className="space-y-4">
-              <PromoManagement />
+              <DiscountManagement />
             </TabsContent>
 
             {/* Devices Tab */}

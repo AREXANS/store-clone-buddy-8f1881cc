@@ -149,6 +149,57 @@ export type Database = {
         }
         Relationships: []
       }
+      package_discounts: {
+        Row: {
+          created_at: string
+          description: string | null
+          discount_percent: number
+          discount_type: string
+          end_date: string | null
+          id: string
+          is_active: boolean
+          max_days: number | null
+          min_days: number | null
+          notify_users: boolean
+          package_name: string | null
+          promo_code: string | null
+          start_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          discount_percent?: number
+          discount_type?: string
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          max_days?: number | null
+          min_days?: number | null
+          notify_users?: boolean
+          package_name?: string | null
+          promo_code?: string | null
+          start_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          discount_percent?: number
+          discount_type?: string
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          max_days?: number | null
+          min_days?: number | null
+          notify_users?: boolean
+          package_name?: string | null
+          promo_code?: string | null
+          start_date?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       packages: {
         Row: {
           created_at: string
@@ -185,45 +236,6 @@ export type Database = {
           price_per_day?: number
           sort_order?: number
           updated_at?: string
-        }
-        Relationships: []
-      }
-      promo_codes: {
-        Row: {
-          code: string
-          created_at: string
-          discount_type: string
-          discount_value: number
-          expires_at: string | null
-          id: string
-          is_active: boolean
-          max_uses: number | null
-          min_amount: number
-          used_count: number
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          discount_type?: string
-          discount_value?: number
-          expires_at?: string | null
-          id?: string
-          is_active?: boolean
-          max_uses?: number | null
-          min_amount?: number
-          used_count?: number
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          discount_type?: string
-          discount_value?: number
-          expires_at?: string | null
-          id?: string
-          is_active?: boolean
-          max_uses?: number | null
-          min_amount?: number
-          used_count?: number
         }
         Relationships: []
       }

@@ -65,8 +65,6 @@ const Index = () => {
   const [ads, setAds] = useState<Ad[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [daysToAdd, setDaysToAdd] = useState(0);
-  const [promoDiscount, setPromoDiscount] = useState(0);
-  const [promoCode, setPromoCode] = useState('');
 
   const checkInterval = useRef<number | null>(null);
 
@@ -243,12 +241,10 @@ const Index = () => {
     setFormData(prev => ({ ...prev, key: result }));
   };
 
-  const handlePromoApplied = (discount: number, code: string) => {
-    setPromoDiscount(discount);
-    setPromoCode(code);
-  };
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
+
+
+  const handleFormSubmit = async (e: React.FormEvent, submittedPromoCode?: string) => {
     e.preventDefault();
     setErrorMsg('');
     const durationData = parseDuration(formData.duration);
@@ -264,7 +260,7 @@ const Index = () => {
 
     setLoading(true);
     const pricePerDay = selectedPkg === 'VIP' ? PRICES.VIP : PRICES.NORMAL;
-    const calculatedAmount = Math.max(1000, pricePerDay * durationData.days - promoDiscount);
+    const calculatedAmount = pricePerDay * durationData.days;
 
     if (calculatedAmount < 1000) {
       setErrorMsg("Nominal terlalu kecil untuk QRIS (minimal Rp 1.000)");
@@ -281,7 +277,7 @@ const Index = () => {
           packageName: selectedPkg || 'NORMAL',
           packageDuration: durationData.days,
           licenseKey: formData.key,
-          promoCode: promoCode || undefined
+          promoCode: submittedPromoCode || undefined
         }
       });
 
@@ -349,7 +345,7 @@ const Index = () => {
   };
 
   if (step === 1) return <PackageSelection onSelect={handlePackageSelect} formatRupiah={formatRupiah} prices={PRICES} ads={ads} packages={packages} />;
-  if (step === 2) return <OrderForm selectedPkg={selectedPkg} formData={formData} setFormData={setFormData} onSubmit={handleFormSubmit} onBack={() => { setStep(1); setErrorMsg(''); }} onGenerate={generateRandomKey} loading={loading} errorMsg={errorMsg} formatRupiah={formatRupiah} parseDuration={parseDuration} prices={PRICES} promoDiscount={promoDiscount} onPromoApplied={handlePromoApplied} />;
+  if (step === 2) return <OrderForm selectedPkg={selectedPkg} formData={formData} setFormData={setFormData} onSubmit={handleFormSubmit} onBack={() => { setStep(1); setErrorMsg(''); }} onGenerate={generateRandomKey} loading={loading} errorMsg={errorMsg} formatRupiah={formatRupiah} parseDuration={parseDuration} prices={PRICES} />;
   if (step === 3 && paymentData) return <PaymentQR paymentData={paymentData} statusMsg={statusMsg} errorMsg={errorMsg} onCancel={handleCancelOrder} onCopy={copyToClipboard} formatRupiah={formatRupiah} />;
   if (step === 4 && finalData) return <PaymentSuccess finalData={finalData} onCopy={copyToClipboard} />;
   return null;

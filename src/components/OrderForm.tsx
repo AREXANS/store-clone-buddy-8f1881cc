@@ -2,16 +2,30 @@ import { FC, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { KeyRound, Shuffle, Edit3, Tag } from 'lucide-react';
+import { Shuffle, Edit3, Tag, ChevronDown, Gift } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import GlobalBackground from './GlobalBackground';
+
+interface Discount {
+  id: string;
+  discount_type: string;
+  min_days: number | null;
+  max_days: number | null;
+  discount_percent: number;
+  promo_code: string | null;
+  package_name: string | null;
+  is_active: boolean;
+  start_date: string | null;
+  end_date: string | null;
+  description: string | null;
+}
 
 interface OrderFormProps {
   selectedPkg: 'NORMAL' | 'VIP' | null;
   formData: { key: string; duration: string };
   setFormData: (data: { key: string; duration: string }) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (e: React.FormEvent, promoCode?: string) => void;
   onBack: () => void;
   onGenerate: () => void;
   loading: boolean;
@@ -19,8 +33,6 @@ interface OrderFormProps {
   formatRupiah: (n: number) => string;
   parseDuration: (input: string) => { days: number; text: string } | null;
   prices: { NORMAL: number; VIP: number };
-  promoDiscount?: number;
-  onPromoApplied?: (discount: number, code: string) => void;
 }
 
 const generateRandomKey = () => {
@@ -41,23 +53,29 @@ const OrderForm: FC<OrderFormProps> = ({
   errorMsg,
   formatRupiah,
   parseDuration,
-  prices,
-  promoDiscount = 0,
-  onPromoApplied
+  prices
 }) => {
   const [keyMode, setKeyMode] = useState<'random' | 'custom'>('random');
+  const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [promoCode, setPromoCode] = useState('');
-  const [promoLoading, setPromoLoading] = useState(false);
-  const [appliedPromo, setAppliedPromo] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<Discount | null>(null);
+  const [promoError, setPromoError] = useState('');
+  const [showPromoInput, setShowPromoInput] = useState(false);
 
-  // Auto-generate random key on mount and when switching to random
+  useEffect(() => {
+    const loadDiscounts = async () => {
+      const { data } = await supabase.from('package_discounts').select('*').eq('is_active', true);
+      if (data) setDiscounts(data as Discount[]);
+    };
+    loadDiscounts();
+  }, []);
+
   useEffect(() => {
     if (keyMode === 'random' && (!formData.key || !formData.key.startsWith('AXS-'))) {
       setFormData({ ...formData, key: generateRandomKey() });
     }
   }, [keyMode]);
 
-  // Generate on first mount
   useEffect(() => {
     if (!formData.key) {
       setFormData({ ...formData, key: generateRandomKey() });
@@ -80,186 +98,163 @@ const OrderForm: FC<OrderFormProps> = ({
   const durationData = parseDuration(formData.duration);
   const pricePerDay = selectedPkg === 'VIP' ? prices.VIP : prices.NORMAL;
   const estimatedTotal = durationData ? pricePerDay * durationData.days : 0;
-  const discountAmount = promoDiscount;
-  const finalTotal = Math.max(0, estimatedTotal - discountAmount);
 
-  const applyPromo = async () => {
-    if (!promoCode.trim()) return;
-    if (!estimatedTotal) {
-      toast({ title: "Error", description: "Isi durasi terlebih dahulu", variant: "destructive" });
-      return;
-    }
-    setPromoLoading(true);
-    const { data, error } = await supabase
-      .from('promo_codes')
-      .select('*')
-      .eq('code', promoCode.toUpperCase())
-      .eq('is_active', true)
-      .maybeSingle();
-
-    if (error || !data) {
-      toast({ title: "Error", description: "Kode promo tidak valid", variant: "destructive" });
-      setPromoLoading(false);
-      return;
-    }
-
-    const promo = data as any;
+  // Find duration-based discount
+  const findDurationDiscount = (): Discount | null => {
+    if (!durationData) return null;
     const now = new Date();
-    if (promo.expires_at && new Date(promo.expires_at) < now) {
-      toast({ title: "Error", description: "Kode promo sudah expired", variant: "destructive" });
-      setPromoLoading(false);
-      return;
-    }
-    if (promo.max_uses && promo.used_count >= promo.max_uses) {
-      toast({ title: "Error", description: "Kode promo sudah habis", variant: "destructive" });
-      setPromoLoading(false);
-      return;
-    }
-    if (estimatedTotal < promo.min_amount) {
-      toast({ title: "Error", description: `Minimal pembelian ${formatRupiah(promo.min_amount)}`, variant: "destructive" });
-      setPromoLoading(false);
+    return discounts
+      .filter(d => {
+        if (d.discount_type !== 'duration_based') return false;
+        if (d.min_days === null) return false;
+        if (durationData.days < d.min_days) return false;
+        if (d.max_days !== null && durationData.days > d.max_days) return false;
+        if (d.package_name && d.package_name !== selectedPkg) return false;
+        if (d.start_date && new Date(d.start_date) > now) return false;
+        if (d.end_date && new Date(d.end_date) < now) return false;
+        return true;
+      })
+      .sort((a, b) => (b.min_days || 0) - (a.min_days || 0))[0] || null;
+  };
+
+  const applyPromoCode = () => {
+    setPromoError('');
+    const now = new Date();
+    const promo = discounts.find(d => {
+      if (d.discount_type !== 'promo_code') return false;
+      if (d.promo_code?.toUpperCase() !== promoCode.toUpperCase()) return false;
+      if (d.package_name && d.package_name !== selectedPkg) return false;
+      if (d.start_date && new Date(d.start_date) > now) return false;
+      if (d.end_date && new Date(d.end_date) < now) return false;
+      return true;
+    });
+
+    if (!promo) {
+      setPromoError('Kode promo tidak valid atau sudah kadaluarsa');
+      setAppliedPromo(null);
       return;
     }
 
-    let discount = 0;
-    if (promo.discount_type === 'percentage') {
-      discount = Math.floor(estimatedTotal * promo.discount_value / 100);
-    } else {
-      discount = promo.discount_value;
+    if (promo.min_days !== null || promo.max_days !== null) {
+      if (!durationData) {
+        setPromoError('Masukkan durasi terlebih dahulu');
+        return;
+      }
+      if (promo.min_days !== null && durationData.days < promo.min_days) {
+        setPromoError(`Promo ini berlaku untuk pembelian ${promo.min_days}${promo.max_days ? `-${promo.max_days}` : '+'}  hari`);
+        return;
+      }
+      if (promo.max_days !== null && durationData.days > promo.max_days) {
+        setPromoError(`Promo ini berlaku untuk pembelian ${promo.min_days}-${promo.max_days} hari`);
+        return;
+      }
     }
 
-    setAppliedPromo(promo.code);
-    onPromoApplied?.(discount, promo.code);
-    toast({ title: "Promo Diterapkan!", description: `Diskon ${promo.discount_type === 'percentage' ? promo.discount_value + '%' : formatRupiah(promo.discount_value)}` });
-    setPromoLoading(false);
+    setAppliedPromo(promo);
+    setPromoError('');
   };
 
   const removePromo = () => {
-    setAppliedPromo('');
+    setAppliedPromo(null);
     setPromoCode('');
-    onPromoApplied?.(0, '');
+    setPromoError('');
+    setShowPromoInput(false);
+  };
+
+  const durationDiscount = findDurationDiscount();
+  const activeDiscount = appliedPromo || durationDiscount;
+  const discountPercent = activeDiscount?.discount_percent || 0;
+  const discountAmount = Math.floor(estimatedTotal * (discountPercent / 100));
+  const finalTotal = estimatedTotal - discountAmount;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(e, appliedPromo?.promo_code || undefined);
+  };
+
+  const getDiscountRangeText = (d: Discount) => {
+    if (d.max_days !== null && d.min_days !== null) return `${d.min_days}-${d.max_days}h`;
+    return `${d.min_days}h+`;
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background relative overflow-hidden">
       <GlobalBackground />
-
       <div className="glass-card p-8 rounded-2xl max-w-md w-full relative shadow-2xl z-10">
-        <button
-          onClick={onBack}
-          className="absolute top-6 left-6 text-muted-foreground hover:text-foreground transition-colors duration-200 flex items-center gap-2 font-medium"
-        >
+        <button onClick={onBack} className="absolute top-6 left-6 text-muted-foreground hover:text-foreground transition-colors duration-200 flex items-center gap-2 font-medium">
           <span>←</span> Kembali
         </button>
 
         <div className="text-center mb-8 pt-8">
-          <div className={`inline-block px-4 py-2 rounded-full text-sm font-bold mb-4 ${
-            selectedPkg === 'VIP'
-              ? 'bg-secondary/10 text-secondary'
-              : 'bg-primary/10 text-primary'
-          }`}>
+          <div className={`inline-block px-4 py-2 rounded-full text-sm font-bold mb-4 ${selectedPkg === 'VIP' ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'}`}>
             Paket {selectedPkg}
           </div>
-          <h2 className="text-2xl font-display font-bold text-foreground">
-            Isi Data Pembelian
-          </h2>
+          <h2 className="text-2xl font-display font-bold text-foreground">Isi Data Pembelian</h2>
         </div>
 
         {errorMsg && (
-          <div className="bg-destructive/10 border border-destructive/50 text-destructive p-4 rounded-xl mb-6 text-sm animate-slide-in">
-            {errorMsg}
-          </div>
+          <div className="bg-destructive/10 border border-destructive/50 text-destructive p-4 rounded-xl mb-6 text-sm animate-slide-in">{errorMsg}</div>
         )}
 
-        <form onSubmit={onSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Key mode tabs */}
           <div>
-            <label className="block text-sm font-medium mb-2 text-foreground">
-              Kunci Rahasia
-            </label>
+            <label className="block text-sm font-medium mb-2 text-foreground">Kunci Rahasia</label>
             <Tabs value={keyMode} onValueChange={handleKeyModeChange} className="w-full">
               <TabsList className="w-full mb-3">
-                <TabsTrigger value="random" className="flex-1 gap-1.5 text-xs">
-                  <Shuffle className="w-3.5 h-3.5" />
-                  Random Key
-                </TabsTrigger>
-                <TabsTrigger value="custom" className="flex-1 gap-1.5 text-xs">
-                  <Edit3 className="w-3.5 h-3.5" />
-                  Custom Key
-                </TabsTrigger>
+                <TabsTrigger value="random" className="flex-1 gap-1.5 text-xs"><Shuffle className="w-3.5 h-3.5" />Random Key</TabsTrigger>
+                <TabsTrigger value="custom" className="flex-1 gap-1.5 text-xs"><Edit3 className="w-3.5 h-3.5" />Custom Key</TabsTrigger>
               </TabsList>
               <TabsContent value="random" className="mt-0">
                 <div className="flex gap-2">
-                  <Input
-                    type="text"
-                    value={formData.key}
-                    readOnly
-                    className="flex-1 bg-muted/50 border-border font-mono text-sm"
-                  />
-                  <Button type="button" variant="outline" onClick={regenerateKey} className="shrink-0 gap-1.5">
-                    <Shuffle className="w-4 h-4" />
-                    Acak
-                  </Button>
+                  <Input type="text" value={formData.key} readOnly className="flex-1 bg-muted/50 border-border font-mono text-sm" />
+                  <Button type="button" variant="outline" onClick={regenerateKey} className="shrink-0 gap-1.5"><Shuffle className="w-4 h-4" />Acak</Button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">Key otomatis format AXS-XXXXXXXX</p>
               </TabsContent>
               <TabsContent value="custom" className="mt-0">
-                <Input
-                  type="text"
-                  value={formData.key}
-                  onChange={(e) => setFormData({ ...formData, key: e.target.value })}
-                  placeholder="Masukkan key unik kamu"
-                  className="bg-muted/50 border-border focus:border-primary"
-                />
+                <Input type="text" value={formData.key} onChange={(e) => setFormData({ ...formData, key: e.target.value })} placeholder="Masukkan key unik kamu" className="bg-muted/50 border-border focus:border-primary" />
                 <p className="text-xs text-muted-foreground mt-2">Gunakan key unik yang mudah diingat (min 4 karakter)</p>
               </TabsContent>
             </Tabs>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2 text-foreground">
-              Durasi
-            </label>
-            <Input
-              type="text"
-              value={formData.duration}
-              onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-              placeholder="Contoh: 7h (hari) atau 1b (bulan)"
-              className="bg-muted/50 border-border focus:border-primary"
-            />
-            <p className="text-xs text-muted-foreground mt-2">
-              Format: angka + h (hari) atau b (bulan). Contoh: 30h, 1b
-            </p>
+            <label className="block text-sm font-medium mb-2 text-foreground">Durasi</label>
+            <Input type="text" value={formData.duration} onChange={(e) => setFormData({ ...formData, duration: e.target.value })} placeholder="Contoh: 7h (hari) atau 1b (bulan)" className="bg-muted/50 border-border focus:border-primary" />
+            <p className="text-xs text-muted-foreground mt-2">Format: angka + h (hari) atau b (bulan). Contoh: 30h, 1b</p>
           </div>
 
-          {/* Promo code */}
-          <div>
-            <label className="block text-sm font-medium mb-2 text-foreground flex items-center gap-1.5">
-              <Tag className="w-3.5 h-3.5" />
-              Kode Promo (opsional)
-            </label>
-            {appliedPromo ? (
-              <div className="flex items-center gap-2 bg-primary/10 border border-primary/30 rounded-xl p-3">
-                <Tag className="w-4 h-4 text-primary" />
-                <span className="font-mono font-bold text-primary text-sm">{appliedPromo}</span>
-                <span className="text-xs text-muted-foreground">diterapkan</span>
-                <Button type="button" variant="ghost" size="sm" onClick={removePromo} className="ml-auto text-xs h-7">Hapus</Button>
-              </div>
-            ) : (
+          {/* Promo Code Toggle */}
+          {!showPromoInput && !appliedPromo && (
+            <button type="button" onClick={() => setShowPromoInput(true)} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors">
+              <Tag className="w-4 h-4" />
+              Punya kode promo?
+              <ChevronDown className="w-4 h-4" />
+            </button>
+          )}
+
+          {/* Promo Code Input */}
+          {(showPromoInput || appliedPromo) && (
+            <div className="animate-slide-in">
+              <label className="block text-sm font-medium mb-2 text-foreground flex items-center gap-2"><Tag className="w-4 h-4" />Kode Promo</label>
               <div className="flex gap-2">
-                <Input
-                  type="text"
-                  value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                  placeholder="Masukkan kode promo"
-                  className="flex-1 bg-muted/50 border-border font-mono text-sm"
-                />
-                <Button type="button" variant="outline" onClick={applyPromo} disabled={promoLoading} className="shrink-0">
-                  {promoLoading ? '...' : 'Pakai'}
-                </Button>
+                <Input type="text" value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())} placeholder="Masukkan kode promo" className="flex-1 bg-muted/50 border-border focus:border-primary font-mono" disabled={!!appliedPromo} />
+                {appliedPromo ? (
+                  <Button type="button" variant="outline" onClick={removePromo} className="shrink-0 border-destructive text-destructive hover:bg-destructive/10">Hapus</Button>
+                ) : (
+                  <Button type="button" variant="outline" onClick={applyPromoCode} disabled={!promoCode} className="shrink-0 border-border hover:bg-muted">Terapkan</Button>
+                )}
               </div>
-            )}
-          </div>
+              {promoError && <p className="text-xs text-destructive mt-2">{promoError}</p>}
+              {appliedPromo && (
+                <p className="text-xs text-green-500 mt-2 flex items-center gap-1">
+                  <Gift className="w-3 h-3" />
+                  Kode promo berhasil diterapkan: -{appliedPromo.discount_percent}%
+                </p>
+              )}
+            </div>
+          )}
 
           {durationData && (
             <div className="bg-muted/50 p-4 rounded-xl border border-border animate-slide-in">
@@ -271,43 +266,48 @@ const OrderForm: FC<OrderFormProps> = ({
                 <span className="text-muted-foreground">Harga/hari:</span>
                 <span className="font-medium text-foreground">{formatRupiah(pricePerDay)}</span>
               </div>
-              {discountAmount > 0 && (
-                <>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-muted-foreground">Subtotal:</span>
-                    <span className="font-medium text-foreground">{formatRupiah(estimatedTotal)}</span>
-                  </div>
-                  <div className="flex justify-between mb-2 text-green-500">
-                    <span>Diskon Promo:</span>
-                    <span className="font-medium">-{formatRupiah(discountAmount)}</span>
-                  </div>
-                </>
+              <div className="flex justify-between mb-2">
+                <span className="text-muted-foreground">Subtotal:</span>
+                <span className={`font-medium ${discountPercent > 0 ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{formatRupiah(estimatedTotal)}</span>
+              </div>
+
+              {activeDiscount && discountPercent > 0 && (
+                <div className="flex justify-between mb-2 text-green-500">
+                  <span className="flex items-center gap-1">
+                    <Gift className="w-4 h-4" />
+                    {activeDiscount.discount_type === 'duration_based' ? `Diskon (${getDiscountRangeText(activeDiscount)})` : activeDiscount.discount_type === 'promo_code' ? `Promo ${activeDiscount.promo_code}` : 'Diskon'}
+                  </span>
+                  <span className="font-medium">-{formatRupiah(discountAmount)} ({discountPercent}%)</span>
+                </div>
               )}
+
+              {!appliedPromo && durationData && !durationDiscount && (
+                (() => {
+                  const hints = discounts
+                    .filter(d => d.discount_type === 'duration_based' && d.min_days && (!d.package_name || d.package_name === selectedPkg))
+                    .sort((a, b) => (a.min_days || 0) - (b.min_days || 0))
+                    .slice(0, 1);
+                  return hints.length > 0 ? (
+                    <div className="text-xs text-muted-foreground mt-2 p-2 bg-primary/5 rounded border border-primary/20">
+                      {hints.map(d => (
+                        <span key={d.id} className="flex items-center gap-1"><Gift className="w-3 h-3" />Beli {getDiscountRangeText(d)} untuk diskon {d.discount_percent}%!</span>
+                      ))}
+                    </div>
+                  ) : null;
+                })()
+              )}
+
               <div className="border-t border-border pt-2 mt-2">
                 <div className="flex justify-between">
                   <span className="font-semibold text-foreground">Total:</span>
-                  <span className={`font-bold ${selectedPkg === 'VIP' ? 'text-secondary' : 'text-primary'}`}>
-                    {formatRupiah(discountAmount > 0 ? finalTotal : estimatedTotal)}
-                  </span>
+                  <span className={`font-bold ${selectedPkg === 'VIP' ? 'text-secondary' : 'text-primary'}`}>{formatRupiah(finalTotal)}</span>
                 </div>
               </div>
             </div>
           )}
 
-          <Button
-            type="submit"
-            disabled={loading}
-            className={`w-full py-6 font-display font-bold text-lg ${
-              selectedPkg === 'VIP' ? 'btn-secondary' : 'btn-primary'
-            }`}
-          >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <span className="animate-spin">⟳</span> Memproses...
-              </span>
-            ) : (
-              'Lanjut ke Pembayaran'
-            )}
+          <Button type="submit" disabled={loading} className={`w-full py-6 font-display font-bold text-lg ${selectedPkg === 'VIP' ? 'btn-secondary' : 'btn-primary'}`}>
+            {loading ? <span className="flex items-center gap-2"><span className="animate-spin">⟳</span> Memproses...</span> : 'Lanjut ke Pembayaran'}
           </Button>
         </form>
       </div>
