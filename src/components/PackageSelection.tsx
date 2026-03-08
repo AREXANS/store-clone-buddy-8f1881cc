@@ -264,26 +264,7 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex justify-center gap-3 mt-6">
-          <Button 
-            variant="outline" 
-            onClick={() => navigate('/key-system')}
-            className="gap-2 border-primary/50 hover:bg-primary/10"
-          >
-            <Key className="w-4 h-4" />
-            Key System
-          </Button>
-          {xcoinsEnabled && (
-            <Button 
-              onClick={() => navigate('/xcoins')}
-              className="gap-2 bg-gradient-to-r from-primary to-secondary text-white hover:opacity-90"
-            >
-              <Coins className="w-4 h-4" />
-              XCoins
-            </Button>
-          )}
-        </div>
+        {/* Social Links */}
         {socialLinks.length > 0 && (
           <div className="flex items-center justify-center gap-6 mt-8">
             {socialLinks.map((link) => (
