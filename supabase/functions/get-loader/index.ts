@@ -43,10 +43,10 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify script exists and is active
+    // Fetch full script content
     const { data: script, error } = await supabase
       .from("lua_scripts")
-      .select("name, is_active")
+      .select("name, content, is_active")
       .eq("name", scriptName)
       .eq("is_active", true)
       .maybeSingle();
@@ -58,49 +58,21 @@ serve(async (req) => {
       });
     }
 
-    // Build the real script URL with token (this stays hidden inside obfuscated loader)
-    const SCRIPT_ACCESS_TOKEN = "AXS-SECURE-2026-RBLX";
-    const realScriptUrl = `${supabaseUrl}/functions/v1/get-script?name=${scriptName}&token=${SCRIPT_ACCESS_TOKEN}`;
+    // Obfuscate the entire script content as byte array — NO second HTTP call
+    const obfuscatedContent = obfuscateString(script.content);
 
-    // Generate random variable names for obfuscation
-    const vHttp = randVar();
-    const vUrl = randVar();
-    const vRes = randVar();
+    const vS = randVar();
     const vExec = randVar();
     const vErr = randVar();
-    const vS = randVar();
-    const vR = randVar();
+    const vLoad = randVar();
 
-    // Create obfuscated loader - the URL is encoded as byte array, not plain text
-    const obfuscatedUrl = obfuscateString(realScriptUrl);
-    
-    const loaderScript = `-- Arexans Loader v3.0
+    const loaderScript = `-- Arexans Loader v4.0
 -- Protected script loader
 do
-  local ${vHttp}=game:GetService("HttpService")
-  local ${vUrl}=${obfuscatedUrl}
-  local ${vS},${vRes}=pcall(function()
-    local ${vR}=nil
-    if request then
-      local _r=request({Url=${vUrl},Method="GET"})
-      ${vR}=_r.Body
-    elseif syn and syn.request then
-      local _r=syn.request({Url=${vUrl},Method="GET"})
-      ${vR}=_r.Body
-    elseif http_request then
-      local _r=http_request({Url=${vUrl},Method="GET"})
-      ${vR}=_r.Body
-    else
-      ${vR}=game:HttpGet(${vUrl})
-    end
-    return ${vR}
-  end)
-  if ${vS} and ${vRes} then
-    local ${vExec},${vErr}=pcall(function() return loadstring(${vRes})() end)
-    if not ${vExec} then warn("[Arexans] Runtime error") end
-  else
-    warn("[Arexans] Failed to connect")
-  end
+  local ${vLoad}=load or loadstring
+  local ${vS}=${obfuscatedContent}
+  local ${vExec},${vErr}=pcall(function() return ${vLoad}(${vS})() end)
+  if not ${vExec} then warn("[Arexans] Runtime error") end
 end`;
 
     return new Response(loaderScript, {
