@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
-const API_BASE = 'https://tvnoeugyucdanyjsrkvg.supabase.co/functions/v1';
+const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 const STORAGE_KEY = 'axs_saved_keys';
 
 interface KeyData {

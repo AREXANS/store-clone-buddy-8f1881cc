@@ -12,7 +12,7 @@ import {
   Download, Upload, Pause, Play, Clock
 } from 'lucide-react';
 
-const API_BASE = 'https://tvnoeugyucdanyjsrkvg.supabase.co/functions/v1';
+const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
 interface KeyItem {
   key: string;
