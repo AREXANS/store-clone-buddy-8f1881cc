@@ -483,7 +483,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
 
   useEffect(() => {
     const loadCleanupSettings = async () => {
-      const { data } = await supabase.from('site_settings').select('key, value').in('key', ['auto_delete_keys_enabled', 'auto_delete_keys_days']);
+      const { data } = await supabase.from('app_settings').select('key, value').in('key', ['auto_delete_keys_enabled', 'auto_delete_keys_days']);
       if (data) {
         for (const s of data) {
           if (s.key === 'auto_delete_keys_enabled') setAutoDeleteKeysEnabled(s.value === 'on');
