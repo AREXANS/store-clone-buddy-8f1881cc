@@ -138,8 +138,13 @@ const BackupRestore: FC = () => {
       setRestoreResult(result);
 
       if (result.success) {
-        const totalInserted = Object.values(result.results as Record<string, { inserted: number }>).reduce((a, b) => a + b.inserted, 0);
-        toast({ title: 'Restore Berhasil! 🎉', description: `${totalInserted} rows berhasil direstore` });
+        const totalInserted = Object.values(result.results as Record<string, { inserted: number; skipped?: number }>).reduce((a, b) => a + b.inserted, 0);
+        const totalSkipped = Object.values(result.results as Record<string, { skipped?: number }>).reduce((a, b) => a + (b.skipped || 0), 0);
+        const hasErrors = Object.values(result.results as Record<string, { errors?: string[] }>).some(r => r.errors && r.errors.length > 0);
+        const desc = `${totalInserted} rows berhasil direstore` + 
+          (totalSkipped > 0 ? `, ${totalSkipped} rows dilewati (kolom tidak cocok)` : '') +
+          (hasErrors ? ' - ada beberapa error, cek detail di bawah' : '');
+        toast({ title: 'Restore Selesai! 🎉', description: desc, variant: hasErrors && totalInserted === 0 ? 'destructive' : 'default' });
       } else {
         toast({ title: 'Error', description: result.error || 'Gagal restore', variant: 'destructive' });
       }
