@@ -130,6 +130,8 @@ const Admin = () => {
   
   // Transactions state
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
+  const [txTab, setTxTab] = useState<'keysystem' | 'xcoins'>('keysystem');
+  const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set());
 
   // Social Links state
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
@@ -137,6 +139,40 @@ const Admin = () => {
 
   // Transaction editing state
   const [editingTransaction, setEditingTransaction] = useState<TransactionItem | null>(null);
+
+  const keySystemTx = transactions.filter(tx => tx.package_name !== 'XCOINS_TOPUP');
+  const xcoinsTx = transactions.filter(tx => tx.package_name === 'XCOINS_TOPUP');
+  const currentTxList = txTab === 'xcoins' ? xcoinsTx : keySystemTx;
+
+  const toggleSelectTx = (id: string) => {
+    setSelectedTxIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedTxIds.size === currentTxList.length) {
+      setSelectedTxIds(new Set());
+    } else {
+      setSelectedTxIds(new Set(currentTxList.map(tx => tx.id)));
+    }
+  };
+
+  const deleteSelectedTransactions = async () => {
+    if (selectedTxIds.size === 0) return;
+    if (!confirm(`Yakin hapus ${selectedTxIds.size} transaksi?`)) return;
+    const ids = Array.from(selectedTxIds);
+    const { error } = await supabase.from('transactions').delete().in('id', ids);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Berhasil", description: `${ids.length} transaksi dihapus` });
+      setSelectedTxIds(new Set());
+      loadAllData();
+    }
+  };
 
   const saveTransaction = async (tx: TransactionItem) => {
     const { error } = await supabase.from('transactions').update({
