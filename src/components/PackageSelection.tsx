@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AdSlider from './AdSlider';
 import GlobalBackground from './GlobalBackground';
 import { supabase } from '@/integrations/supabase/client';
-import { Link as LinkIcon, Key, Coins } from 'lucide-react';
+import { Link as LinkIcon, Key, Coins, History, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface Ad {
