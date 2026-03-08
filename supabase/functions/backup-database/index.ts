@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const TABLES = [
-  "site_settings",
+  "app_settings",
   "packages",
   "ads",
   "backgrounds",
