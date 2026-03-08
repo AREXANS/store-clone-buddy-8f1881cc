@@ -15,7 +15,7 @@ serve(async (req) => {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { data: settings } = await supabase
-      .from("site_settings").select("key, value")
+      .from("app_settings").select("key, value")
       .in("key", [
         "payment_gateway", "pakasir_slug", "pakasir_api_key", "pakasir_mode",
         "cashify_license_key", "cashify_qris_id", "payment_simulation"
