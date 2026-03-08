@@ -54,7 +54,7 @@ serve(async (req) => {
     if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
     if (!cleanPhone.startsWith('62')) cleanPhone = '62' + cleanPhone;
 
-    const { data: recipient } = await supabase.from('xcoins_users').select('*').eq('phone', cleanPhone).maybeSingle();
+    const { data: recipient } = await supabase.from('xcoins_balances').select('*').eq('phone', cleanPhone).maybeSingle();
     if (!recipient) {
       return new Response(JSON.stringify({ error: "Penerima tidak ditemukan" }), 
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
