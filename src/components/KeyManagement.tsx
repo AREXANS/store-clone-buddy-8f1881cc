@@ -568,7 +568,27 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
             className="w-full bg-background/50"
           />
         </div>
-        
+
+        {/* Status filter buttons */}
+        <div className="flex gap-2 flex-wrap">
+          {([
+            { value: 'all', label: `Semua (${keys.length})` },
+            { value: 'active', label: `Aktif (${activeCount})` },
+            { value: 'frozen', label: `Frozen (${frozenCount})` },
+            { value: 'expired', label: `Expired (${expiredCount})` },
+          ] as const).map(f => (
+            <Button
+              key={f.value}
+              size="sm"
+              variant={statusFilter === f.value ? 'default' : 'outline'}
+              onClick={() => setStatusFilter(f.value)}
+              className="text-xs"
+            >
+              {f.label}
+            </Button>
+          ))}
+        </div>
+
         {/* Action buttons - scrollable on mobile */}
         <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
           <Button variant="outline" size="sm" onClick={exportKeys} disabled={keys.length === 0} className="whitespace-nowrap">
