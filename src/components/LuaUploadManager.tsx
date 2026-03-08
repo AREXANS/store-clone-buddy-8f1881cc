@@ -213,7 +213,7 @@ const LuaUploadManager: FC = () => {
     }
   };
 
-  const getScriptUrl = (scriptName: string) => `${SUPABASE_API_BASE}/get-script?name=${scriptName}`;
+  const getScriptUrl = (scriptName: string) => `${SUPABASE_API_BASE}/get-script?name=${scriptName}&token=AXS-SECURE-2026-RBLX`;
 
   const copyUrl = (scriptName: string) => {
     navigator.clipboard.writeText(getScriptUrl(scriptName));

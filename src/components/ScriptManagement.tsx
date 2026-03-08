@@ -237,7 +237,7 @@ const ScriptManagement: FC = () => {
   };
 
   const getScriptUrl = (scriptName: string) => {
-    return `${getApiBase()}/get-script?name=${scriptName}`;
+    return `${getApiBase()}/get-script?name=${scriptName}&token=AXS-SECURE-2026-RBLX`;
   };
 
   const copyScriptUrl = (scriptName: string) => {
@@ -607,7 +607,7 @@ const ScriptManagement: FC = () => {
             <h4 className="font-semibold mb-1 sm:mb-2 text-xs sm:text-sm">💡 Contoh Penggunaan di Roblox:</h4>
             <div className="overflow-x-auto">
               <code className="text-xs font-mono text-primary whitespace-nowrap block">
-                loadstring(game:HttpGet("{getApiBase()}/get-script?name=keysystem"))()
+                loadstring(game:HttpGet("{getApiBase()}/get-script?name=keysystem&token=AXS-SECURE-2026-RBLX"))()
               </code>
             </div>
           </div>
