@@ -77,6 +77,30 @@ serve(async (req) => {
       }
     }
 
+    // Notify expired keys via WhatsApp
+    try {
+      const notifyRes = await fetch(
+        `${Deno.env.get("SUPABASE_URL")}/functions/v1/notify-expired-keys`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+          body: JSON.stringify({}),
+        }
+      );
+      const notifyData = await notifyRes.json();
+      if (notifyData.notified > 0) {
+        results.push(`Notifications: sent ${notifyData.notified} expired key alerts`);
+      } else {
+        results.push(`Notifications: no expired keys to notify`);
+      }
+    } catch (err) {
+      console.error("Notify error:", err);
+      results.push(`Notifications: error - ${err instanceof Error ? err.message : "unknown"}`);
+    }
+
     return new Response(JSON.stringify({ success: true, results }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
