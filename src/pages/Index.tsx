@@ -238,12 +238,14 @@ const Index = () => {
 
   const generateRandomKey = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    const randomStr = (length: number) => {
-      let result = '';
-      for (let i = 0; i < length; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-      return result;
-    };
-    setFormData(prev => ({ ...prev, key: `AXSTOOLS-${randomStr(4)}-${randomStr(4)}` }));
+    let result = 'AXS-';
+    for (let i = 0; i < 8; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+    setFormData(prev => ({ ...prev, key: result }));
+  };
+
+  const handlePromoApplied = (discount: number, code: string) => {
+    setPromoDiscount(discount);
+    setPromoCode(code);
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
