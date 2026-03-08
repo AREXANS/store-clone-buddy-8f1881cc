@@ -659,6 +659,11 @@ const Admin = () => {
                   </Card>
                 ))}
               </div>
+
+              {/* Discount & Promo Section (merged into Packages) */}
+              <div className="border-t border-border pt-6 mt-6">
+                <DiscountManagement />
+              </div>
             </TabsContent>
 
             {/* Keys Tab */}
