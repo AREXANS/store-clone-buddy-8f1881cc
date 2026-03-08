@@ -112,6 +112,19 @@ serve(async (req) => {
       cashifyTransactionId = transactionId;
     }
 
+    // Increment promo code usage if provided
+    if (promoCode) {
+      await supabase.rpc('increment_promo_usage', { promo_code: promoCode }).catch(() => {
+        // Fallback: direct update
+        supabase.from('promo_codes').update({ used_count: totalAmount }).eq('code', promoCode);
+      });
+      // Simple increment via raw update
+      const { data: promoData } = await supabase.from('promo_codes').select('used_count').eq('code', promoCode).maybeSingle();
+      if (promoData) {
+        await supabase.from('promo_codes').update({ used_count: (promoData.used_count || 0) + 1 }).eq('code', promoCode);
+      }
+    }
+
     // Save transaction to database
     const { error: insertError } = await supabase.from("transactions").insert({
       transaction_id: cashifyTransactionId || transactionId,
