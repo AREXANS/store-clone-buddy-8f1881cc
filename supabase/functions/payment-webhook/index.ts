@@ -140,7 +140,7 @@ async function handlePostPayment(supabase: any, transaction: any) {
   // Handle XCoins topup
   if (transaction.package_name === "XCOINS_TOPUP" && transaction.license_key) {
     const userId = transaction.license_key;
-    const { data: user } = await supabase.from("xcoins_users").select("balance").eq("id", userId).single();
+    const { data: user } = await supabase.from("xcoins_balances").select("balance").eq("id", userId).single();
     if (user) {
       const newBalance = (user.balance || 0) + transaction.original_amount;
       await supabase.from("xcoins_users").update({ balance: newBalance, updated_at: new Date().toISOString() }).eq("id", userId);
