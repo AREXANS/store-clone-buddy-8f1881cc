@@ -245,10 +245,14 @@ const ScriptManagement: FC = () => {
     toast({ title: 'Copied!', description: 'URL script berhasil disalin' });
   };
 
+  const getLoaderUrl = (scriptName: string) => {
+    return `${getApiBase()}/get-loader?name=${scriptName}`;
+  };
+
   const copyLoadstringCode = (scriptName: string) => {
-    const code = `loadstring(game:HttpGet("${getScriptUrl(scriptName)}"))()`;
+    const code = `loadstring(game:HttpGet("${getLoaderUrl(scriptName)}"))()`;
     navigator.clipboard.writeText(code);
-    toast({ title: 'Copied!', description: 'Loadstring code berhasil disalin' });
+    toast({ title: 'Copied!', description: 'Loadstring code berhasil disalin (protected loader)' });
   };
 
   const getScriptTypeColor = (type: string) => {
@@ -607,7 +611,7 @@ const ScriptManagement: FC = () => {
             <h4 className="font-semibold mb-1 sm:mb-2 text-xs sm:text-sm">💡 Contoh Penggunaan di Roblox:</h4>
             <div className="overflow-x-auto">
               <code className="text-xs font-mono text-primary whitespace-nowrap block">
-                loadstring(game:HttpGet("{getApiBase()}/get-script?name=keysystem&token=AXS-SECURE-2026-RBLX"))()
+                loadstring(game:HttpGet("{getApiBase()}/get-loader?name=keysystem"))()
               </code>
             </div>
           </div>
