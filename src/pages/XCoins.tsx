@@ -571,7 +571,7 @@ const XCoinsPage = () => {
         <Card className="glass-card mt-4 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/')}>
           <CardContent className="p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Coins className="w-5 h-5 text-primary" />
+              <img src="/images/xcoins-default-logo.png" alt="XCoins" className="w-6 h-6 rounded-full object-cover" />
               <div>
                 <span className="text-sm font-medium">Beli Paket dengan XCoins</span>
                 <p className="text-xs text-muted-foreground">Bayar langsung dengan saldo XCoins</p>
