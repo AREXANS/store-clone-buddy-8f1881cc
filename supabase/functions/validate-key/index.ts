@@ -38,7 +38,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const { data: settingData, error: settingError } = await supabase
-      .from("site_settings")
+      .from("app_settings")
       .select("value")
       .eq("key", "license_keys")
       .maybeSingle();
