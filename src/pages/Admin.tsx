@@ -405,10 +405,6 @@ const Admin = () => {
                   <MessageSquare className="w-4 h-4" />
                   <span className="hidden xs:inline">Social</span>
                 </TabsTrigger>
-                <TabsTrigger value="promo" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
-                  <Tag className="w-4 h-4" />
-                  <span className="hidden xs:inline">Promo</span>
-                </TabsTrigger>
                 <TabsTrigger value="devices" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
                   <Shield className="w-4 h-4" />
                   <span className="hidden xs:inline">Devices</span>
