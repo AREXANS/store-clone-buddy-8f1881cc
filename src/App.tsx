@@ -23,6 +23,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/developer" element={<Admin />} />
             <Route path="/key-system" element={<KeySystem />} />
+            <Route path="/xcoins" element={<XCoins />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

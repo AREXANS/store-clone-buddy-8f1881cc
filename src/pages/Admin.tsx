@@ -469,6 +469,18 @@ const Admin = () => {
                             {setting.value === 'on' ? 'Simulasi AKTIF - Pembayaran otomatis sukses' : 'Simulasi OFF - Pembayaran normal'}
                           </span>
                         </div>
+                      ) : setting.key === 'xcoins_enabled' || setting.key === 'xcoins_only' ? (
+                        <div className="flex items-center gap-4">
+                          <Switch
+                            checked={setting.value === 'on'}
+                            onCheckedChange={(checked) => updateSetting(setting.key, checked ? 'on' : 'off')}
+                          />
+                          <span className={`text-sm font-medium ${setting.value === 'on' ? 'text-primary' : 'text-muted-foreground'}`}>
+                            {setting.key === 'xcoins_enabled' 
+                              ? (setting.value === 'on' ? 'XCoins AKTIF' : 'XCoins Nonaktif')
+                              : (setting.value === 'on' ? 'HANYA XCoins (QRIS dimatikan)' : 'XCoins + QRIS Cashify')}
+                          </span>
+                        </div>
                       ) : (
                         <div className="flex gap-2">
                           <Input
