@@ -65,8 +65,6 @@ const Index = () => {
   const [ads, setAds] = useState<Ad[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [daysToAdd, setDaysToAdd] = useState(0);
-  const [promoDiscount, setPromoDiscount] = useState(0);
-  const [promoCode, setPromoCode] = useState('');
 
   const checkInterval = useRef<number | null>(null);
 
