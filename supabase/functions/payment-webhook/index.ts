@@ -143,7 +143,7 @@ async function handlePostPayment(supabase: any, transaction: any) {
     const { data: user } = await supabase.from("xcoins_balances").select("balance").eq("id", userId).single();
     if (user) {
       const newBalance = (user.balance || 0) + transaction.original_amount;
-      await supabase.from("xcoins_users").update({ balance: newBalance, updated_at: new Date().toISOString() }).eq("id", userId);
+      await supabase.from("xcoins_balances").update({ balance: newBalance, updated_at: new Date().toISOString() }).eq("id", userId);
       await supabase.from("xcoins_transactions").insert({
         user_id: userId, type: "topup", amount: transaction.original_amount,
         balance_after: newBalance, description: `Top-up via webhook`, reference_id: transaction.transaction_id,
