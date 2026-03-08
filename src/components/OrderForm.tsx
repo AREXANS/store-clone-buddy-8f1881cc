@@ -314,7 +314,12 @@ const OrderForm: FC<OrderFormProps> = ({
 
           <div>
             <label className="block text-sm font-medium mb-2 text-foreground">Durasi</label>
-            <Input type="text" value={formData.duration} onChange={(e) => setFormData({ ...formData, duration: e.target.value })} placeholder="Contoh: 7h (hari) atau 1b (bulan)" className="bg-muted/50 border-border focus:border-primary" />
+            <div className="flex gap-2 mb-2">
+              <Button type="button" variant={formData.duration === '1h' ? 'default' : 'outline'} size="sm" onClick={() => setFormData({ ...formData, duration: '1h' })} className="flex-1 text-xs">1 Hari</Button>
+              <Button type="button" variant={formData.duration === '7h' ? 'default' : 'outline'} size="sm" onClick={() => setFormData({ ...formData, duration: '7h' })} className="flex-1 text-xs">7 Hari</Button>
+              <Button type="button" variant={formData.duration === '30h' ? 'default' : 'outline'} size="sm" onClick={() => setFormData({ ...formData, duration: '30h' })} className="flex-1 text-xs">1 Bulan</Button>
+            </div>
+            <Input type="text" value={formData.duration} onChange={(e) => setFormData({ ...formData, duration: e.target.value })} placeholder="Atau ketik manual: 7h, 1b" className="bg-muted/50 border-border focus:border-primary" />
             <p className="text-xs text-muted-foreground mt-2">Format: angka + h (hari) atau b (bulan). Contoh: 30h, 1b</p>
           </div>
 

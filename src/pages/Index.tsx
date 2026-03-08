@@ -53,6 +53,21 @@ interface StoredState {
   daysToAdd: number;
 }
 
+const getDeviceId = (): string => {
+  let id = localStorage.getItem('arexans_device_id');
+  if (!id) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (ctx) { ctx.textBaseline = 'top'; ctx.font = '14px Arial'; ctx.fillText('fp', 2, 2); }
+    const fp = [navigator.userAgent, navigator.language, screen.width + 'x' + screen.height, new Date().getTimezoneOffset(), canvas.toDataURL()].join('|');
+    let hash = 0;
+    for (let i = 0; i < fp.length; i++) { hash = ((hash << 5) - hash) + fp.charCodeAt(i); hash = hash & hash; }
+    id = 'USR-' + Math.abs(hash).toString(36).toUpperCase();
+    localStorage.setItem('arexans_device_id', id);
+  }
+  return id;
+};
+
 const Index = () => {
   const [step, setStep] = useState(1);
   const [selectedPkg, setSelectedPkg] = useState<'NORMAL' | 'VIP' | null>(null);
@@ -65,6 +80,7 @@ const Index = () => {
   const [ads, setAds] = useState<Ad[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [daysToAdd, setDaysToAdd] = useState(0);
+  const deviceId = getDeviceId();
 
   const checkInterval = useRef<number | null>(null);
 
@@ -277,7 +293,8 @@ const Index = () => {
           packageName: selectedPkg || 'NORMAL',
           packageDuration: durationData.days,
           licenseKey: formData.key,
-          promoCode: submittedPromoCode || undefined
+          promoCode: submittedPromoCode || undefined,
+          deviceId
         }
       });
 

@@ -26,7 +26,7 @@ serve(async (req) => {
     const pakasirMode = s.pakasir_mode || "sandbox";
 
     const body = await req.json();
-    const { amount, customerName, packageName, packageDuration, licenseKey: customerLicenseKey, promoCode, customerWhatsapp } = body;
+    const { amount, customerName, packageName, packageDuration, licenseKey: customerLicenseKey, promoCode, customerWhatsapp, deviceId } = body;
 
     if (!amount || amount < 1000) {
       return new Response(JSON.stringify({ error: "Amount must be at least 1000" }),
@@ -140,6 +140,7 @@ serve(async (req) => {
       qr_string: qrString,
       license_key: customerLicenseKey || null,
       expires_at: expiresAt.toISOString(),
+      device_id: deviceId || null,
     });
 
     return new Response(JSON.stringify({

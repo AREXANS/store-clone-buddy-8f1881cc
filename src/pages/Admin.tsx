@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   Settings, Package, Image, List, CreditCard, LogOut, Save, 
-  Plus, Trash2, Edit2, Eye, EyeOff, RefreshCw, MessageSquare, Shield, Key, FileText, FileCode, Upload, Tag
+  Plus, Trash2, Edit2, Eye, EyeOff, RefreshCw, MessageSquare, Shield, Key, FileText, FileCode, Upload, Tag, CheckCircle
 } from 'lucide-react';
 import GlobalBackground from '@/components/GlobalBackground';
 import DeviceApprovalScreen from '@/components/DeviceApprovalScreen';
@@ -134,6 +134,53 @@ const Admin = () => {
   // Social Links state
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   const [editingSocialLink, setEditingSocialLink] = useState<SocialLink | null>(null);
+
+  // Transaction editing state
+  const [editingTransaction, setEditingTransaction] = useState<TransactionItem | null>(null);
+
+  const saveTransaction = async (tx: TransactionItem) => {
+    const { error } = await supabase.from('transactions').update({
+      customer_name: tx.customer_name,
+      customer_whatsapp: tx.customer_whatsapp,
+      package_name: tx.package_name,
+      package_duration: tx.package_duration,
+      original_amount: tx.original_amount,
+      total_amount: tx.total_amount,
+      status: tx.status,
+      license_key: tx.license_key,
+    }).eq('id', tx.id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Berhasil", description: "Transaksi berhasil diupdate" });
+      setEditingTransaction(null);
+      loadAllData();
+    }
+  };
+
+  const deleteTransaction = async (id: string) => {
+    if (!confirm('Yakin hapus transaksi ini?')) return;
+    const { error } = await supabase.from('transactions').delete().eq('id', id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Berhasil", description: "Transaksi berhasil dihapus" });
+      loadAllData();
+    }
+  };
+
+  const setTransactionPaid = async (id: string) => {
+    const { error } = await supabase.from('transactions').update({
+      status: 'paid',
+      paid_at: new Date().toISOString()
+    }).eq('id', id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Berhasil", description: "Transaksi berhasil diset paid" });
+      loadAllData();
+    }
+  };
 
   // Effect to load data on mount if already logged in
   useEffect(() => {
@@ -968,6 +1015,64 @@ const Admin = () => {
                 </Button>
               </div>
 
+              {editingTransaction && (
+                <Card className="glass-card">
+                  <CardHeader>
+                    <CardTitle>Edit Transaksi: {editingTransaction.transaction_id}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Customer Name</Label>
+                        <Input value={editingTransaction.customer_name} onChange={e => setEditingTransaction({...editingTransaction, customer_name: e.target.value})} className="bg-background/50" />
+                      </div>
+                      <div>
+                        <Label>WhatsApp</Label>
+                        <Input value={editingTransaction.customer_whatsapp || ''} onChange={e => setEditingTransaction({...editingTransaction, customer_whatsapp: e.target.value || null})} className="bg-background/50" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <Label>Package</Label>
+                        <Input value={editingTransaction.package_name} onChange={e => setEditingTransaction({...editingTransaction, package_name: e.target.value})} className="bg-background/50" />
+                      </div>
+                      <div>
+                        <Label>Duration (hari)</Label>
+                        <Input type="number" value={editingTransaction.package_duration} onChange={e => setEditingTransaction({...editingTransaction, package_duration: parseInt(e.target.value) || 0})} className="bg-background/50" />
+                      </div>
+                      <div>
+                        <Label>Status</Label>
+                        <select value={editingTransaction.status} onChange={e => setEditingTransaction({...editingTransaction, status: e.target.value})} className="w-full p-2 rounded-md bg-background/50 border border-border">
+                          <option value="pending">pending</option>
+                          <option value="paid">paid</option>
+                          <option value="claimed">claimed</option>
+                          <option value="expired">expired</option>
+                          <option value="cancelled">cancelled</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Original Amount</Label>
+                        <Input type="number" value={editingTransaction.original_amount} onChange={e => setEditingTransaction({...editingTransaction, original_amount: parseInt(e.target.value) || 0})} className="bg-background/50" />
+                      </div>
+                      <div>
+                        <Label>Total Amount</Label>
+                        <Input type="number" value={editingTransaction.total_amount} onChange={e => setEditingTransaction({...editingTransaction, total_amount: parseInt(e.target.value) || 0})} className="bg-background/50" />
+                      </div>
+                    </div>
+                    <div>
+                      <Label>License Key</Label>
+                      <Input value={editingTransaction.license_key || ''} onChange={e => setEditingTransaction({...editingTransaction, license_key: e.target.value || null})} className="bg-background/50" />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button onClick={() => saveTransaction(editingTransaction)}><Save className="w-4 h-4 mr-2" />Save</Button>
+                      <Button variant="outline" onClick={() => setEditingTransaction(null)}>Cancel</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -978,6 +1083,7 @@ const Admin = () => {
                       <th className="text-left p-3">Amount</th>
                       <th className="text-left p-3">Status</th>
                       <th className="text-left p-3">Date</th>
+                      <th className="text-left p-3">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -997,8 +1103,8 @@ const Admin = () => {
                         <td className="p-3">{formatRupiah(tx.total_amount)}</td>
                         <td className="p-3">
                           <span className={`px-2 py-1 rounded text-xs ${
-                            tx.status === 'paid' ? 'bg-success/20 text-success' :
-                            tx.status === 'pending' ? 'bg-warning/20 text-warning' :
+                            tx.status === 'paid' || tx.status === 'claimed' ? 'bg-green-500/20 text-green-400' :
+                            tx.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
                             'bg-destructive/20 text-destructive'
                           }`}>
                             {tx.status}
@@ -1006,6 +1112,21 @@ const Admin = () => {
                         </td>
                         <td className="p-3 text-xs">
                           {new Date(tx.created_at).toLocaleString('id-ID')}
+                        </td>
+                        <td className="p-3">
+                          <div className="flex gap-1">
+                            {tx.status !== 'paid' && tx.status !== 'claimed' && (
+                              <Button variant="ghost" size="sm" onClick={() => setTransactionPaid(tx.id)} title="Set Paid" className="text-green-400 hover:text-green-300 hover:bg-green-500/10">
+                                <CheckCircle className="w-4 h-4" />
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="sm" onClick={() => setEditingTransaction(tx)} title="Edit">
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => deleteTransaction(tx.id)} title="Delete" className="text-destructive hover:text-destructive">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
