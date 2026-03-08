@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encode } from "https://deno.land/std@0.168.0/encoding/hex.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,6 +39,29 @@ const RESTORE_ORDER = [
   "transactions",
 ];
 
+const normalizePhone = (phone: unknown): string | null => {
+  if (typeof phone !== "string" || !phone.trim()) return null;
+  let cleanPhone = phone.replace(/[^0-9]/g, "");
+  if (!cleanPhone) return null;
+  if (cleanPhone.startsWith("0")) cleanPhone = `62${cleanPhone.slice(1)}`;
+  if (!cleanPhone.startsWith("62")) cleanPhone = `62${cleanPhone}`;
+  return cleanPhone;
+};
+
+const toNumber = (value: unknown, fallback: number): number => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+};
+
+const isSha256Hex = (value: unknown): value is string =>
+  typeof value === "string" && /^[a-fA-F0-9]{64}$/.test(value);
+
+async function hashPin(pin: string): Promise<string> {
+  const data = new TextEncoder().encode(pin);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return new TextDecoder().decode(encode(new Uint8Array(hash)));
+}
+
 // Strip unknown columns from row based on table schema
 function filterColumns(table: string, row: Record<string, any>): Record<string, any> | null {
   const validCols = TABLE_COLUMNS[table];
@@ -46,14 +70,90 @@ function filterColumns(table: string, row: Record<string, any>): Record<string, 
   const filtered: Record<string, any> = {};
   let hasId = false;
   for (const col of validCols) {
-    if (col in row) {
+    if (col in row && row[col] !== undefined) {
       filtered[col] = row[col];
       if (col === "id") hasId = true;
     }
   }
+
   // Must have id for upsert
   if (!hasId) return null;
   return filtered;
+}
+
+async function transformLegacyRow(
+  table: string,
+  row: Record<string, any>,
+  phoneToUserId: Map<string, string>
+): Promise<Record<string, any> | null> {
+  if (table === "app_settings") {
+    return {
+      ...row,
+      key: row.key ?? row.setting_key,
+      value: row.value ?? row.setting_value,
+      created_at: row.created_at ?? row.updated_at,
+    };
+  }
+
+  if (table === "transactions") {
+    return {
+      ...row,
+      customer_name: row.customer_name ?? row.key_name ?? "Restored User",
+      package_name: row.package_name ?? row.package_type ?? "unknown",
+      package_duration: toNumber(row.package_duration ?? row.duration_days, 0),
+      original_amount: toNumber(row.original_amount ?? row.amount ?? row.total_amount, 0),
+      license_key: row.license_key ?? row.key_name ?? null,
+      expires_at: row.expires_at ?? row.expired_at ?? null,
+      paid_at: row.paid_at ?? (row.status === "paid" ? row.updated_at ?? row.created_at ?? null : null),
+    };
+  }
+
+  if (table === "xcoins_balances") {
+    const normalizedPhone = normalizePhone(row.phone ?? row.phone_number);
+    const rawPin = row.pin;
+
+    let pinHash = row.pin_hash;
+    if (!pinHash && typeof rawPin === "string" && rawPin.trim()) {
+      pinHash = isSha256Hex(rawPin) ? rawPin : await hashPin(rawPin);
+    }
+
+    if (!pinHash) {
+      // fallback supaya row tetap bisa direstore (PIN default: 000000)
+      pinHash = await hashPin("000000");
+    }
+
+    return {
+      ...row,
+      phone: normalizedPhone,
+      pin_hash: pinHash,
+      display_name: row.display_name ?? normalizedPhone?.slice(-4) ?? null,
+      is_active: row.is_active ?? true,
+    };
+  }
+
+  if (table === "xcoins_transactions") {
+    const normalizedPhone = normalizePhone(row.phone ?? row.phone_number);
+    const userId = row.user_id ?? (normalizedPhone ? phoneToUserId.get(normalizedPhone) : null);
+
+    if (!userId) return null;
+
+    return {
+      ...row,
+      user_id: userId,
+      reference_id: row.reference_id ?? row.transaction_id ?? null,
+      amount: toNumber(row.amount, 0),
+    };
+  }
+
+  if (table === "xcoins_otp") {
+    return {
+      ...row,
+      phone: normalizePhone(row.phone ?? row.phone_number),
+      is_used: row.is_used ?? Boolean(row.verified),
+    };
+  }
+
+  return row;
 }
 
 serve(async (req) => {
@@ -66,14 +166,12 @@ serve(async (req) => {
     );
 
     const body = await req.json();
-    const { tables, mode = "merge" } = body as {
-      tables: Record<string, any[]>;
-      mode: "merge" | "replace";
-    };
+    const tables = body.tables ?? body.data;
+    const mode = (body.mode ?? "merge") as "merge" | "replace";
 
     if (!tables || typeof tables !== "object") {
       return new Response(
-        JSON.stringify({ error: "Invalid backup format. Expected { tables: { ... } }" }),
+        JSON.stringify({ error: "Invalid backup format. Expected { tables: { ... } } or { data: { ... } }" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -87,25 +185,62 @@ serve(async (req) => {
 
       // In replace mode, clear existing data first
       if (mode === "replace") {
-        const { error: deleteError } = await supabase.from(table).delete().neq("id", "00000000-0000-0000-0000-000000000000");
+        const { error: deleteError } = await supabase
+          .from(table)
+          .delete()
+          .neq("id", "00000000-0000-0000-0000-000000000000");
         if (deleteError) {
           tableResults.errors.push(`Clear failed: ${deleteError.message}`);
         }
       }
 
-      // Filter columns and prepare rows
-      const validRows: Record<string, any>[] = [];
-      for (const row of tables[table]) {
-        const filtered = filterColumns(table, row);
-        if (filtered) {
-          validRows.push(filtered);
-        } else {
-          tableResults.skipped++;
+      let phoneToUserId = new Map<string, string>();
+      if (table === "xcoins_transactions") {
+        const phones = Array.from(
+          new Set(
+            tables[table]
+              .map((r: Record<string, any>) => normalizePhone(r.phone ?? r.phone_number))
+              .filter(Boolean)
+          )
+        ) as string[];
+
+        if (phones.length > 0) {
+          const { data: users, error } = await supabase
+            .from("xcoins_balances")
+            .select("id, phone")
+            .in("phone", phones);
+
+          if (error) {
+            tableResults.errors.push(`User mapping failed: ${error.message}`);
+          } else {
+            for (const user of users ?? []) {
+              phoneToUserId.set(user.phone, user.id);
+            }
+          }
         }
       }
 
+      // Transform legacy rows + filter valid columns
+      const validRows: Record<string, any>[] = [];
+      for (const row of tables[table]) {
+        const transformed = await transformLegacyRow(table, row, phoneToUserId);
+
+        if (!transformed) {
+          tableResults.skipped++;
+          continue;
+        }
+
+        const filtered = filterColumns(table, transformed);
+        if (!filtered) {
+          tableResults.skipped++;
+          continue;
+        }
+
+        validRows.push(filtered);
+      }
+
       if (validRows.length === 0) {
-        tableResults.errors.push(`All ${tables[table].length} rows skipped - incompatible columns`);
+        tableResults.errors.push(`All ${tables[table].length} rows skipped - incompatible columns or missing references`);
         results[table] = tableResults;
         continue;
       }
@@ -113,7 +248,7 @@ serve(async (req) => {
       // Insert in batches of 100
       for (let i = 0; i < validRows.length; i += 100) {
         const batch = validRows.slice(i, i + 100);
-        
+
         const { error } = await supabase.from(table).upsert(batch, {
           onConflict: "id",
           ignoreDuplicates: false,
