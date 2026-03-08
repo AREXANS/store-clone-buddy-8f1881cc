@@ -241,10 +241,8 @@ const Index = () => {
     setFormData(prev => ({ ...prev, key: result }));
   };
 
-  const handlePromoApplied = (discount: number, code: string) => {
-    setPromoDiscount(discount);
-    setPromoCode(code);
-  };
+
+
 
   const handleFormSubmit = async (e: React.FormEvent, submittedPromoCode?: string) => {
     e.preventDefault();
