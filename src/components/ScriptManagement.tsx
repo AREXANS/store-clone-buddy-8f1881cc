@@ -246,6 +246,12 @@ const ScriptManagement: FC = () => {
   };
 
   const getLoaderUrl = (scriptName: string) => {
+    // Pretty, executor-friendly URL for the main keysystem loader on the published domain.
+    // Browser hits will still be redirected to the Access Denied page by the backend function.
+    if (scriptName === 'keysystem' && import.meta.env.PROD && currentDomain) {
+      return `${currentDomain}/loader`;
+    }
+
     return `${getApiBase()}/get-loader?name=${scriptName}`;
   };
 
