@@ -89,24 +89,12 @@ serve(async (req) => {
     const url = new URL(req.url);
     const scriptName = url.searchParams.get("name");
 
-    // If accessed from browser → show Access Denied HTML page
-    // Return as an inline HTML document (not plain text).
+    // If accessed from browser → redirect to app-hosted HTML page.
+    // Backend function domains rewrite text/html to text/plain, so direct HTML render here won't work reliably.
     if (isBrowser(req)) {
-      const html = accessDeniedPage(scriptName || "unknown");
-      const htmlBlob = new Blob([html], { type: "text/html; charset=utf-8" });
-
-      return new Response(htmlBlob, {
-        status: 200,
-        headers: {
-          "Content-Type": "text/html; charset=utf-8",
-          "Content-Disposition": "inline",
-          "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
-          "Pragma": "no-cache",
-          "Expires": "0",
-          "X-Content-Type-Options": "nosniff",
-          "Vary": "Accept, User-Agent",
-        },
-      });
+      const appBaseUrl = (Deno.env.get("APP_BASE_URL") || "https://store-clone-buddy.lovable.app").replace(/\/$/, "");
+      const deniedUrl = `${appBaseUrl}/api-access-denied?name=${encodeURIComponent(scriptName || "unknown")}`;
+      return Response.redirect(deniedUrl, 302);
     }
 
     if (!scriptName) {
