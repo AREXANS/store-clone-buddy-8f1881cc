@@ -319,19 +319,22 @@ const BackupRestore: FC = () => {
               </p>
               <ScrollArea className="h-[150px]">
                 <div className="space-y-1">
-                  {restoreResult.results && Object.entries(restoreResult.results as Record<string, { inserted: number; errors: string[] }>).map(([table, res]) => (
-                    <div key={table} className="flex items-center justify-between text-xs">
-                      <span className="font-mono">{table}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-green-400">{res.inserted} rows</span>
-                        {res.errors.length > 0 && (
-                          <span className="text-destructive" title={res.errors.join('\n')}>
-                            {res.errors.length} error
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                   {restoreResult.results && Object.entries(restoreResult.results as Record<string, { inserted: number; skipped?: number; errors: string[] }>).map(([table, res]) => (
+                     <div key={table} className="flex items-center justify-between text-xs">
+                       <span className="font-mono">{table}</span>
+                       <div className="flex items-center gap-2">
+                         <span className="text-green-400">{res.inserted} rows</span>
+                         {(res.skipped || 0) > 0 && (
+                           <span className="text-yellow-400">{res.skipped} skipped</span>
+                         )}
+                         {res.errors.length > 0 && (
+                           <span className="text-destructive" title={res.errors.join('\n')}>
+                             {res.errors.length} error
+                           </span>
+                         )}
+                       </div>
+                     </div>
+                   ))}
                 </div>
               </ScrollArea>
             </div>
