@@ -17,14 +17,14 @@ const App = () => (
       <BackgroundProvider>
         <Toaster />
         <Sonner />
-        <HashRouter>
+        <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/developer" element={<Admin />} />
             <Route path="/key-system" element={<KeySystem />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </HashRouter>
+        </BrowserRouter>
       </BackgroundProvider>
     </TooltipProvider>
   </QueryClientProvider>
