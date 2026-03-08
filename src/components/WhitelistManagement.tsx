@@ -190,7 +190,7 @@ ${rawScript}`;
       }
 
       const { data: keysData } = await supabase
-        .from('site_settings')
+        .from('app_settings')
         .select('value')
         .eq('key', 'license_keys')
         .single();
