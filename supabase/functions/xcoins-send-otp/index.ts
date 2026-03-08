@@ -24,7 +24,7 @@ serve(async (req) => {
 
     // Check if user already exists
     const { data: existingUser } = await supabase
-      .from('xcoins_users')
+      .from('xcoins_balances')
       .select('id')
       .eq('phone', cleanPhone)
       .maybeSingle();
