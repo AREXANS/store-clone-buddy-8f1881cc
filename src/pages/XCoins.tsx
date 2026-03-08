@@ -42,11 +42,10 @@ interface LeaderboardEntry {
 const XCoinsPage = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<XCoinsUser | null>(null);
-  const [authStep, setAuthStep] = useState<'login' | 'register' | 'otp'>('login');
+  const [authStep, setAuthStep] = useState<'phone' | 'pin' | 'otp' | 'create-pin'>('phone');
   const [phone, setPhone] = useState('');
   const [pin, setPin] = useState('');
   const [otp, setOtp] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [cleanedPhone, setCleanedPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [showBalance, setShowBalance] = useState(true);
@@ -77,11 +76,8 @@ const XCoinsPage = () => {
     }
   }, []);
 
-  // Load data when user is set
   useEffect(() => {
-    if (user) {
-      loadDashboardData();
-    }
+    if (user) loadDashboardData();
   }, [user?.id]);
 
   const loadDashboardData = async () => {
@@ -95,51 +91,72 @@ const XCoinsPage = () => {
     }
   };
 
-  const handleLogin = async () => {
-    if (!phone || !pin) { toast({ title: 'Error', description: 'Isi nomor WA dan PIN', variant: 'destructive' }); return; }
-    setLoading(true);
-    const res = await supabase.functions.invoke('xcoins-login', { body: { phone, pin } });
-    if (res.data?.success) {
-      setUser(res.data.user);
-      localStorage.setItem(XCOINS_SESSION_KEY, JSON.stringify(res.data.user));
-      toast({ title: 'Login berhasil!' });
-    } else if (res.data?.notFound) {
-      toast({ title: 'Akun tidak ditemukan', description: 'Silakan daftar terlebih dahulu', variant: 'destructive' });
-    } else {
-      toast({ title: 'Error', description: res.data?.error || 'Gagal login', variant: 'destructive' });
+  // Step 1: Check phone number
+  const handleCheckPhone = async () => {
+    if (!phone || phone.length < 10) {
+      toast({ title: 'Error', description: 'Masukkan nomor WhatsApp yang valid', variant: 'destructive' });
+      return;
     }
-    setLoading(false);
-  };
-
-  const handleSendOtp = async () => {
-    if (!phone) { toast({ title: 'Error', description: 'Isi nomor WhatsApp', variant: 'destructive' }); return; }
     setLoading(true);
     const res = await supabase.functions.invoke('xcoins-send-otp', { body: { phone } });
     if (res.data?.success) {
       setCleanedPhone(res.data.phone);
-      setAuthStep('otp');
-      toast({ title: 'OTP Terkirim!', description: 'Cek WhatsApp Anda' });
-    } else if (res.data?.exists) {
-      toast({ title: 'Sudah terdaftar', description: 'Silakan login dengan PIN', variant: 'destructive' });
-      setAuthStep('login');
+      if (res.data.exists) {
+        // Existing user → enter PIN
+        setAuthStep('pin');
+      } else {
+        // New user → OTP sent, verify
+        setAuthStep('otp');
+        toast({ title: 'OTP Terkirim!', description: 'Cek WhatsApp Anda' });
+      }
     } else {
-      toast({ title: 'Error', description: res.data?.error || 'Gagal kirim OTP', variant: 'destructive' });
+      toast({ title: 'Error', description: res.data?.error || 'Gagal memproses', variant: 'destructive' });
     }
     setLoading(false);
   };
 
-  const handleRegister = async () => {
-    if (!otp || !pin || pin.length !== 6) {
-      toast({ title: 'Error', description: 'OTP dan PIN 6 digit wajib diisi', variant: 'destructive' }); return;
+  // Step 2a: Login with PIN (existing user)
+  const handleLogin = async () => {
+    if (!pin || pin.length !== 6) {
+      toast({ title: 'Error', description: 'PIN harus 6 digit', variant: 'destructive' });
+      return;
     }
     setLoading(true);
-    const res = await supabase.functions.invoke('xcoins-register', { body: { phone: cleanedPhone, otp, pin, displayName } });
+    const res = await supabase.functions.invoke('xcoins-login', { body: { phone: cleanedPhone, pin } });
     if (res.data?.success) {
       setUser(res.data.user);
       localStorage.setItem(XCOINS_SESSION_KEY, JSON.stringify(res.data.user));
-      toast({ title: 'Registrasi berhasil!' });
+      toast({ title: 'Login berhasil!' });
     } else {
-      toast({ title: 'Error', description: res.data?.error || 'Gagal registrasi', variant: 'destructive' });
+      toast({ title: 'Error', description: res.data?.error || 'PIN salah', variant: 'destructive' });
+    }
+    setLoading(false);
+  };
+
+  // Step 2b: Verify OTP (new user) → then create PIN
+  const handleVerifyOtp = async () => {
+    if (!otp || otp.length !== 6) {
+      toast({ title: 'Error', description: 'Masukkan kode OTP 6 digit', variant: 'destructive' });
+      return;
+    }
+    // OTP valid → go to create PIN step
+    setAuthStep('create-pin');
+  };
+
+  // Step 3: Register with OTP + PIN (new user)
+  const handleRegister = async () => {
+    if (!pin || pin.length !== 6) {
+      toast({ title: 'Error', description: 'PIN harus 6 digit', variant: 'destructive' });
+      return;
+    }
+    setLoading(true);
+    const res = await supabase.functions.invoke('xcoins-register', { body: { phone: cleanedPhone, otp, pin } });
+    if (res.data?.success) {
+      setUser(res.data.user);
+      localStorage.setItem(XCOINS_SESSION_KEY, JSON.stringify(res.data.user));
+      toast({ title: 'Akun berhasil dibuat!' });
+    } else {
+      toast({ title: 'Error', description: res.data?.error || 'Gagal membuat akun', variant: 'destructive' });
     }
     setLoading(false);
   };
@@ -148,7 +165,7 @@ const XCoinsPage = () => {
     localStorage.removeItem(XCOINS_SESSION_KEY);
     setUser(null);
     setPhone(''); setPin(''); setOtp('');
-    setAuthStep('login');
+    setAuthStep('phone');
   };
 
   // Top-up
