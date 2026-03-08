@@ -254,7 +254,7 @@ const Admin = () => {
 
   const loadAllData = async () => {
     const [settingsRes, packagesRes, adsRes, backgroundsRes, transactionsRes, socialLinksRes] = await Promise.all([
-      supabase.from('site_settings').select('*').order('key'),
+      supabase.from('app_settings').select('*').order('key'),
       supabase.from('packages').select('*').order('sort_order'),
       supabase.from('ads').select('*').order('sort_order'),
       supabase.from('backgrounds').select('*').order('sort_order'),
