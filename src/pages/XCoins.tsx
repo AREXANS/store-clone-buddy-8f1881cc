@@ -47,6 +47,7 @@ const XCoinsPage = () => {
   const [pin, setPin] = useState('');
   const [otp, setOtp] = useState('');
   const [cleanedPhone, setCleanedPhone] = useState('');
+  const [otpVerified, setOtpVerified] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showBalance, setShowBalance] = useState(true);
 
@@ -64,6 +65,14 @@ const XCoinsPage = () => {
   const [transferPhone, setTransferPhone] = useState('');
   const [transferAmount, setTransferAmount] = useState('');
   const [transferPin, setTransferPin] = useState('');
+
+  const normalizePhone = useCallback((rawPhone: string) => {
+    const digitsOnly = rawPhone.replace(/[^0-9]/g, '');
+    if (digitsOnly.length < 10) return '';
+    if (digitsOnly.startsWith('0')) return `62${digitsOnly.slice(1)}`;
+    if (digitsOnly.startsWith('62')) return digitsOnly;
+    return `62${digitsOnly}`;
+  }, []);
 
   // Restore session
   useEffect(() => {
@@ -93,12 +102,18 @@ const XCoinsPage = () => {
 
   // Step 1: Check phone number
   const handleCheckPhone = async () => {
-    if (!phone || phone.length < 10) {
+    const normalizedPhone = normalizePhone(phone);
+    if (!normalizedPhone) {
       toast({ title: 'Error', description: 'Masukkan nomor WhatsApp yang valid', variant: 'destructive' });
       return;
     }
+
     setLoading(true);
-    const res = await supabase.functions.invoke('xcoins-send-otp', { body: { phone } });
+    setOtp('');
+    setPin('');
+    setOtpVerified(false);
+
+    const res = await supabase.functions.invoke('xcoins-send-otp', { body: { phone: normalizedPhone } });
     if (res.data?.success) {
       setCleanedPhone(res.data.phone);
       if (res.data.exists) {
@@ -121,8 +136,15 @@ const XCoinsPage = () => {
       toast({ title: 'Error', description: 'PIN harus 6 digit', variant: 'destructive' });
       return;
     }
+
+    const normalizedPhone = cleanedPhone || normalizePhone(phone);
+    if (!normalizedPhone) {
+      toast({ title: 'Error', description: 'Nomor WhatsApp tidak valid', variant: 'destructive' });
+      return;
+    }
+
     setLoading(true);
-    const res = await supabase.functions.invoke('xcoins-login', { body: { phone: cleanedPhone, pin } });
+    const res = await supabase.functions.invoke('xcoins-login', { body: { phone: normalizedPhone, pin } });
     if (res.data?.success) {
       setUser(res.data.user);
       localStorage.setItem(XCOINS_SESSION_KEY, JSON.stringify(res.data.user));
@@ -133,22 +155,37 @@ const XCoinsPage = () => {
     setLoading(false);
   };
 
-  // Step 2b: Verify OTP (new user) → then create PIN
+  // Step 2b: Verify OTP (new user)
   const handleVerifyOtp = async () => {
     if (!otp || otp.length !== 6) {
       toast({ title: 'Error', description: 'Masukkan kode OTP 6 digit', variant: 'destructive' });
       return;
     }
-    // OTP valid → go to create PIN step
-    setAuthStep('create-pin');
+
+    setLoading(true);
+    const res = await supabase.functions.invoke('xcoins-verify-otp', { body: { phone: cleanedPhone, otp } });
+    if (res.data?.success) {
+      setOtpVerified(true);
+      setAuthStep('create-pin');
+      toast({ title: 'OTP valid', description: 'Sekarang buat PIN baru Anda' });
+    } else {
+      toast({ title: 'Error', description: res.data?.error || 'OTP tidak valid', variant: 'destructive' });
+    }
+    setLoading(false);
   };
 
-  // Step 3: Register with OTP + PIN (new user)
+  // Step 3: Register with verified OTP + PIN (new user)
   const handleRegister = async () => {
+    if (!otpVerified) {
+      toast({ title: 'Error', description: 'Verifikasi OTP terlebih dahulu', variant: 'destructive' });
+      return;
+    }
+
     if (!pin || pin.length !== 6) {
       toast({ title: 'Error', description: 'PIN harus 6 digit', variant: 'destructive' });
       return;
     }
+
     setLoading(true);
     const res = await supabase.functions.invoke('xcoins-register', { body: { phone: cleanedPhone, otp, pin } });
     if (res.data?.success) {
@@ -164,7 +201,11 @@ const XCoinsPage = () => {
   const handleLogout = () => {
     localStorage.removeItem(XCOINS_SESSION_KEY);
     setUser(null);
-    setPhone(''); setPin(''); setOtp('');
+    setPhone('');
+    setPin('');
+    setOtp('');
+    setCleanedPhone('');
+    setOtpVerified(false);
     setAuthStep('phone');
   };
 
@@ -291,7 +332,16 @@ const XCoinsPage = () => {
                   {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Coins className="w-4 h-4 mr-2" />}
                   Login
                 </Button>
-                <button className="text-sm text-muted-foreground hover:underline w-full text-center" onClick={() => { setAuthStep('phone'); setPin(''); }}>
+                <button
+                  className="text-sm text-muted-foreground hover:underline w-full text-center"
+                  onClick={() => {
+                    setAuthStep('phone');
+                    setPin('');
+                    setOtp('');
+                    setCleanedPhone('');
+                    setOtpVerified(false);
+                  }}
+                >
                   Ganti nomor
                 </button>
               </>
@@ -307,9 +357,19 @@ const XCoinsPage = () => {
                   <Input maxLength={6} value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ''))} placeholder="123456" className="bg-background/50 mt-1 text-center tracking-[0.5em] font-mono text-lg" onKeyDown={e => e.key === 'Enter' && handleVerifyOtp()} />
                 </div>
                 <Button className="w-full" onClick={handleVerifyOtp} disabled={loading}>
-                  <ChevronRight className="w-4 h-4 mr-2" /> Verifikasi OTP
+                  {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <ChevronRight className="w-4 h-4 mr-2" />}
+                  Verifikasi OTP
                 </Button>
-                <button className="text-sm text-muted-foreground hover:underline w-full text-center" onClick={() => { setAuthStep('phone'); setOtp(''); }}>
+                <button
+                  className="text-sm text-muted-foreground hover:underline w-full text-center"
+                  onClick={() => {
+                    setAuthStep('phone');
+                    setOtp('');
+                    setPin('');
+                    setCleanedPhone('');
+                    setOtpVerified(false);
+                  }}
+                >
                   Kirim ulang / Ganti nomor
                 </button>
               </>
