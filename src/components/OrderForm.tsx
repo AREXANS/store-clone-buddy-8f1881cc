@@ -197,7 +197,72 @@ const OrderForm: FC<OrderFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(e, appliedPromo?.promo_code || undefined);
+    if (paymentMethod === 'xcoins') {
+      handleXcoinsPay(e);
+    } else {
+      onSubmit(e, appliedPromo?.promo_code || undefined);
+    }
+  };
+
+  const handleXcoinsPay = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!xcoinsUser) {
+      toast({ title: 'Login XCoins dulu', description: 'Silakan login di halaman XCoins', variant: 'destructive' });
+      navigate('/xcoins');
+      return;
+    }
+    if (!xcoinsPin || xcoinsPin.length !== 6) {
+      toast({ title: 'Error', description: 'Masukkan PIN 6 digit', variant: 'destructive' });
+      return;
+    }
+    if (!durationData) {
+      toast({ title: 'Error', description: 'Masukkan durasi terlebih dahulu', variant: 'destructive' });
+      return;
+    }
+
+    setXcoinsPayLoading(true);
+    const res = await supabase.functions.invoke('xcoins-pay', {
+      body: {
+        userId: xcoinsUser.id,
+        pin: xcoinsPin,
+        amount: finalTotal,
+        packageName: selectedPkg || 'NORMAL',
+        packageDuration: durationData.days,
+        licenseKey: formData.key
+      }
+    });
+
+    if (res.data?.success) {
+      // Update stored balance
+      const newBalance = res.data.newBalance;
+      localStorage.setItem('xcoins_session', JSON.stringify({ ...xcoinsUser, balance: newBalance }));
+      toast({ title: '🎉 Pembayaran XCoins Berhasil!', description: `Key: ${formData.key}` });
+      
+      // Trigger payment success flow
+      const expiredDate = new Date();
+      expiredDate.setDate(expiredDate.getDate() + durationData.days);
+      
+      // Store final data and go to success
+      const state = {
+        step: 4,
+        selectedPkg,
+        formData,
+        paymentData: null,
+        finalData: {
+          key: formData.key,
+          package: selectedPkg || 'NORMAL',
+          expired: expiredDate.toISOString(),
+          expiredDisplay: expiredDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+          days: durationData.days
+        },
+        daysToAdd: durationData.days
+      };
+      localStorage.setItem('arexans_payment_state', JSON.stringify(state));
+      window.location.reload();
+    } else {
+      toast({ title: 'Error', description: res.data?.error || 'Gagal bayar', variant: 'destructive' });
+    }
+    setXcoinsPayLoading(false);
   };
 
   const getDiscountRangeText = (d: Discount) => {
