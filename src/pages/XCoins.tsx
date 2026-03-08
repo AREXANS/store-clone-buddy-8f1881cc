@@ -332,7 +332,16 @@ const XCoinsPage = () => {
                   {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Coins className="w-4 h-4 mr-2" />}
                   Login
                 </Button>
-                <button className="text-sm text-muted-foreground hover:underline w-full text-center" onClick={() => { setAuthStep('phone'); setPin(''); }}>
+                <button
+                  className="text-sm text-muted-foreground hover:underline w-full text-center"
+                  onClick={() => {
+                    setAuthStep('phone');
+                    setPin('');
+                    setOtp('');
+                    setCleanedPhone('');
+                    setOtpVerified(false);
+                  }}
+                >
                   Ganti nomor
                 </button>
               </>
@@ -348,9 +357,19 @@ const XCoinsPage = () => {
                   <Input maxLength={6} value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ''))} placeholder="123456" className="bg-background/50 mt-1 text-center tracking-[0.5em] font-mono text-lg" onKeyDown={e => e.key === 'Enter' && handleVerifyOtp()} />
                 </div>
                 <Button className="w-full" onClick={handleVerifyOtp} disabled={loading}>
-                  <ChevronRight className="w-4 h-4 mr-2" /> Verifikasi OTP
+                  {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <ChevronRight className="w-4 h-4 mr-2" />}
+                  Verifikasi OTP
                 </Button>
-                <button className="text-sm text-muted-foreground hover:underline w-full text-center" onClick={() => { setAuthStep('phone'); setOtp(''); }}>
+                <button
+                  className="text-sm text-muted-foreground hover:underline w-full text-center"
+                  onClick={() => {
+                    setAuthStep('phone');
+                    setOtp('');
+                    setPin('');
+                    setCleanedPhone('');
+                    setOtpVerified(false);
+                  }}
+                >
                   Kirim ulang / Ganti nomor
                 </button>
               </>
