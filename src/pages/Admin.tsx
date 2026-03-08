@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   Settings, Package, Image, List, CreditCard, LogOut, Save, 
-  Plus, Trash2, Edit2, Eye, EyeOff, RefreshCw, MessageSquare, Shield, Key, FileText, FileCode, Upload, Tag, CheckCircle, Copy
+  Plus, Trash2, Edit2, Eye, EyeOff, RefreshCw, MessageSquare, Shield, Key, FileText, FileCode, Upload, Tag, CheckCircle, Copy, Database
 } from 'lucide-react';
 import GlobalBackground from '@/components/GlobalBackground';
 import DeviceApprovalScreen from '@/components/DeviceApprovalScreen';
@@ -22,6 +22,7 @@ import ScriptManagement from '@/components/ScriptManagement';
 import WhitelistManagement from '@/components/WhitelistManagement';
 import LuaUploadManager from '@/components/LuaUploadManager';
 import DiscountManagement from '@/components/DiscountManagement';
+import BackupRestore from '@/components/BackupRestore';
 import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 
 interface SiteSetting {
@@ -491,6 +492,10 @@ const Admin = () => {
                 <TabsTrigger value="devices" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
                   <Shield className="w-4 h-4" />
                   <span className="hidden xs:inline">Devices</span>
+                </TabsTrigger>
+                <TabsTrigger value="backup" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <Database className="w-4 h-4" />
+                  <span className="hidden xs:inline">Backup</span>
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -1399,6 +1404,11 @@ const Admin = () => {
                 onRemove={removeDevice}
                 onRefresh={loadAllSessions}
               />
+            </TabsContent>
+
+            {/* Backup Tab */}
+            <TabsContent value="backup" className="space-y-4">
+              <BackupRestore />
             </TabsContent>
           </Tabs>
         </div>
