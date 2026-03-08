@@ -89,7 +89,7 @@ serve(async (req) => {
       const xcoinsAmount = tx.original_amount;
       const newBalance = (user?.balance || 0) + xcoinsAmount;
 
-      await supabase.from('xcoins_users').update({ balance: newBalance, updated_at: new Date().toISOString() }).eq('id', userId);
+      await supabase.from('xcoins_balances').update({ balance: newBalance, updated_at: new Date().toISOString() }).eq('id', userId);
 
       await supabase.from('xcoins_transactions').insert({
         user_id: userId, type: 'topup', amount: xcoinsAmount,
