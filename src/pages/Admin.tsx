@@ -1220,6 +1220,11 @@ const Admin = () => {
                         <td className="p-3 text-xs">{new Date(tx.created_at).toLocaleString('id-ID')}</td>
                         <td className="p-3">
                           <div className="flex gap-1">
+                            {tx.license_key && (
+                              <Button variant="ghost" size="sm" onClick={() => { navigator.clipboard.writeText(tx.license_key!); toast({ title: 'Copied!', description: 'Key disalin' }); }} title="Copy Key" className="text-primary hover:text-primary/80">
+                                <Copy className="w-4 h-4" />
+                              </Button>
+                            )}
                             {tx.status !== 'paid' && tx.status !== 'claimed' && (
                               <Button variant="ghost" size="sm" onClick={() => setTransactionPaid(tx.id)} title="Set Paid" className="text-green-400 hover:text-green-300 hover:bg-green-500/10">
                                 <CheckCircle className="w-4 h-4" />
