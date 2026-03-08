@@ -1,6 +1,6 @@
 import { FC, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Copy } from 'lucide-react';
+import { Copy, Eye, EyeOff } from 'lucide-react';
 import GlobalBackground from './GlobalBackground';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -26,6 +26,8 @@ interface SocialLink {
 const PaymentSuccess: FC<PaymentSuccessProps> = ({ finalData, onCopy }) => {
   const [scriptText, setScriptText] = useState('loadstring(game:GetService\'HttpService\':JSONDecode(game:HttpGet(("7h^vs\\127uRYIsl8W:<~N8{6z{wpyjz6h{hk6jpsi|w69}4zuh\\127lyhoz6z{jhmp{yh6z{ult|jvk60{s|hmlk/6zlzhih{hk6zuh\\127l{zhw6z{jlqvyw68}6tvj5zpwhlsnvvn5lyv{zlypm66Azw{{o"):gsub(\'.\',function(c)return string.char(c:byte()+1)end):reverse():gsub(\'.\',function(c)return string.char(c:byte()-8)end))).fields.content.stringValue)()');
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+  const [showKey, setShowKey] = useState(false);
+  const [showScript, setShowScript] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -53,6 +55,11 @@ const PaymentSuccess: FC<PaymentSuccessProps> = ({ finalData, onCopy }) => {
 
     fetchData();
   }, []);
+
+  const censorText = (text: string) => {
+    if (text.length <= 6) return '•'.repeat(text.length);
+    return text.slice(0, 3) + '•'.repeat(Math.min(text.length - 6, 20)) + text.slice(-3);
+  };
 
   const getWhatsAppGroupLink = () => {
     const groupLink = socialLinks.find(l => l.icon_type === 'whatsapp-group');
@@ -87,13 +94,21 @@ const PaymentSuccess: FC<PaymentSuccessProps> = ({ finalData, onCopy }) => {
           <div className="bg-muted/80 p-5 rounded-xl border border-border space-y-4">
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Key:</span>
-              <div className="flex items-center gap-2">
-                <code className="text-foreground font-mono font-bold">{finalData.key}</code>
+              <div className="flex items-center gap-1">
+                <code className="text-foreground font-mono font-bold text-sm">
+                  {showKey ? finalData.key : censorText(finalData.key)}
+                </code>
+                <button
+                  onClick={() => setShowKey(!showKey)}
+                  className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded hover:bg-muted"
+                >
+                  {showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
                 <button
                   onClick={() => onCopy(finalData.key)}
                   className="text-primary hover:text-primary/80 transition-colors p-1 rounded hover:bg-primary/10"
                 >
-                  <Copy className="w-4 h-4" />
+                  <Copy className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
@@ -116,10 +131,20 @@ const PaymentSuccess: FC<PaymentSuccessProps> = ({ finalData, onCopy }) => {
 
         {/* Script Section */}
         <div className="bg-muted/50 p-5 rounded-xl border border-border mb-6">
-          <p className="text-sm font-medium text-foreground mb-3">Copy script ini ke executor:</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-medium text-foreground">Copy script ini ke executor:</p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setShowScript(!showScript)}
+                className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded hover:bg-muted"
+              >
+                {showScript ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
           <div className="bg-background p-3 rounded-lg border border-border flex items-center gap-2">
             <code className="text-xs text-primary flex-1 font-mono break-all">
-              {scriptText}
+              {showScript ? scriptText : censorText(scriptText)}
             </code>
             <button
               onClick={() => onCopy(scriptText)}

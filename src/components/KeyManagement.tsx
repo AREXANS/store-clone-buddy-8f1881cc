@@ -477,6 +477,32 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
     }
   };
 
+  // Auto-cleanup state
+  const [autoDeleteKeysEnabled, setAutoDeleteKeysEnabled] = useState(false);
+  const [autoDeleteKeysDays, setAutoDeleteKeysDays] = useState('7');
+
+  useEffect(() => {
+    const loadCleanupSettings = async () => {
+      const { data } = await supabase.from('site_settings').select('key, value').in('key', ['auto_delete_keys_enabled', 'auto_delete_keys_days']);
+      if (data) {
+        for (const s of data) {
+          if (s.key === 'auto_delete_keys_enabled') setAutoDeleteKeysEnabled(s.value === 'on');
+          if (s.key === 'auto_delete_keys_days') setAutoDeleteKeysDays(s.value);
+        }
+      }
+    };
+    loadCleanupSettings();
+  }, []);
+
+  const updateCleanupSetting = async (key: string, value: string) => {
+    const { data: existing } = await supabase.from('site_settings').select('id').eq('key', key).maybeSingle();
+    if (existing) {
+      await supabase.from('site_settings').update({ value, updated_at: new Date().toISOString() }).eq('key', key);
+    } else {
+      await supabase.from('site_settings').insert({ key, value, description: `Auto cleanup setting: ${key}` });
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header dengan info */}
@@ -492,12 +518,38 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
             </span>
           </div>
           
-          {/* Refresh button standalone untuk mobile */}
           <Button variant="outline" size="sm" onClick={fetchKeys} disabled={loading} className="w-fit">
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
+
+        {/* Auto-cleanup expired keys */}
+        <Card className="glass-card">
+          <CardContent className="pt-4 pb-4">
+            <p className="text-sm font-medium flex items-center gap-2 mb-2"><Trash2 className="w-4 h-4 text-muted-foreground" /> Auto-Cleanup Key Expired</p>
+            <div className="flex gap-2 items-center">
+              <Switch
+                checked={autoDeleteKeysEnabled}
+                onCheckedChange={checked => {
+                  setAutoDeleteKeysEnabled(checked);
+                  updateCleanupSetting('auto_delete_keys_enabled', checked ? 'on' : 'off');
+                }}
+              />
+              <span className="text-xs text-muted-foreground">Hapus key expired lebih dari</span>
+              <Input
+                type="number"
+                className="w-20 bg-background/50"
+                value={autoDeleteKeysDays}
+                onChange={e => {
+                  setAutoDeleteKeysDays(e.target.value);
+                  updateCleanupSetting('auto_delete_keys_days', e.target.value);
+                }}
+              />
+              <span className="text-xs text-muted-foreground">hari</span>
+            </div>
+          </CardContent>
+        </Card>
         
         {/* Search bar - full width on mobile */}
         <div className="w-full">

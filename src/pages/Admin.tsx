@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   Settings, Package, Image, List, CreditCard, LogOut, Save, 
-  Plus, Trash2, Edit2, Eye, EyeOff, RefreshCw, MessageSquare, Shield, Key, FileText, FileCode, Upload, Tag, CheckCircle
+  Plus, Trash2, Edit2, Eye, EyeOff, RefreshCw, MessageSquare, Shield, Key, FileText, FileCode, Upload, Tag, CheckCircle, Copy
 } from 'lucide-react';
 import GlobalBackground from '@/components/GlobalBackground';
 import DeviceApprovalScreen from '@/components/DeviceApprovalScreen';

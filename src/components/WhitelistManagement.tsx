@@ -473,6 +473,75 @@ ${rawScript}`;
         </CardContent>
       </Card>
 
+      {/* Script Upload */}
+      <Card className="glass-card">
+        <CardHeader className="pb-3 px-3 sm:px-6">
+          <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+            <Upload className="w-4 h-4 text-primary" />
+            Upload Script Lua
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Upload file .lua/.txt, opsional aktifkan whitelist protection
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-3 sm:px-6 space-y-3">
+          <div className="flex gap-2">
+            <Input
+              ref={fileInputRef}
+              type="file"
+              accept=".lua,.txt"
+              onChange={handleFileUpload}
+              className="flex-1"
+            />
+          </div>
+
+          {uploadedScripts.length > 0 && (
+            <ScrollArea className="h-[300px]">
+              <div className="space-y-3">
+                {uploadedScripts.map(script => (
+                  <div key={script.id} className="p-3 rounded-lg bg-muted/30 border border-border space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileCode className="w-4 h-4 text-primary" />
+                        <span className="font-medium text-sm">{script.display_name}</span>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => deleteScript(script.id)} className="text-destructive hover:text-destructive">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={script.useWhitelist}
+                        onCheckedChange={() => toggleWhitelist(script)}
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        {script.useWhitelist ? '🛡️ Whitelist Aktif' : 'Whitelist Nonaktif'}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" onClick={() => copyText(script.rawContent, 'Source code asli')}>
+                        <Code className="w-3 h-3 mr-1" />
+                        Salin Asli
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => copyText(script.useWhitelist ? script.content : generateWhitelistWrapper(script.rawContent), 'Source code + whitelist')}>
+                        <Shield className="w-3 h-3 mr-1" />
+                        Salin + Whitelist
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => copyText(`${SUPABASE_API_BASE}/get-script?name=${script.name}`, 'URL')}>
+                        <Copy className="w-3 h-3 mr-1" />
+                        Salin URL
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
+
       {/* API Endpoints */}
       <Card className="glass-card">
         <CardHeader className="pb-3 px-3 sm:px-6">
