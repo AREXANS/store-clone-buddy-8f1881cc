@@ -56,19 +56,46 @@ const OrderForm: FC<OrderFormProps> = ({
   parseDuration,
   prices
 }) => {
+  const navigate = useNavigate();
   const [keyMode, setKeyMode] = useState<'random' | 'custom'>('random');
   const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<Discount | null>(null);
   const [promoError, setPromoError] = useState('');
   const [showPromoInput, setShowPromoInput] = useState(false);
+  const [xcoinsEnabled, setXcoinsEnabled] = useState(false);
+  const [xcoinsOnly, setXcoinsOnly] = useState(false);
+  const [xcoinsUser, setXcoinsUser] = useState<{id: string; phone: string; balance: number; display_name: string} | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'qris' | 'xcoins'>('qris');
+  const [xcoinsPin, setXcoinsPin] = useState('');
+  const [xcoinsPayLoading, setXcoinsPayLoading] = useState(false);
 
   useEffect(() => {
     const loadDiscounts = async () => {
       const { data } = await supabase.from('package_discounts').select('*').eq('is_active', true);
       if (data) setDiscounts(data as Discount[]);
     };
+
+    const loadXcoinsSettings = async () => {
+      const { data } = await supabase.from('site_settings').select('key, value').in('key', ['xcoins_enabled', 'xcoins_only']);
+      const map = Object.fromEntries((data || []).map((s: any) => [s.key, s.value]));
+      const enabled = map.xcoins_enabled === 'on';
+      const only = map.xcoins_only === 'on';
+      setXcoinsEnabled(enabled);
+      setXcoinsOnly(only);
+      if (only) setPaymentMethod('xcoins');
+
+      // Check XCoins session
+      if (enabled) {
+        const stored = localStorage.getItem('xcoins_session');
+        if (stored) {
+          try { setXcoinsUser(JSON.parse(stored)); } catch {}
+        }
+      }
+    };
+
     loadDiscounts();
+    loadXcoinsSettings();
   }, []);
 
   useEffect(() => {
