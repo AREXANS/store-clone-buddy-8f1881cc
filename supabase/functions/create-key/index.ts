@@ -58,10 +58,15 @@ serve(async (req) => {
 
     keys.push(newKey);
 
+    // Use upsert to handle case when license_keys row doesn't exist yet
     const { error: updateError } = await supabase
       .from("app_settings")
-      .update({ value: JSON.stringify(keys), updated_at: new Date().toISOString() })
-      .eq("key", "license_keys");
+      .upsert({
+        key: "license_keys",
+        value: JSON.stringify(keys),
+        updated_at: new Date().toISOString(),
+        description: "License keys database"
+      }, { onConflict: "key" });
 
     if (updateError) {
       return new Response(
