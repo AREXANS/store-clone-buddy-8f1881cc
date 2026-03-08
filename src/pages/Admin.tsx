@@ -18,6 +18,9 @@ import DeviceApprovalScreen from '@/components/DeviceApprovalScreen';
 import DeviceManagement from '@/components/DeviceManagement';
 import KeyManagement from '@/components/KeyManagement';
 import ApiDocumentation from '@/components/ApiDocumentation';
+import ScriptManagement from '@/components/ScriptManagement';
+import WhitelistManagement from '@/components/WhitelistManagement';
+import LuaUploadManager from '@/components/LuaUploadManager';
 import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 
 interface SiteSetting {
