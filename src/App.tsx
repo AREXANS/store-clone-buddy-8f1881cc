@@ -7,6 +7,7 @@ import { BackgroundProvider } from "./contexts/BackgroundContext";
 import Index from "./pages/Index";
 import Admin from "./pages/Admin";
 import KeySystem from "./pages/KeySystem";
+import XCoins from "./pages/XCoins";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
