@@ -307,6 +307,7 @@ export type Database = {
           created_at: string
           customer_name: string
           customer_whatsapp: string | null
+          device_id: string | null
           expires_at: string | null
           id: string
           license_key: string | null
@@ -323,6 +324,7 @@ export type Database = {
           created_at?: string
           customer_name: string
           customer_whatsapp?: string | null
+          device_id?: string | null
           expires_at?: string | null
           id?: string
           license_key?: string | null
@@ -339,6 +341,7 @@ export type Database = {
           created_at?: string
           customer_name?: string
           customer_whatsapp?: string | null
+          device_id?: string | null
           expires_at?: string | null
           id?: string
           license_key?: string | null
