@@ -245,10 +245,14 @@ const ScriptManagement: FC = () => {
     toast({ title: 'Copied!', description: 'URL script berhasil disalin' });
   };
 
+  const getLoaderUrl = (scriptName: string) => {
+    return `${getApiBase()}/get-loader?name=${scriptName}`;
+  };
+
   const copyLoadstringCode = (scriptName: string) => {
-    const code = `loadstring(game:HttpGet("${getScriptUrl(scriptName)}"))()`;
+    const code = `loadstring(game:HttpGet("${getLoaderUrl(scriptName)}"))()`;
     navigator.clipboard.writeText(code);
-    toast({ title: 'Copied!', description: 'Loadstring code berhasil disalin' });
+    toast({ title: 'Copied!', description: 'Loadstring code berhasil disalin (protected loader)' });
   };
 
   const getScriptTypeColor = (type: string) => {
