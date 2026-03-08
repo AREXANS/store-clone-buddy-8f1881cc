@@ -90,21 +90,21 @@ serve(async (req) => {
     const scriptName = url.searchParams.get("name");
 
     // If accessed from browser → show Access Denied HTML page
-    // Use 200 + explicit document headers because some gateways force 4xx bodies to plain text previews.
+    // Return as an inline HTML document (not plain text).
     if (isBrowser(req)) {
       const html = accessDeniedPage(scriptName || "unknown");
+      const htmlBlob = new Blob([html], { type: "text/html; charset=utf-8" });
 
-      return new Response(html, {
+      return new Response(htmlBlob, {
         status: 200,
         headers: {
           "Content-Type": "text/html; charset=utf-8",
+          "Content-Disposition": "inline",
           "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
           "Pragma": "no-cache",
           "Expires": "0",
           "X-Content-Type-Options": "nosniff",
-          "Content-Security-Policy": "default-src 'self' 'unsafe-inline' data:; img-src 'self' data:;",
           "Vary": "Accept, User-Agent",
-          ...corsHeaders,
         },
       });
     }
