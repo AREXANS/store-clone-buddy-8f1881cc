@@ -19,107 +19,143 @@ serve(async (req) => {
     const body = await req.json();
     console.log("Webhook received:", JSON.stringify(body));
 
-    // Get webhook key from settings
-    const { data: webhookSetting } = await supabase
-      .from("site_settings")
-      .select("value")
-      .eq("key", "cashify_webhook_key")
-      .maybeSingle();
+    // Detect webhook source: Pakasir sends order_id+project, Cashify sends transactionId
+    const isPakasir = !!body.order_id && !!body.project;
+    const isCashify = !!body.transactionId && !body.project;
 
-    const expectedWebhookKey = webhookSetting?.value || "";
+    if (isPakasir) {
+      // === PAKASIR WEBHOOK ===
+      const transactionId = body.order_id;
+      const status = body.status;
 
-    // Validate webhook key if set
-    const providedKey = body.webhook_key || body.key || req.headers.get("X-Webhook-Key");
-    if (expectedWebhookKey && providedKey !== expectedWebhookKey) {
-      console.error("Invalid webhook key");
-      return new Response(
-        JSON.stringify({ error: "Invalid webhook key" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Extract transaction info from webhook payload
-    const transactionId = body.ref || body.transaction_id || body.reference;
-    const amount = body.amount || body.total_amount;
-    const status = body.status || "paid";
-
-    if (!transactionId && !amount) {
-      return new Response(
-        JSON.stringify({ error: "Missing transaction identifier" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Find and update transaction
-    let query = supabase.from("transactions").select("*");
-    
-    if (transactionId) {
-      query = query.eq("transaction_id", transactionId);
-    } else if (amount) {
-      // Try to find by amount if no transaction ID
-      query = query.eq("total_amount", amount).eq("status", "pending");
-    }
-
-    const { data: transaction, error: txError } = await query.maybeSingle();
-
-    if (txError || !transaction) {
-      console.error("Transaction not found:", { transactionId, amount });
-      return new Response(
-        JSON.stringify({ error: "Transaction not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Update transaction status
-    if (status === "paid" || status === "success" || status === "completed") {
-      const { error: updateError } = await supabase
-        .from("transactions")
-        .update({ 
-          status: "paid", 
-          paid_at: new Date().toISOString() 
-        })
-        .eq("id", transaction.id);
-
-      if (updateError) {
-        console.error("Update error:", updateError);
-        return new Response(
-          JSON.stringify({ error: "Failed to update transaction" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      if (status !== "completed") {
+        return new Response(JSON.stringify({ success: true, message: "Status not completed" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // Send Discord notification
-      await sendDiscordNotification(supabase, transaction);
+      const { data: transaction } = await supabase
+        .from("transactions").select("*").eq("transaction_id", transactionId).maybeSingle();
 
-      console.log("Transaction updated successfully:", transaction.transaction_id);
+      if (!transaction) {
+        return new Response(JSON.stringify({ error: "Transaction not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      if (transaction.status === "paid") {
+        return new Response(JSON.stringify({ success: true, message: "Already paid" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      await supabase.from("transactions").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", transaction.id);
+      await handlePostPayment(supabase, transaction);
+
+      return new Response(JSON.stringify({ success: true, transactionId }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    } else if (isCashify) {
+      // === CASHIFY WEBHOOK ===
+      // Validate webhook key
+      const { data: whSetting } = await supabase
+        .from("site_settings").select("value").eq("key", "cashify_webhook_key").maybeSingle();
+      
+      const providedKey = body.webhook_key || body.key || req.headers.get("X-Webhook-Key");
+      if (whSetting?.value && providedKey !== whSetting.value) {
+        return new Response(JSON.stringify({ error: "Invalid webhook key" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const cashifyTxId = body.transactionId;
+      const status = body.status;
+
+      if (status !== "paid" && status !== "success") {
+        return new Response(JSON.stringify({ success: true, message: "Not paid" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // Find our transaction by cashify mapping
+      const { data: mappings } = await supabase
+        .from("site_settings").select("key, value").eq("value", cashifyTxId).like("key", "cashify_tx_%");
+
+      if (!mappings || mappings.length === 0) {
+        // Fallback: try ref field
+        const ref = body.ref || body.reference;
+        if (ref) {
+          const { data: tx } = await supabase.from("transactions").select("*").eq("transaction_id", ref).maybeSingle();
+          if (tx && tx.status !== "paid") {
+            await supabase.from("transactions").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", tx.id);
+            await handlePostPayment(supabase, tx);
+          }
+        }
+        return new Response(JSON.stringify({ success: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      for (const mapping of mappings) {
+        const ourTxId = mapping.key.replace("cashify_tx_", "");
+        const { data: transaction } = await supabase
+          .from("transactions").select("*").eq("transaction_id", ourTxId).maybeSingle();
+
+        if (transaction && transaction.status !== "paid") {
+          await supabase.from("transactions").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", transaction.id);
+          await handlePostPayment(supabase, transaction);
+        }
+        // Clean up mapping
+        await supabase.from("site_settings").delete().eq("key", mapping.key);
+      }
+
+      return new Response(JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    } else {
+      // Generic fallback
+      const transactionId = body.ref || body.transaction_id || body.reference || body.order_id;
+      if (!transactionId) {
+        return new Response(JSON.stringify({ error: "Missing transaction identifier" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const { data: transaction } = await supabase
+        .from("transactions").select("*").eq("transaction_id", transactionId).maybeSingle();
+
+      if (!transaction) {
+        return new Response(JSON.stringify({ error: "Transaction not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      if (transaction.status !== "paid") {
+        await supabase.from("transactions").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", transaction.id);
+        await handlePostPayment(supabase, transaction);
+      }
+
+      return new Response(JSON.stringify({ success: true, transactionId }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "Webhook processed",
-        transactionId: transaction.transaction_id 
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
   } catch (error: unknown) {
     console.error("Webhook error:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
 
-async function sendDiscordNotification(supabase: any, transaction: any) {
-  try {
-    const { data: webhookSetting } = await supabase
-      .from("site_settings")
-      .select("value")
-      .eq("key", "discord_webhook_url")
-      .maybeSingle();
+async function handlePostPayment(supabase: any, transaction: any) {
+  // Handle XCoins topup
+  if (transaction.package_name === "XCOINS_TOPUP" && transaction.license_key) {
+    const userId = transaction.license_key;
+    const { data: user } = await supabase.from("xcoins_users").select("balance").eq("id", userId).single();
+    if (user) {
+      const newBalance = (user.balance || 0) + transaction.original_amount;
+      await supabase.from("xcoins_users").update({ balance: newBalance, updated_at: new Date().toISOString() }).eq("id", userId);
+      await supabase.from("xcoins_transactions").insert({
+        user_id: userId, type: "topup", amount: transaction.original_amount,
+        balance_after: newBalance, description: `Top-up via webhook`, reference_id: transaction.transaction_id,
+      });
+    }
+  }
 
-    if (webhookSetting?.value) {
+  // Discord notification
+  try {
+    const { data: discordSetting } = await supabase
+      .from("site_settings").select("value").eq("key", "discord_webhook_url").maybeSingle();
+    if (discordSetting?.value) {
       const embed = {
         title: "💰 Pembayaran Berhasil!",
         color: 0x00ff00,
@@ -127,19 +163,17 @@ async function sendDiscordNotification(supabase: any, transaction: any) {
           { name: "Transaction ID", value: transaction.transaction_id, inline: true },
           { name: "Customer", value: transaction.customer_name, inline: true },
           { name: "Package", value: `${transaction.package_name} (${transaction.package_duration} hari)`, inline: true },
-          { name: "Amount", value: `Rp ${transaction.total_amount.toLocaleString("id-ID")}`, inline: true },
+          { name: "Amount", value: `Rp ${transaction.total_amount?.toLocaleString("id-ID") || 0}`, inline: true },
           { name: "License Key", value: transaction.license_key || "-", inline: false },
         ],
         timestamp: new Date().toISOString(),
       };
-
-      await fetch(webhookSetting.value, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      await fetch(discordSetting.value, {
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ embeds: [embed] }),
       });
     }
-  } catch (error) {
-    console.error("Discord webhook error:", error);
+  } catch (e) {
+    console.error("Discord error:", e);
   }
 }

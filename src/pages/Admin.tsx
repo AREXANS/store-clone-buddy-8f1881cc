@@ -289,7 +289,7 @@ const Admin = () => {
 
   const formatRupiah = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
 
-  const paymentKeys = ['pakasir_slug', 'pakasir_api_key', 'pakasir_mode', 'payment_simulation', 'discord_webhook_url', 'fonnte_token', 'xcoins_enabled', 'xcoins_only', 'xcoins_logo_url'];
+  const paymentKeys = ['payment_gateway', 'pakasir_slug', 'pakasir_api_key', 'pakasir_mode', 'cashify_license_key', 'cashify_qris_id', 'cashify_webhook_key', 'payment_simulation', 'discord_webhook_url', 'fonnte_token', 'xcoins_enabled', 'xcoins_only', 'xcoins_logo_url'];
 
   // Show device approval screen if device is not approved
   if (deviceStatus === 'loading' || deviceStatus === 'new' || deviceStatus === 'pending') {
@@ -418,9 +418,9 @@ const Admin = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <CreditCard className="w-5 h-5 text-primary" />
-                    Payment Gateway (Cashify QRIS)
+                    Payment Gateway
                   </CardTitle>
-                  <CardDescription>Konfigurasi pembayaran QRIS otomatis</CardDescription>
+                  <CardDescription>Pilih dan konfigurasi gateway pembayaran (Cashify / Pakasir)</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {settings.filter(s => paymentKeys.includes(s.key)).map(setting => (
@@ -442,7 +442,24 @@ const Admin = () => {
                       {setting.description && (
                         <p className="text-xs text-muted-foreground">{setting.description}</p>
                       )}
-                      {setting.key === 'payment_mode' ? (
+                      {setting.key === 'payment_gateway' ? (
+                        <div className="flex items-center gap-4">
+                          <Button
+                            variant={setting.value === 'cashify' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => updateSetting(setting.key, 'cashify')}
+                          >
+                            Cashify QRIS
+                          </Button>
+                          <Button
+                            variant={setting.value === 'pakasir' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => updateSetting(setting.key, 'pakasir')}
+                          >
+                            Pakasir
+                          </Button>
+                        </div>
+                      ) : setting.key === 'pakasir_mode' ? (
                         <div className="flex items-center gap-4">
                           <Button
                             variant={setting.value === 'demo' ? 'default' : 'outline'}
@@ -478,7 +495,7 @@ const Admin = () => {
                           <span className={`text-sm font-medium ${setting.value === 'on' ? 'text-primary' : 'text-muted-foreground'}`}>
                             {setting.key === 'xcoins_enabled' 
                               ? (setting.value === 'on' ? 'XCoins AKTIF' : 'XCoins Nonaktif')
-                              : (setting.value === 'on' ? 'HANYA XCoins (QRIS dimatikan)' : 'XCoins + QRIS Cashify')}
+                              : (setting.value === 'on' ? 'HANYA XCoins (QRIS dimatikan)' : 'XCoins + QRIS')}
                           </span>
                         </div>
                       ) : (

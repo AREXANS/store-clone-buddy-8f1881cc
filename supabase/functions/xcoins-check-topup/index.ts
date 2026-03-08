@@ -40,15 +40,32 @@ serve(async (req) => {
 
     const { data: settings } = await supabase
       .from("site_settings").select("key, value")
-      .in("key", ["pakasir_slug", "pakasir_api_key", "pakasir_mode", "payment_simulation"]);
+      .in("key", ["payment_gateway", "pakasir_slug", "pakasir_api_key", "pakasir_mode", "cashify_license_key", "payment_simulation"]);
 
     const s = Object.fromEntries((settings || []).map((r: any) => [r.key, r.value]));
+    const gateway = s.payment_gateway || "pakasir";
     const pakasirMode = s.pakasir_mode || "sandbox";
     const simulation = s.payment_simulation || "off";
 
     let isPaid = false;
 
-    if (pakasirMode === "live" && s.pakasir_slug && s.pakasir_api_key) {
+    if (gateway === "cashify" && s.cashify_license_key) {
+      try {
+        const { data: mapping } = await supabase
+          .from("site_settings").select("value").eq("key", `cashify_tx_${transactionId}`).maybeSingle();
+        if (mapping?.value) {
+          const res = await fetch("https://cashify.my.id/api/generate/check-status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-license-key": s.cashify_license_key },
+            body: JSON.stringify({ transactionId: mapping.value }),
+          });
+          const data = await res.json();
+          if (data.data?.status === "paid" || data.data?.status === "success") isPaid = true;
+        }
+      } catch (err) {
+        console.error("Cashify check error:", err);
+      }
+    } else if (gateway === "pakasir" && pakasirMode === "live" && s.pakasir_slug && s.pakasir_api_key) {
       try {
         const url = `https://app.pakasir.com/api/transactiondetail?project=${s.pakasir_slug}&amount=${tx.total_amount}&order_id=${transactionId}&api_key=${s.pakasir_api_key}`;
         const res = await fetch(url);
@@ -61,7 +78,7 @@ serve(async (req) => {
 
     if (simulation === "on") isPaid = true;
 
-    if (pakasirMode === "sandbox" || pakasirMode === "demo") {
+    if (gateway === "pakasir" && (pakasirMode === "sandbox" || pakasirMode === "demo")) {
       if (Date.now() - new Date(tx.created_at).getTime() > 5000) isPaid = true;
     }
 
@@ -79,6 +96,11 @@ serve(async (req) => {
         balance_after: newBalance, description: `Top-up ${xcoinsAmount} XCoins via QRIS`,
         reference_id: transactionId
       });
+
+      // Clean up cashify mapping
+      if (gateway === "cashify") {
+        await supabase.from("site_settings").delete().eq("key", `cashify_tx_${transactionId}`);
+      }
 
       return new Response(JSON.stringify({ paid: true, balance: newBalance, added: xcoinsAmount }), 
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });

@@ -22,12 +22,34 @@ serve(async (req) => {
 
     const { data: settings } = await supabase
       .from("site_settings").select("key, value")
-      .in("key", ["pakasir_slug", "pakasir_api_key", "pakasir_mode"]);
+      .in("key", ["payment_gateway", "pakasir_slug", "pakasir_api_key", "pakasir_mode", "cashify_license_key"]);
 
     const s = Object.fromEntries((settings || []).map((r: any) => [r.key, r.value]));
+    const gateway = s.payment_gateway || "pakasir";
 
-    // Cancel in Pakasir if live mode
-    if (s.pakasir_mode === "live" && s.pakasir_slug && s.pakasir_api_key) {
+    if (gateway === "cashify" && s.cashify_license_key) {
+      // Cancel via Cashify
+      try {
+        const { data: mapping } = await supabase
+          .from("site_settings").select("value").eq("key", `cashify_tx_${transactionId}`).maybeSingle();
+
+        if (mapping?.value) {
+          await fetch("https://cashify.my.id/api/generate/cancel-status", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-license-key": s.cashify_license_key,
+            },
+            body: JSON.stringify({ transactionId: mapping.value }),
+          });
+          // Clean up mapping
+          await supabase.from("site_settings").delete().eq("key", `cashify_tx_${transactionId}`);
+        }
+      } catch (err) {
+        console.error("Cashify cancel error:", err);
+      }
+    } else if (s.pakasir_mode === "live" && s.pakasir_slug && s.pakasir_api_key) {
+      // Cancel via Pakasir
       try {
         await fetch("https://app.pakasir.com/api/transactioncancel", {
           method: "POST",

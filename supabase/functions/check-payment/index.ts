@@ -28,13 +28,11 @@ serve(async (req) => {
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Already paid
     if (transaction.status === "paid") {
       return new Response(JSON.stringify({ success: true, paid: true, transaction }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Expired
     if (transaction.expires_at && new Date(transaction.expires_at) < new Date()) {
       await supabase.from("transactions").update({ status: "expired" }).eq("transaction_id", transactionId);
       return new Response(JSON.stringify({ success: false, paid: false, expired: true }),
@@ -43,16 +41,45 @@ serve(async (req) => {
 
     const { data: settings } = await supabase
       .from("site_settings").select("key, value")
-      .in("key", ["pakasir_slug", "pakasir_api_key", "pakasir_mode", "payment_simulation", "discord_webhook_url"]);
+      .in("key", [
+        "payment_gateway", "pakasir_slug", "pakasir_api_key", "pakasir_mode",
+        "cashify_license_key", "payment_simulation", "discord_webhook_url"
+      ]);
 
     const s = Object.fromEntries((settings || []).map((r: any) => [r.key, r.value]));
+    const gateway = s.payment_gateway || "pakasir";
     const pakasirMode = s.pakasir_mode || "sandbox";
     const simulation = s.payment_simulation || "off";
 
     let isPaid = false;
 
-    // Live mode: check Pakasir API
-    if (pakasirMode === "live" && s.pakasir_slug && s.pakasir_api_key) {
+    if (gateway === "cashify" && s.cashify_license_key) {
+      // Check Cashify status
+      try {
+        // Get cashify transaction ID mapping
+        const { data: mapping } = await supabase
+          .from("site_settings").select("value").eq("key", `cashify_tx_${transactionId}`).maybeSingle();
+
+        if (mapping?.value) {
+          const res = await fetch("https://cashify.my.id/api/generate/check-status", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-license-key": s.cashify_license_key,
+            },
+            body: JSON.stringify({ transactionId: mapping.value }),
+          });
+          const data = await res.json();
+          console.log("Cashify check:", JSON.stringify(data));
+          if (data.data?.status === "paid" || data.data?.status === "success") {
+            isPaid = true;
+          }
+        }
+      } catch (err) {
+        console.error("Cashify check error:", err);
+      }
+    } else if (gateway === "pakasir" && pakasirMode === "live" && s.pakasir_slug && s.pakasir_api_key) {
+      // Check Pakasir status
       try {
         const url = `https://app.pakasir.com/api/transactiondetail?project=${s.pakasir_slug}&amount=${transaction.total_amount}&order_id=${transactionId}&api_key=${s.pakasir_api_key}`;
         const res = await fetch(url);
@@ -67,12 +94,10 @@ serve(async (req) => {
     }
 
     // Simulation mode
-    if (simulation === "on") {
-      isPaid = true;
-    }
+    if (simulation === "on") isPaid = true;
 
-    // Demo/sandbox mode - auto after 5s
-    if (pakasirMode === "sandbox" || pakasirMode === "demo") {
+    // Demo/sandbox auto-pay after 5s
+    if (gateway === "pakasir" && (pakasirMode === "sandbox" || pakasirMode === "demo")) {
       const elapsed = Date.now() - new Date(transaction.created_at).getTime();
       if (elapsed > 5000) isPaid = true;
     }
@@ -81,10 +106,8 @@ serve(async (req) => {
       await supabase.from("transactions").update({ status: "paid", paid_at: new Date().toISOString() })
         .eq("transaction_id", transactionId);
 
-      // Create license key
       await createLicenseKey(transaction);
 
-      // Discord notification
       if (s.discord_webhook_url) {
         await sendDiscordNotification(transaction, s.discord_webhook_url);
       }
