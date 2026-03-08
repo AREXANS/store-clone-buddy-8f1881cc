@@ -280,7 +280,8 @@ const Index = () => {
           customerName: formData.key,
           packageName: selectedPkg || 'NORMAL',
           packageDuration: durationData.days,
-          licenseKey: formData.key
+          licenseKey: formData.key,
+          promoCode: promoCode || undefined
         }
       });
 
