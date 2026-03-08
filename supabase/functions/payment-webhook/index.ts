@@ -74,7 +74,7 @@ serve(async (req) => {
 
       // Find our transaction by cashify mapping
       const { data: mappings } = await supabase
-        .from("site_settings").select("key, value").eq("value", cashifyTxId).like("key", "cashify_tx_%");
+        .from("app_settings").select("key, value").eq("value", cashifyTxId).like("key", "cashify_tx_%");
 
       if (!mappings || mappings.length === 0) {
         // Fallback: try ref field
