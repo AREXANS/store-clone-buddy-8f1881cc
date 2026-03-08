@@ -1,8 +1,9 @@
 import { FC, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shuffle, Edit3, Tag, ChevronDown, Gift } from 'lucide-react';
+import { Shuffle, Edit3, Tag, ChevronDown, Gift, Coins, CreditCard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import GlobalBackground from './GlobalBackground';
