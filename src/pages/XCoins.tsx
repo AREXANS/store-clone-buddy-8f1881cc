@@ -369,7 +369,7 @@ const XCoinsPage = () => {
               </button>
             </div>
             <div className="flex items-baseline gap-2">
-              <Coins className="w-6 h-6 text-primary" />
+              <img src="/images/xcoins-default-logo.png" alt="XCoins" className="w-7 h-7 rounded-full object-cover" />
               <span className="text-3xl font-display font-bold text-foreground">
                 {showBalance ? formatCoins(user.balance) : '•••••'}
               </span>
