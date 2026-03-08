@@ -40,6 +40,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   const [isNewKey, setIsNewKey] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'frozen' | 'expired'>('all');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Realtime countdown timer
@@ -367,11 +368,16 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
     }
   };
 
-  const filteredKeys = keys.filter(k => 
-    k.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    k.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    k.robloxUsers.some(u => u.username.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredKeys = keys.filter(k => {
+    const matchesSearch = k.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      k.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      k.robloxUsers.some(u => u.username.toLowerCase().includes(searchQuery.toLowerCase()));
+    if (!matchesSearch) return false;
+    if (statusFilter === 'frozen') return !!k.frozenUntil;
+    if (statusFilter === 'expired') return !k.frozenUntil && new Date(k.expired) < new Date();
+    if (statusFilter === 'active') return !k.frozenUntil && new Date(k.expired) >= new Date();
+    return true;
+  });
 
   const frozenCount = keys.filter(k => k.frozenUntil).length;
   const expiredCount = keys.filter(k => !k.frozenUntil && new Date(k.expired) < new Date()).length;
@@ -562,7 +568,27 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
             className="w-full bg-background/50"
           />
         </div>
-        
+
+        {/* Status filter buttons */}
+        <div className="flex gap-2 flex-wrap">
+          {([
+            { value: 'all', label: `Semua (${keys.length})` },
+            { value: 'active', label: `Aktif (${activeCount})` },
+            { value: 'frozen', label: `Frozen (${frozenCount})` },
+            { value: 'expired', label: `Expired (${expiredCount})` },
+          ] as const).map(f => (
+            <Button
+              key={f.value}
+              size="sm"
+              variant={statusFilter === f.value ? 'default' : 'outline'}
+              onClick={() => setStatusFilter(f.value)}
+              className="text-xs"
+            >
+              {f.label}
+            </Button>
+          ))}
+        </div>
+
         {/* Action buttons - scrollable on mobile */}
         <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
           <Button variant="outline" size="sm" onClick={exportKeys} disabled={keys.length === 0} className="whitespace-nowrap">
