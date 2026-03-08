@@ -98,7 +98,10 @@ const BackupRestore: FC = () => {
       const text = await file.text();
       const backupData = JSON.parse(text);
 
-      if (!backupData.tables) {
+      // Support both formats: { tables: {...} } and { meta: {...}, data: {...} }
+      const tablesData = backupData.tables || backupData.data;
+
+      if (!tablesData || typeof tablesData !== 'object') {
         toast({ title: 'Error', description: 'Format file backup tidak valid', variant: 'destructive' });
         return;
       }
@@ -106,8 +109,8 @@ const BackupRestore: FC = () => {
       // Filter only selected tables
       const filteredTables: Record<string, any[]> = {};
       for (const key of Array.from(selectedTables)) {
-        if (backupData.tables[key]) {
-          filteredTables[key] = backupData.tables[key];
+        if (tablesData[key]) {
+          filteredTables[key] = tablesData[key];
         }
       }
 
