@@ -1078,7 +1078,7 @@ const Admin = () => {
                           const val = checked ? 'on' : 'off';
                           const exists = settings.find(s => s.key === key);
                           if (exists) { updateSetting(key, val); }
-                          else { supabase.from('site_settings').insert({ key, value: val, description: 'Auto delete old transactions' }).then(() => loadAllData()); }
+                          else { supabase.from('app_settings').insert({ key, value: val, description: 'Auto delete old transactions' }).then(() => loadAllData()); }
                         }}
                       />
                       <Input
