@@ -88,6 +88,7 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
   const navigate = useNavigate();
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   const [xcoinsEnabled, setXcoinsEnabled] = useState(false);
+  const [xcoinsLogoUrl, setXcoinsLogoUrl] = useState('');
 
   useEffect(() => {
     const fetchSocialLinks = async () => {
@@ -100,13 +101,15 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
       if (data) setSocialLinks(data as SocialLink[]);
     };
 
-    const checkXcoins = async () => {
-      const { data } = await supabase.from('site_settings').select('value').eq('key', 'xcoins_enabled').maybeSingle();
-      if (data?.value === 'on') setXcoinsEnabled(true);
+    const checkXcoinsSettings = async () => {
+      const { data } = await supabase.from('site_settings').select('key, value').in('key', ['xcoins_enabled', 'xcoins_logo_url']);
+      const map = Object.fromEntries((data || []).map((s: any) => [s.key, s.value]));
+      setXcoinsEnabled(map.xcoins_enabled === 'on');
+      setXcoinsLogoUrl(map.xcoins_logo_url || '');
     };
 
     fetchSocialLinks();
-    checkXcoins();
+    checkXcoinsSettings();
   }, []);
 
   const normalPkg = packages?.find(p => p.name === 'NORMAL');
@@ -122,7 +125,50 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
       <GlobalBackground />
 
       <div className="max-w-4xl w-full relative z-10">
-        {/* Header */}
+        {/* Top Header Bar */}
+        <div className="flex items-center justify-between mb-4 md:mb-6 glass-card rounded-2xl px-3 py-2.5 md:px-5 md:py-3">
+          {/* Left: Cek Key */}
+          <button
+            onClick={() => navigate('/key-system')}
+            className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors px-2 py-1.5 rounded-lg hover:bg-primary/10"
+          >
+            <Search className="w-4 h-4" />
+            <span className="text-xs md:text-sm font-medium">Cek Key</span>
+          </button>
+
+          {/* Center: Title or XCoins */}
+          {xcoinsEnabled ? (
+            <button
+              onClick={() => navigate('/xcoins')}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-primary/10 transition-colors"
+            >
+              {xcoinsLogoUrl ? (
+                <img src={xcoinsLogoUrl} alt="XCoins" className="w-7 h-7 md:w-8 md:h-8 rounded-full object-cover border-2 border-primary/50 shadow-lg" />
+              ) : (
+                <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center border-2 border-primary/50 shadow-lg">
+                  <Coins className="w-4 h-4 text-primary-foreground" />
+                </div>
+              )}
+              <span className="font-display text-sm md:text-base font-bold gradient-text">XCoins</span>
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <img src="/images/arexans-icon.jpg" alt="Arexans" className="w-7 h-7 md:w-8 md:h-8 rounded-full object-cover border-2 border-primary/50 shadow-lg" />
+              <span className="font-display text-sm md:text-base font-bold gradient-text">Arexans Tools</span>
+            </div>
+          )}
+
+          {/* Right: History */}
+          <button
+            onClick={() => navigate('/key-system')}
+            className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors px-2 py-1.5 rounded-lg hover:bg-primary/10"
+          >
+            <History className="w-4 h-4" />
+            <span className="text-xs md:text-sm font-medium">History</span>
+          </button>
+        </div>
+
+        {/* Main Title */}
         <div className="text-center mb-6 md:mb-8">
           <div className="relative inline-block mb-3 md:mb-4">
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-display font-black tracking-wider animate-title-gradient bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 bg-clip-text text-transparent bg-[length:200%_auto]">
