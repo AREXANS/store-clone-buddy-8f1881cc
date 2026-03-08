@@ -1184,10 +1184,18 @@ const Admin = () => {
                         <td className="p-3">
                           <input type="checkbox" checked={selectedTxIds.has(tx.id)} onChange={() => toggleSelectTx(tx.id)} className="rounded" />
                         </td>
-                        <td className="p-3 font-mono text-xs">{tx.transaction_id.slice(-12)}</td>
+                        <td className="p-3">
+                          <button onClick={() => { navigator.clipboard.writeText(tx.transaction_id); toast({ title: 'Copied!', description: 'Transaction ID disalin' }); }} className="font-mono text-xs hover:text-primary cursor-pointer underline decoration-dotted" title="Klik untuk salin">
+                            {tx.transaction_id.slice(-12)}
+                          </button>
+                        </td>
                         <td className="p-3">
                           <div>{tx.customer_name}</div>
-                          {tx.customer_whatsapp && <div className="text-xs text-muted-foreground">{tx.customer_whatsapp}</div>}
+                          {tx.customer_whatsapp && (
+                            <button onClick={() => { navigator.clipboard.writeText(tx.customer_whatsapp!); toast({ title: 'Copied!', description: 'No. WhatsApp disalin' }); }} className="text-xs text-muted-foreground hover:text-primary cursor-pointer underline decoration-dotted" title="Klik untuk salin">
+                              {tx.customer_whatsapp}
+                            </button>
+                          )}
                         </td>
                         <td className="p-3">
                           {txTab === 'xcoins' ? (
