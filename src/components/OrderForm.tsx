@@ -316,6 +316,7 @@ const OrderForm: FC<OrderFormProps> = ({
             <label className="block text-sm font-medium mb-2 text-foreground">Durasi</label>
             <div className="flex gap-2 mb-2">
               <Button type="button" variant={formData.duration === '1h' ? 'default' : 'outline'} size="sm" onClick={() => setFormData({ ...formData, duration: '1h' })} className="flex-1 text-xs">1 Hari</Button>
+              <Button type="button" variant={formData.duration === '2h' ? 'default' : 'outline'} size="sm" onClick={() => setFormData({ ...formData, duration: '2h' })} className="flex-1 text-xs">2 Hari</Button>
               <Button type="button" variant={formData.duration === '7h' ? 'default' : 'outline'} size="sm" onClick={() => setFormData({ ...formData, duration: '7h' })} className="flex-1 text-xs">7 Hari</Button>
               <Button type="button" variant={formData.duration === '30h' ? 'default' : 'outline'} size="sm" onClick={() => setFormData({ ...formData, duration: '30h' })} className="flex-1 text-xs">1 Bulan</Button>
             </div>
