@@ -666,6 +666,21 @@ const Admin = () => {
               <ApiDocumentation />
             </TabsContent>
 
+            {/* Scripts Tab */}
+            <TabsContent value="scripts" className="space-y-4">
+              <ScriptManagement />
+            </TabsContent>
+
+            {/* Whitelist Tab */}
+            <TabsContent value="whitelist" className="space-y-4">
+              <WhitelistManagement />
+            </TabsContent>
+
+            {/* Upload Tab */}
+            <TabsContent value="upload" className="space-y-4">
+              <LuaUploadManager />
+            </TabsContent>
+
             {/* Ads Tab */}
             <TabsContent value="ads" className="space-y-4">
               <div className="flex justify-between items-center">
