@@ -29,6 +29,17 @@ interface KeyData {
   robloxUsers: { hwid: string; username: string; registeredAt: string }[];
 }
 
+interface UploadedScript {
+  id: string;
+  name: string;
+  display_name: string;
+  content: string;
+  rawContent: string;
+  useWhitelist: boolean;
+  is_active: boolean;
+  created_at: string;
+}
+
 const WhitelistManagement: FC = () => {
   const [manualWhitelist, setManualWhitelist] = useState<WhitelistUser[]>([]);
   const [keyWhitelist, setKeyWhitelist] = useState<WhitelistUser[]>([]);
@@ -36,8 +47,130 @@ const WhitelistManagement: FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [uploadedScripts, setUploadedScripts] = useState<UploadedScript[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const SUPABASE_API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+
+  const generateWhitelistWrapper = (rawScript: string) => {
+    return `-- Whitelist Protected Script
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+
+local WHITELIST_URL = "${SUPABASE_API_BASE}/get-whitelist?format=json"
+local whitelistedUsers = {}
+
+local function fetchWhitelist()
+    local ok, result = pcall(function()
+        local response = game:HttpGet(WHITELIST_URL)
+        local data = HttpService:JSONDecode(response)
+        if data and data.usernames then
+            whitelistedUsers = {}
+            for _, name in ipairs(data.usernames) do
+                whitelistedUsers[string.lower(name)] = true
+            end
+        end
+    end)
+    if not ok then warn("[Whitelist] Failed to fetch: " .. tostring(result)) end
+end
+
+local function isWhitelisted(player)
+    return whitelistedUsers[string.lower(player.Name)] == true
+end
+
+fetchWhitelist()
+
+local player = Players.LocalPlayer
+if not isWhitelisted(player) then
+    warn("[Whitelist] " .. player.Name .. " is NOT whitelisted!")
+    return
+end
+
+print("[Whitelist] " .. player.Name .. " verified! Loading script...")
+
+-- Original Script Below --
+${rawScript}`;
+  };
+
+  const fetchScripts = async () => {
+    const { data } = await supabase
+      .from('lua_scripts')
+      .select('*')
+      .eq('script_type', 'whitelist_upload')
+      .order('created_at', { ascending: false });
+    
+    if (data) {
+      setUploadedScripts(data.map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        display_name: s.display_name,
+        content: s.content,
+        rawContent: s.description || s.content, // store raw in description field
+        useWhitelist: s.is_active, // repurpose is_active as whitelist toggle
+        is_active: true,
+        created_at: s.created_at
+      })));
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (ext !== 'lua' && ext !== 'txt') {
+      toast({ title: 'Error', description: 'Hanya file .lua atau .txt', variant: 'destructive' });
+      return;
+    }
+
+    const rawContent = await file.text();
+    const displayName = file.name.replace(/\.(lua|txt)$/, '');
+    const scriptName = displayName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+    const { error } = await supabase.from('lua_scripts').insert({
+      name: scriptName,
+      display_name: displayName,
+      content: rawContent,
+      description: rawContent, // store raw content
+      script_type: 'whitelist_upload',
+      is_active: false // default: no whitelist
+    });
+
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Berhasil', description: `Script "${displayName}" berhasil diupload` });
+      fetchScripts();
+    }
+
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const toggleWhitelist = async (script: UploadedScript) => {
+    const newVal = !script.useWhitelist;
+    const newContent = newVal ? generateWhitelistWrapper(script.rawContent) : script.rawContent;
+    
+    await supabase.from('lua_scripts').update({
+      is_active: newVal,
+      content: newContent,
+      updated_at: new Date().toISOString()
+    }).eq('id', script.id);
+
+    toast({ title: 'Berhasil', description: newVal ? 'Whitelist diaktifkan' : 'Whitelist dinonaktifkan' });
+    fetchScripts();
+  };
+
+  const deleteScript = async (id: string) => {
+    if (!confirm('Yakin hapus script ini?')) return;
+    await supabase.from('lua_scripts').delete().eq('id', id);
+    toast({ title: 'Berhasil', description: 'Script dihapus' });
+    fetchScripts();
+  };
+
+  const copyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: 'Copied!', description: `${label} berhasil disalin` });
+  };
 
   const fetchWhitelist = async () => {
     setLoading(true);
