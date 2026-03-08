@@ -484,7 +484,7 @@ const XCoinsPage = () => {
                     <div className="text-center p-3 rounded-lg bg-primary/10">
                       <span className="text-sm text-muted-foreground">Anda akan mendapatkan</span>
                       <div className="flex items-center justify-center gap-1 mt-1">
-                        <Coins className="w-5 h-5 text-primary" />
+                        <img src="/images/xcoins-default-logo.png" alt="XCoins" className="w-5 h-5 rounded-full object-cover" />
                         <span className="text-xl font-display font-bold text-primary">{formatCoins(parseInt(topupAmount))}</span>
                         <span className="text-sm text-muted-foreground">XCoins</span>
                       </div>
