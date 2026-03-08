@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   Settings, Package, Image, List, CreditCard, LogOut, Save, 
-  Plus, Trash2, Edit2, Eye, EyeOff, RefreshCw, MessageSquare, Shield, Key, FileText, FileCode, Upload
+  Plus, Trash2, Edit2, Eye, EyeOff, RefreshCw, MessageSquare, Shield, Key, FileText, FileCode, Upload, Tag
 } from 'lucide-react';
 import GlobalBackground from '@/components/GlobalBackground';
 import DeviceApprovalScreen from '@/components/DeviceApprovalScreen';
@@ -21,6 +21,7 @@ import ApiDocumentation from '@/components/ApiDocumentation';
 import ScriptManagement from '@/components/ScriptManagement';
 import WhitelistManagement from '@/components/WhitelistManagement';
 import LuaUploadManager from '@/components/LuaUploadManager';
+import PromoManagement from '@/components/PromoManagement';
 import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 
 interface SiteSetting {
@@ -403,6 +404,10 @@ const Admin = () => {
                 <TabsTrigger value="social" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
                   <MessageSquare className="w-4 h-4" />
                   <span className="hidden xs:inline">Social</span>
+                </TabsTrigger>
+                <TabsTrigger value="promo" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <Tag className="w-4 h-4" />
+                  <span className="hidden xs:inline">Promo</span>
                 </TabsTrigger>
                 <TabsTrigger value="devices" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
                   <Shield className="w-4 h-4" />
@@ -1115,6 +1120,11 @@ const Admin = () => {
                   </Card>
                 ))}
               </div>
+            </TabsContent>
+
+            {/* Promo Tab */}
+            <TabsContent value="promo" className="space-y-4">
+              <PromoManagement />
             </TabsContent>
 
             {/* Devices Tab */}
