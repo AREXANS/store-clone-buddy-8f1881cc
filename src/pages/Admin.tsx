@@ -1122,6 +1122,11 @@ const Admin = () => {
               </div>
             </TabsContent>
 
+            {/* Promo Tab */}
+            <TabsContent value="promo" className="space-y-4">
+              <PromoManagement />
+            </TabsContent>
+
             {/* Devices Tab */}
             <TabsContent value="devices" className="space-y-4">
               <DeviceManagement
