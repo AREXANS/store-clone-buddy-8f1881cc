@@ -220,9 +220,11 @@ const LuaUploadManager: FC = () => {
     toast({ title: 'Copied!', description: 'URL berhasil disalin' });
   };
 
+  const getLoaderUrl = (scriptName: string) => `${SUPABASE_API_BASE}/get-loader?name=${scriptName}`;
+
   const copyLoadstring = (scriptName: string) => {
-    navigator.clipboard.writeText(`loadstring(game:HttpGet("${getScriptUrl(scriptName)}"))()`)
-    toast({ title: 'Copied!', description: 'Loadstring code berhasil disalin' });
+    navigator.clipboard.writeText(`loadstring(game:HttpGet("${getLoaderUrl(scriptName)}"))()`)
+    toast({ title: 'Copied!', description: 'Loadstring code (protected) berhasil disalin' });
   };
 
   return (
