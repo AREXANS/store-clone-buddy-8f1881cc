@@ -493,6 +493,10 @@ const Admin = () => {
                   <Shield className="w-4 h-4" />
                   <span className="hidden xs:inline">Devices</span>
                 </TabsTrigger>
+                <TabsTrigger value="backup" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <Database className="w-4 h-4" />
+                  <span className="hidden xs:inline">Backup</span>
+                </TabsTrigger>
               </TabsList>
             </div>
 
