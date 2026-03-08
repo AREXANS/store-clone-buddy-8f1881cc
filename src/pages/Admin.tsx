@@ -1059,66 +1059,36 @@ const Admin = () => {
                 </div>
               </div>
 
-              {/* Auto-cleanup settings */}
+              {/* Auto-cleanup settings - only transactions */}
               <Card className="glass-card">
                 <CardContent className="pt-4 pb-4 space-y-3">
-                  <p className="text-sm font-medium flex items-center gap-2"><Trash2 className="w-4 h-4 text-muted-foreground" /> Auto-Cleanup</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Hapus transaksi lebih dari (hari)</Label>
-                      <div className="flex gap-2 items-center">
-                        <Switch
-                          checked={settings.find(s => s.key === 'auto_delete_transactions_enabled')?.value === 'on'}
-                          onCheckedChange={checked => {
-                            const key = 'auto_delete_transactions_enabled';
-                            const val = checked ? 'on' : 'off';
-                            const exists = settings.find(s => s.key === key);
-                            if (exists) { updateSetting(key, val); }
-                            else { supabase.from('site_settings').insert({ key, value: val, description: 'Auto delete old transactions' }).then(() => loadAllData()); }
-                          }}
-                        />
-                        <Input
-                          type="number"
-                          className="w-20 bg-background/50"
-                          value={settings.find(s => s.key === 'auto_delete_transactions_days')?.value || '30'}
-                          onChange={e => {
-                            const key = 'auto_delete_transactions_days';
-                            const val = e.target.value;
-                            const exists = settings.find(s => s.key === key);
-                            if (exists) { updateSetting(key, val); }
-                            else { supabase.from('site_settings').insert({ key, value: val, description: 'Days before auto-deleting transactions' }).then(() => loadAllData()); }
-                          }}
-                        />
-                        <span className="text-xs text-muted-foreground">hari</span>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Hapus key expired lebih dari (hari)</Label>
-                      <div className="flex gap-2 items-center">
-                        <Switch
-                          checked={settings.find(s => s.key === 'auto_delete_keys_enabled')?.value === 'on'}
-                          onCheckedChange={checked => {
-                            const key = 'auto_delete_keys_enabled';
-                            const val = checked ? 'on' : 'off';
-                            const exists = settings.find(s => s.key === key);
-                            if (exists) { updateSetting(key, val); }
-                            else { supabase.from('site_settings').insert({ key, value: val, description: 'Auto delete expired keys' }).then(() => loadAllData()); }
-                          }}
-                        />
-                        <Input
-                          type="number"
-                          className="w-20 bg-background/50"
-                          value={settings.find(s => s.key === 'auto_delete_keys_days')?.value || '7'}
-                          onChange={e => {
-                            const key = 'auto_delete_keys_days';
-                            const val = e.target.value;
-                            const exists = settings.find(s => s.key === key);
-                            if (exists) { updateSetting(key, val); }
-                            else { supabase.from('site_settings').insert({ key, value: val, description: 'Days before auto-deleting expired keys' }).then(() => loadAllData()); }
-                          }}
-                        />
-                        <span className="text-xs text-muted-foreground">hari</span>
-                      </div>
+                  <p className="text-sm font-medium flex items-center gap-2"><Trash2 className="w-4 h-4 text-muted-foreground" /> Auto-Cleanup Transaksi</p>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Hapus transaksi lebih dari (hari)</Label>
+                    <div className="flex gap-2 items-center">
+                      <Switch
+                        checked={settings.find(s => s.key === 'auto_delete_transactions_enabled')?.value === 'on'}
+                        onCheckedChange={checked => {
+                          const key = 'auto_delete_transactions_enabled';
+                          const val = checked ? 'on' : 'off';
+                          const exists = settings.find(s => s.key === key);
+                          if (exists) { updateSetting(key, val); }
+                          else { supabase.from('site_settings').insert({ key, value: val, description: 'Auto delete old transactions' }).then(() => loadAllData()); }
+                        }}
+                      />
+                      <Input
+                        type="number"
+                        className="w-20 bg-background/50"
+                        value={settings.find(s => s.key === 'auto_delete_transactions_days')?.value || '30'}
+                        onChange={e => {
+                          const key = 'auto_delete_transactions_days';
+                          const val = e.target.value;
+                          const exists = settings.find(s => s.key === key);
+                          if (exists) { updateSetting(key, val); }
+                          else { supabase.from('site_settings').insert({ key, value: val, description: 'Days before auto-deleting transactions' }).then(() => loadAllData()); }
+                        }}
+                      />
+                      <span className="text-xs text-muted-foreground">hari</span>
                     </div>
                   </div>
                 </CardContent>
