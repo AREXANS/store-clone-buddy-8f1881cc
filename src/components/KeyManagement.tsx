@@ -40,6 +40,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   const [isNewKey, setIsNewKey] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'frozen' | 'expired'>('all');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Realtime countdown timer
