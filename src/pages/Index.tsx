@@ -264,7 +264,7 @@ const Index = () => {
 
     setLoading(true);
     const pricePerDay = selectedPkg === 'VIP' ? PRICES.VIP : PRICES.NORMAL;
-    const calculatedAmount = pricePerDay * durationData.days;
+    const calculatedAmount = Math.max(1000, pricePerDay * durationData.days - promoDiscount);
 
     if (calculatedAmount < 1000) {
       setErrorMsg("Nominal terlalu kecil untuk QRIS (minimal Rp 1.000)");
