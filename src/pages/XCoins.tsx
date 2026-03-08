@@ -255,7 +255,7 @@ const XCoinsPage = () => {
         <Card className="w-full max-w-md z-10 glass-card">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
-              <Coins className="w-8 h-8 text-primary animate-glow" />
+              <img src="/images/xcoins-default-logo.png" alt="XCoins" className="w-10 h-10 rounded-full object-cover border-2 border-primary/50 shadow-lg" />
               <CardTitle className="font-display text-2xl gradient-text">XCoins</CardTitle>
             </div>
             <CardDescription>
