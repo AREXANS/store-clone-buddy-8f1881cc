@@ -33,7 +33,7 @@ serve(async (req) => {
     }
 
     if (tx.status === 'paid') {
-      const { data: user } = await supabase.from('xcoins_users').select('balance').eq('id', userId).single();
+      const { data: user } = await supabase.from('xcoins_balances').select('balance').eq('id', userId).single();
       return new Response(JSON.stringify({ paid: true, balance: user?.balance || 0 }), 
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
