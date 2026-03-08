@@ -80,6 +80,33 @@ export type Database = {
         }
         Relationships: []
       }
+      app_settings: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       backgrounds: {
         Row: {
           background_type: string
@@ -239,33 +266,6 @@ export type Database = {
         }
         Relationships: []
       }
-      site_settings: {
-        Row: {
-          created_at: string
-          description: string | null
-          id: string
-          key: string
-          updated_at: string
-          value: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          key: string
-          updated_at?: string
-          value: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          key?: string
-          updated_at?: string
-          value?: string
-        }
-        Relationships: []
-      }
       social_links: {
         Row: {
           created_at: string
@@ -356,6 +356,39 @@ export type Database = {
         }
         Relationships: []
       }
+      xcoins_balances: {
+        Row: {
+          balance: number
+          created_at: string
+          display_name: string | null
+          id: string
+          is_active: boolean
+          phone: string
+          pin_hash: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          phone: string
+          pin_hash: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          phone?: string
+          pin_hash?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       xcoins_otp: {
         Row: {
           created_at: string
@@ -419,43 +452,10 @@ export type Database = {
             foreignKeyName: "xcoins_transactions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "xcoins_users"
+            referencedRelation: "xcoins_balances"
             referencedColumns: ["id"]
           },
         ]
-      }
-      xcoins_users: {
-        Row: {
-          balance: number
-          created_at: string
-          display_name: string | null
-          id: string
-          is_active: boolean
-          phone: string
-          pin_hash: string
-          updated_at: string
-        }
-        Insert: {
-          balance?: number
-          created_at?: string
-          display_name?: string | null
-          id?: string
-          is_active?: boolean
-          phone: string
-          pin_hash: string
-          updated_at?: string
-        }
-        Update: {
-          balance?: number
-          created_at?: string
-          display_name?: string | null
-          id?: string
-          is_active?: boolean
-          phone?: string
-          pin_hash?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
     }
     Views: {

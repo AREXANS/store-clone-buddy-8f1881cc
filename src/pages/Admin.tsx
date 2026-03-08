@@ -232,7 +232,7 @@ const Admin = () => {
     setLoading(true);
     
     const { data } = await supabase
-      .from('site_settings')
+      .from('app_settings')
       .select('value')
       .eq('key', 'admin_key')
       .maybeSingle();
@@ -254,7 +254,7 @@ const Admin = () => {
 
   const loadAllData = async () => {
     const [settingsRes, packagesRes, adsRes, backgroundsRes, transactionsRes, socialLinksRes] = await Promise.all([
-      supabase.from('site_settings').select('*').order('key'),
+      supabase.from('app_settings').select('*').order('key'),
       supabase.from('packages').select('*').order('sort_order'),
       supabase.from('ads').select('*').order('sort_order'),
       supabase.from('backgrounds').select('*').order('sort_order'),
@@ -272,7 +272,7 @@ const Admin = () => {
 
   const updateSetting = async (key: string, value: string) => {
     const { error } = await supabase
-      .from('site_settings')
+      .from('app_settings')
       .update({ value, updated_at: new Date().toISOString() })
       .eq('key', key);
     
@@ -1078,7 +1078,7 @@ const Admin = () => {
                           const val = checked ? 'on' : 'off';
                           const exists = settings.find(s => s.key === key);
                           if (exists) { updateSetting(key, val); }
-                          else { supabase.from('site_settings').insert({ key, value: val, description: 'Auto delete old transactions' }).then(() => loadAllData()); }
+                          else { supabase.from('app_settings').insert({ key, value: val, description: 'Auto delete old transactions' }).then(() => loadAllData()); }
                         }}
                       />
                       <Input
@@ -1090,7 +1090,7 @@ const Admin = () => {
                           const val = e.target.value;
                           const exists = settings.find(s => s.key === key);
                           if (exists) { updateSetting(key, val); }
-                          else { supabase.from('site_settings').insert({ key, value: val, description: 'Days before auto-deleting transactions' }).then(() => loadAllData()); }
+                          else { supabase.from('app_settings').insert({ key, value: val, description: 'Days before auto-deleting transactions' }).then(() => loadAllData()); }
                         }}
                       />
                       <span className="text-xs text-muted-foreground">hari</span>

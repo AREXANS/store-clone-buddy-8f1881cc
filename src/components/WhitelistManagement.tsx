@@ -176,7 +176,7 @@ ${rawScript}`;
     setLoading(true);
     try {
       const { data: manualData } = await supabase
-        .from('site_settings')
+        .from('app_settings')
         .select('value')
         .eq('key', 'manual_whitelist')
         .single();
@@ -190,7 +190,7 @@ ${rawScript}`;
       }
 
       const { data: keysData } = await supabase
-        .from('site_settings')
+        .from('app_settings')
         .select('value')
         .eq('key', 'license_keys')
         .single();
@@ -258,14 +258,14 @@ ${rawScript}`;
       const updatedList = [...manualWhitelist, newUser];
 
       const { data: existing } = await supabase
-        .from('site_settings')
+        .from('app_settings')
         .select('id')
         .eq('key', 'manual_whitelist')
         .single();
 
       if (existing) {
         await supabase
-          .from('site_settings')
+          .from('app_settings')
           .update({ 
             value: JSON.stringify(updatedList),
             updated_at: new Date().toISOString()
@@ -273,7 +273,7 @@ ${rawScript}`;
           .eq('key', 'manual_whitelist');
       } else {
         await supabase
-          .from('site_settings')
+          .from('app_settings')
           .insert({
             key: 'manual_whitelist',
             value: JSON.stringify(updatedList),
@@ -298,7 +298,7 @@ ${rawScript}`;
       const updatedList = manualWhitelist.filter(u => u.username !== username);
 
       await supabase
-        .from('site_settings')
+        .from('app_settings')
         .update({ 
           value: JSON.stringify(updatedList),
           updated_at: new Date().toISOString()

@@ -51,7 +51,7 @@ serve(async (req) => {
 
     const pinHash = await hashPin(pin);
     const { data: user, error: userError } = await supabase
-      .from('xcoins_users')
+      .from('xcoins_balances')
       .insert({
         phone,
         pin_hash: pinHash,

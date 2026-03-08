@@ -12,7 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
 const ALL_TABLES = [
-  { key: 'site_settings', label: 'Site Settings', icon: '⚙️' },
+  { key: 'app_settings', label: 'App Settings', icon: '⚙️' },
   { key: 'packages', label: 'Packages', icon: '📦' },
   { key: 'ads', label: 'Ads/Slider', icon: '📢' },
   { key: 'backgrounds', label: 'Backgrounds', icon: '🎨' },
@@ -21,7 +21,7 @@ const ALL_TABLES = [
   { key: 'admin_sessions', label: 'Admin Sessions', icon: '🔐' },
   { key: 'lua_scripts', label: 'Lua Scripts', icon: '📜' },
   { key: 'package_discounts', label: 'Discounts', icon: '🏷️' },
-  { key: 'xcoins_users', label: 'XCoins Users', icon: '👤' },
+  { key: 'xcoins_balances', label: 'XCoins Balances', icon: '👤' },
   { key: 'xcoins_transactions', label: 'XCoins Transactions', icon: '💰' },
   { key: 'xcoins_otp', label: 'XCoins OTP', icon: '🔑' },
 ];

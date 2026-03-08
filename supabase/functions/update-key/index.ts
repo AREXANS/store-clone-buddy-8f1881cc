@@ -28,7 +28,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const { data, error } = await supabase
-      .from("site_settings")
+      .from("app_settings")
       .select("value")
       .eq("key", "license_keys")
       .maybeSingle();
@@ -66,7 +66,7 @@ serve(async (req) => {
     };
 
     const { error: updateError } = await supabase
-      .from("site_settings")
+      .from("app_settings")
       .update({ value: JSON.stringify(keys), updated_at: new Date().toISOString() })
       .eq("key", "license_keys");
 

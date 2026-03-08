@@ -33,13 +33,13 @@ serve(async (req) => {
     }
 
     if (tx.status === 'paid') {
-      const { data: user } = await supabase.from('xcoins_users').select('balance').eq('id', userId).single();
+      const { data: user } = await supabase.from('xcoins_balances').select('balance').eq('id', userId).single();
       return new Response(JSON.stringify({ paid: true, balance: user?.balance || 0 }), 
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const { data: settings } = await supabase
-      .from("site_settings").select("key, value")
+      .from("app_settings").select("key, value")
       .in("key", ["payment_gateway", "pakasir_slug", "pakasir_api_key", "pakasir_mode", "cashify_license_key", "payment_simulation"]);
 
     const s = Object.fromEntries((settings || []).map((r: any) => [r.key, r.value]));
@@ -52,7 +52,7 @@ serve(async (req) => {
     if (gateway === "cashify" && s.cashify_license_key) {
       try {
         const { data: mapping } = await supabase
-          .from("site_settings").select("value").eq("key", `cashify_tx_${transactionId}`).maybeSingle();
+          .from("app_settings").select("value").eq("key", `cashify_tx_${transactionId}`).maybeSingle();
         if (mapping?.value) {
           const res = await fetch("https://cashify.my.id/api/generate/check-status", {
             method: "POST",
@@ -85,11 +85,11 @@ serve(async (req) => {
     if (isPaid) {
       await supabase.from('transactions').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', tx.id);
 
-      const { data: user } = await supabase.from('xcoins_users').select('balance').eq('id', userId).single();
+      const { data: user } = await supabase.from('xcoins_balances').select('balance').eq('id', userId).single();
       const xcoinsAmount = tx.original_amount;
       const newBalance = (user?.balance || 0) + xcoinsAmount;
 
-      await supabase.from('xcoins_users').update({ balance: newBalance, updated_at: new Date().toISOString() }).eq('id', userId);
+      await supabase.from('xcoins_balances').update({ balance: newBalance, updated_at: new Date().toISOString() }).eq('id', userId);
 
       await supabase.from('xcoins_transactions').insert({
         user_id: userId, type: 'topup', amount: xcoinsAmount,
@@ -99,7 +99,7 @@ serve(async (req) => {
 
       // Clean up cashify mapping
       if (gateway === "cashify") {
-        await supabase.from("site_settings").delete().eq("key", `cashify_tx_${transactionId}`);
+        await supabase.from("app_settings").delete().eq("key", `cashify_tx_${transactionId}`);
       }
 
       return new Response(JSON.stringify({ paid: true, balance: newBalance, added: xcoinsAmount }), 

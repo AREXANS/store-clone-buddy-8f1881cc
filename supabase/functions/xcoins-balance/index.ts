@@ -19,7 +19,7 @@ serve(async (req) => {
     }
 
     // Get user with fresh balance
-    const { data: user } = await supabase.from('xcoins_users').select('*').eq('id', userId).single();
+    const { data: user } = await supabase.from('xcoins_balances').select('*').eq('id', userId).single();
     if (!user) {
       return new Response(JSON.stringify({ error: "User not found" }), 
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -36,7 +36,7 @@ serve(async (req) => {
 
     // Get leaderboard (top 10)
     const { data: leaderboard } = await supabase
-      .from('xcoins_users')
+      .from('xcoins_balances')
       .select('id, display_name, phone, balance')
       .eq('is_active', true)
       .order('balance', { ascending: false })

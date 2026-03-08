@@ -31,7 +31,7 @@ serve(async (req) => {
     }
 
     // Verify sender
-    const { data: sender } = await supabase.from('xcoins_users').select('*').eq('id', senderId).single();
+    const { data: sender } = await supabase.from('xcoins_balances').select('*').eq('id', senderId).single();
     if (!sender) {
       return new Response(JSON.stringify({ error: "Pengirim tidak ditemukan" }), 
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -54,7 +54,7 @@ serve(async (req) => {
     if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
     if (!cleanPhone.startsWith('62')) cleanPhone = '62' + cleanPhone;
 
-    const { data: recipient } = await supabase.from('xcoins_users').select('*').eq('phone', cleanPhone).maybeSingle();
+    const { data: recipient } = await supabase.from('xcoins_balances').select('*').eq('phone', cleanPhone).maybeSingle();
     if (!recipient) {
       return new Response(JSON.stringify({ error: "Penerima tidak ditemukan" }), 
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -70,8 +70,8 @@ serve(async (req) => {
     const newRecipientBalance = recipient.balance + amount;
     const refId = `TRF-${Date.now()}`;
 
-    await supabase.from('xcoins_users').update({ balance: newSenderBalance, updated_at: new Date().toISOString() }).eq('id', senderId);
-    await supabase.from('xcoins_users').update({ balance: newRecipientBalance, updated_at: new Date().toISOString() }).eq('id', recipient.id);
+    await supabase.from('xcoins_balances').update({ balance: newSenderBalance, updated_at: new Date().toISOString() }).eq('id', senderId);
+    await supabase.from('xcoins_balances').update({ balance: newRecipientBalance, updated_at: new Date().toISOString() }).eq('id', recipient.id);
 
     // Record transactions
     await supabase.from('xcoins_transactions').insert([

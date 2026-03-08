@@ -18,7 +18,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const { data, error } = await supabase
-      .from("site_settings")
+      .from("app_settings")
       .select("value")
       .eq("key", "license_keys")
       .maybeSingle();
@@ -48,7 +48,7 @@ serve(async (req) => {
     if (activeKeys.length < keys.length) {
       const deletedCount = keys.length - activeKeys.length;
       await supabase
-        .from("site_settings")
+        .from("app_settings")
         .update({ value: JSON.stringify(activeKeys), updated_at: new Date().toISOString() })
         .eq("key", "license_keys");
       

@@ -43,7 +43,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "No license key found" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { data: keysData } = await supabase.from("site_settings").select("value").eq("key", "license_keys").maybeSingle();
+    const { data: keysData } = await supabase.from("app_settings").select("value").eq("key", "license_keys").maybeSingle();
     let keys: any[] = [];
     if (keysData) { try { keys = JSON.parse(keysData.value || "[]"); } catch { keys = []; } }
 
@@ -65,7 +65,7 @@ serve(async (req) => {
       keys.push({ key: licenseKey, expired: newExpiry.toISOString(), created: now.toISOString(), role: transaction.package_name, maxHwid: 1, frozenUntil: null, frozenRemainingMs: null, hwids: [], robloxUsers: [] });
     }
 
-    await supabase.from("site_settings").update({ value: JSON.stringify(keys), updated_at: now.toISOString() }).eq("key", "license_keys");
+    await supabase.from("app_settings").update({ value: JSON.stringify(keys), updated_at: now.toISOString() }).eq("key", "license_keys");
     await supabase.from("transactions").update({ status: "claimed", paid_at: now.toISOString() }).eq("transaction_id", transactionId);
 
     return new Response(

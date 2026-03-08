@@ -8,7 +8,7 @@ const corsHeaders = {
 
 // Order matters for foreign key dependencies
 const RESTORE_ORDER = [
-  "site_settings",
+  "app_settings",
   "packages",
   "ads",
   "backgrounds",
@@ -16,7 +16,7 @@ const RESTORE_ORDER = [
   "admin_sessions",
   "lua_scripts",
   "package_discounts",
-  "xcoins_users",
+  "xcoins_balances",
   "xcoins_otp",
   "xcoins_transactions",
   "transactions",

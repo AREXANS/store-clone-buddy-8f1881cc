@@ -483,7 +483,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
 
   useEffect(() => {
     const loadCleanupSettings = async () => {
-      const { data } = await supabase.from('site_settings').select('key, value').in('key', ['auto_delete_keys_enabled', 'auto_delete_keys_days']);
+      const { data } = await supabase.from('app_settings').select('key, value').in('key', ['auto_delete_keys_enabled', 'auto_delete_keys_days']);
       if (data) {
         for (const s of data) {
           if (s.key === 'auto_delete_keys_enabled') setAutoDeleteKeysEnabled(s.value === 'on');
@@ -495,11 +495,11 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   }, []);
 
   const updateCleanupSetting = async (key: string, value: string) => {
-    const { data: existing } = await supabase.from('site_settings').select('id').eq('key', key).maybeSingle();
+    const { data: existing } = await supabase.from('app_settings').select('id').eq('key', key).maybeSingle();
     if (existing) {
-      await supabase.from('site_settings').update({ value, updated_at: new Date().toISOString() }).eq('key', key);
+      await supabase.from('app_settings').update({ value, updated_at: new Date().toISOString() }).eq('key', key);
     } else {
-      await supabase.from('site_settings').insert({ key, value, description: `Auto cleanup setting: ${key}` });
+      await supabase.from('app_settings').insert({ key, value, description: `Auto cleanup setting: ${key}` });
     }
   };
 

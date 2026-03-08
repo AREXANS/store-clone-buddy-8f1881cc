@@ -30,7 +30,7 @@ serve(async (req) => {
     if (!cleanPhone.startsWith('62')) cleanPhone = '62' + cleanPhone;
 
     const { data: user } = await supabase
-      .from('xcoins_users')
+      .from('xcoins_balances')
       .select('*')
       .eq('phone', cleanPhone)
       .maybeSingle();

@@ -21,7 +21,7 @@ serve(async (req) => {
     }
 
     const { data: settings } = await supabase
-      .from("site_settings").select("key, value")
+      .from("app_settings").select("key, value")
       .in("key", ["payment_gateway", "pakasir_slug", "pakasir_api_key", "pakasir_mode", "cashify_license_key"]);
 
     const s = Object.fromEntries((settings || []).map((r: any) => [r.key, r.value]));
@@ -31,7 +31,7 @@ serve(async (req) => {
       // Cancel via Cashify
       try {
         const { data: mapping } = await supabase
-          .from("site_settings").select("value").eq("key", `cashify_tx_${transactionId}`).maybeSingle();
+          .from("app_settings").select("value").eq("key", `cashify_tx_${transactionId}`).maybeSingle();
 
         if (mapping?.value) {
           await fetch("https://cashify.my.id/api/generate/cancel-status", {
@@ -43,7 +43,7 @@ serve(async (req) => {
             body: JSON.stringify({ transactionId: mapping.value }),
           });
           // Clean up mapping
-          await supabase.from("site_settings").delete().eq("key", `cashify_tx_${transactionId}`);
+          await supabase.from("app_settings").delete().eq("key", `cashify_tx_${transactionId}`);
         }
       } catch (err) {
         console.error("Cashify cancel error:", err);

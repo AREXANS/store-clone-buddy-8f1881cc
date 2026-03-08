@@ -56,7 +56,7 @@ serve(async (req) => {
       // === CASHIFY WEBHOOK ===
       // Validate webhook key
       const { data: whSetting } = await supabase
-        .from("site_settings").select("value").eq("key", "cashify_webhook_key").maybeSingle();
+        .from("app_settings").select("value").eq("key", "cashify_webhook_key").maybeSingle();
       
       const providedKey = body.webhook_key || body.key || req.headers.get("X-Webhook-Key");
       if (whSetting?.value && providedKey !== whSetting.value) {
@@ -74,7 +74,7 @@ serve(async (req) => {
 
       // Find our transaction by cashify mapping
       const { data: mappings } = await supabase
-        .from("site_settings").select("key, value").eq("value", cashifyTxId).like("key", "cashify_tx_%");
+        .from("app_settings").select("key, value").eq("value", cashifyTxId).like("key", "cashify_tx_%");
 
       if (!mappings || mappings.length === 0) {
         // Fallback: try ref field
@@ -100,7 +100,7 @@ serve(async (req) => {
           await handlePostPayment(supabase, transaction);
         }
         // Clean up mapping
-        await supabase.from("site_settings").delete().eq("key", mapping.key);
+        await supabase.from("app_settings").delete().eq("key", mapping.key);
       }
 
       return new Response(JSON.stringify({ success: true }),
@@ -140,10 +140,10 @@ async function handlePostPayment(supabase: any, transaction: any) {
   // Handle XCoins topup
   if (transaction.package_name === "XCOINS_TOPUP" && transaction.license_key) {
     const userId = transaction.license_key;
-    const { data: user } = await supabase.from("xcoins_users").select("balance").eq("id", userId).single();
+    const { data: user } = await supabase.from("xcoins_balances").select("balance").eq("id", userId).single();
     if (user) {
       const newBalance = (user.balance || 0) + transaction.original_amount;
-      await supabase.from("xcoins_users").update({ balance: newBalance, updated_at: new Date().toISOString() }).eq("id", userId);
+      await supabase.from("xcoins_balances").update({ balance: newBalance, updated_at: new Date().toISOString() }).eq("id", userId);
       await supabase.from("xcoins_transactions").insert({
         user_id: userId, type: "topup", amount: transaction.original_amount,
         balance_after: newBalance, description: `Top-up via webhook`, reference_id: transaction.transaction_id,
@@ -154,7 +154,7 @@ async function handlePostPayment(supabase: any, transaction: any) {
   // Discord notification
   try {
     const { data: discordSetting } = await supabase
-      .from("site_settings").select("value").eq("key", "discord_webhook_url").maybeSingle();
+      .from("app_settings").select("value").eq("key", "discord_webhook_url").maybeSingle();
     if (discordSetting?.value) {
       const embed = {
         title: "💰 Pembayaran Berhasil!",

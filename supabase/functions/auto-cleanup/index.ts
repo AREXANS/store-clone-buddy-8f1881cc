@@ -13,7 +13,7 @@ serve(async (req) => {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { data: settings } = await supabase
-      .from("site_settings").select("key, value")
+      .from("app_settings").select("key, value")
       .in("key", [
         "auto_delete_transactions_enabled", "auto_delete_transactions_days",
         "auto_delete_keys_enabled", "auto_delete_keys_days"
@@ -48,7 +48,7 @@ serve(async (req) => {
       const cutoff = new Date(Date.now() - days * 86400000);
 
       const { data: keyData } = await supabase
-        .from("site_settings").select("value").eq("key", "license_keys").maybeSingle();
+        .from("app_settings").select("value").eq("key", "license_keys").maybeSingle();
 
       if (keyData?.value) {
         try {
@@ -63,7 +63,7 @@ serve(async (req) => {
           });
           
           if (filtered.length < before) {
-            await supabase.from("site_settings").update({
+            await supabase.from("app_settings").update({
               value: JSON.stringify(filtered),
               updated_at: new Date().toISOString()
             }).eq("key", "license_keys");

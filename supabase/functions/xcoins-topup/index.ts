@@ -19,7 +19,7 @@ serve(async (req) => {
     }
 
     const { data: settings } = await supabase
-      .from("site_settings").select("key, value")
+      .from("app_settings").select("key, value")
       .in("key", ["payment_gateway", "pakasir_slug", "pakasir_api_key", "pakasir_mode", "cashify_license_key", "cashify_qris_id"]);
 
     const s = Object.fromEntries((settings || []).map((r: any) => [r.key, r.value]));
@@ -59,7 +59,7 @@ serve(async (req) => {
           totalAmount = data.data.totalAmount || amount;
           qrisUrl = `https://larabert-qrgen.hf.space/v1/create-qr-code?size=500x500&style=2&color=0D8BA5&data=${encodeURIComponent(qrString)}`;
           if (data.data.transactionId) {
-            await supabase.from("site_settings").upsert({
+            await supabase.from("app_settings").upsert({
               key: `cashify_tx_${orderId}`, value: data.data.transactionId,
               description: "Cashify topup tx mapping"
             }, { onConflict: "key" });

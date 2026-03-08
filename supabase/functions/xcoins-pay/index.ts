@@ -26,7 +26,7 @@ serve(async (req) => {
     }
 
     // Verify user & PIN
-    const { data: user } = await supabase.from('xcoins_users').select('*').eq('id', userId).single();
+    const { data: user } = await supabase.from('xcoins_balances').select('*').eq('id', userId).single();
     if (!user) {
       return new Response(JSON.stringify({ error: "User tidak ditemukan" }), 
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -45,7 +45,7 @@ serve(async (req) => {
 
     // Deduct balance
     const newBalance = user.balance - amount;
-    await supabase.from('xcoins_users').update({ balance: newBalance, updated_at: new Date().toISOString() }).eq('id', userId);
+    await supabase.from('xcoins_balances').update({ balance: newBalance, updated_at: new Date().toISOString() }).eq('id', userId);
 
     const transactionId = `XPAY-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
