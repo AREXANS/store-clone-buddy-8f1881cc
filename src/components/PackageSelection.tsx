@@ -87,6 +87,7 @@ const getIconForType = (iconType: string) => {
 const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, prices, ads, packages }) => {
   const navigate = useNavigate();
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+  const [xcoinsEnabled, setXcoinsEnabled] = useState(false);
 
   useEffect(() => {
     const fetchSocialLinks = async () => {
@@ -96,13 +97,16 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
         .eq('is_active', true)
         .eq('link_location', 'home')
         .order('sort_order');
+      if (data) setSocialLinks(data as SocialLink[]);
+    };
 
-      if (data) {
-        setSocialLinks(data as SocialLink[]);
-      }
+    const checkXcoins = async () => {
+      const { data } = await supabase.from('site_settings').select('value').eq('key', 'xcoins_enabled').maybeSingle();
+      if (data?.value === 'on') setXcoinsEnabled(true);
     };
 
     fetchSocialLinks();
+    checkXcoins();
   }, []);
 
   const normalPkg = packages?.find(p => p.name === 'NORMAL');
