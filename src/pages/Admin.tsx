@@ -1124,7 +1124,7 @@ const Admin = () => {
 
             {/* Promo Tab */}
             <TabsContent value="promo" className="space-y-4">
-              <PromoManagement />
+              <DiscountManagement />
             </TabsContent>
 
             {/* Devices Tab */}
