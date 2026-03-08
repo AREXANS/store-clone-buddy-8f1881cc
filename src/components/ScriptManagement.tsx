@@ -246,6 +246,12 @@ const ScriptManagement: FC = () => {
   };
 
   const getLoaderUrl = (scriptName: string) => {
+    // Pretty, executor-friendly URL for the main keysystem loader on the published domain.
+    // Browser hits will still be redirected to the Access Denied page by the backend function.
+    if (scriptName === 'keysystem' && import.meta.env.PROD && currentDomain) {
+      return `${currentDomain}/loader`;
+    }
+
     return `${getApiBase()}/get-loader?name=${scriptName}`;
   };
 
@@ -522,7 +528,7 @@ const ScriptManagement: FC = () => {
                   <div className="flex flex-col gap-2">
                     <div className="p-2 rounded bg-black/50 overflow-x-auto">
                       <code className="text-xs font-mono text-secondary whitespace-nowrap block">
-                        loadstring(game:HttpGet("{getScriptUrl(script.name)}"))()
+                        {`loadstring(game:HttpGet("${getLoaderUrl(script.name)}"))()`}
                       </code>
                     </div>
                     <Button variant="outline" size="sm" onClick={() => copyLoadstringCode(script.name)} className="w-full text-xs">
@@ -607,14 +613,14 @@ const ScriptManagement: FC = () => {
             </div>
           </div>
           
-          <div className="p-2 sm:p-3 rounded bg-primary/10 border border-primary/30">
-            <h4 className="font-semibold mb-1 sm:mb-2 text-xs sm:text-sm">💡 Contoh Penggunaan di Roblox:</h4>
-            <div className="overflow-x-auto">
-              <code className="text-xs font-mono text-primary whitespace-nowrap block">
-                loadstring(game:HttpGet("{getApiBase()}/get-loader?name=keysystem"))()
-              </code>
-            </div>
-          </div>
+           <div className="p-2 sm:p-3 rounded bg-primary/10 border border-primary/30">
+             <h4 className="font-semibold mb-1 sm:mb-2 text-xs sm:text-sm">💡 Contoh Penggunaan di Roblox:</h4>
+             <div className="overflow-x-auto">
+               <code className="text-xs font-mono text-primary whitespace-nowrap block">
+                 {`loadstring(game:HttpGet(\"${import.meta.env.PROD ? `${currentDomain}/loader` : `${SUPABASE_API_BASE}/get-loader?name=keysystem`}\"))()`}
+               </code>
+             </div>
+           </div>
         </CardContent>
       </Card>
     </div>
