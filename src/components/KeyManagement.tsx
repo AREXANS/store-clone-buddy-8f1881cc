@@ -368,11 +368,16 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
     }
   };
 
-  const filteredKeys = keys.filter(k => 
-    k.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    k.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    k.robloxUsers.some(u => u.username.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredKeys = keys.filter(k => {
+    const matchesSearch = k.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      k.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      k.robloxUsers.some(u => u.username.toLowerCase().includes(searchQuery.toLowerCase()));
+    if (!matchesSearch) return false;
+    if (statusFilter === 'frozen') return !!k.frozenUntil;
+    if (statusFilter === 'expired') return !k.frozenUntil && new Date(k.expired) < new Date();
+    if (statusFilter === 'active') return !k.frozenUntil && new Date(k.expired) >= new Date();
+    return true;
+  });
 
   const frozenCount = keys.filter(k => k.frozenUntil).length;
   const expiredCount = keys.filter(k => !k.frozenUntil && new Date(k.expired) < new Date()).length;
