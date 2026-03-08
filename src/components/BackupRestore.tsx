@@ -138,8 +138,13 @@ const BackupRestore: FC = () => {
       setRestoreResult(result);
 
       if (result.success) {
-        const totalInserted = Object.values(result.results as Record<string, { inserted: number }>).reduce((a, b) => a + b.inserted, 0);
-        toast({ title: 'Restore Berhasil! 🎉', description: `${totalInserted} rows berhasil direstore` });
+        const totalInserted = Object.values(result.results as Record<string, { inserted: number; skipped?: number }>).reduce((a, b) => a + b.inserted, 0);
+        const totalSkipped = Object.values(result.results as Record<string, { skipped?: number }>).reduce((a, b) => a + (b.skipped || 0), 0);
+        const hasErrors = Object.values(result.results as Record<string, { errors?: string[] }>).some(r => r.errors && r.errors.length > 0);
+        const desc = `${totalInserted} rows berhasil direstore` + 
+          (totalSkipped > 0 ? `, ${totalSkipped} rows dilewati (kolom tidak cocok)` : '') +
+          (hasErrors ? ' - ada beberapa error, cek detail di bawah' : '');
+        toast({ title: 'Restore Selesai! 🎉', description: desc, variant: hasErrors && totalInserted === 0 ? 'destructive' : 'default' });
       } else {
         toast({ title: 'Error', description: result.error || 'Gagal restore', variant: 'destructive' });
       }
@@ -314,19 +319,22 @@ const BackupRestore: FC = () => {
               </p>
               <ScrollArea className="h-[150px]">
                 <div className="space-y-1">
-                  {restoreResult.results && Object.entries(restoreResult.results as Record<string, { inserted: number; errors: string[] }>).map(([table, res]) => (
-                    <div key={table} className="flex items-center justify-between text-xs">
-                      <span className="font-mono">{table}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-green-400">{res.inserted} rows</span>
-                        {res.errors.length > 0 && (
-                          <span className="text-destructive" title={res.errors.join('\n')}>
-                            {res.errors.length} error
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                   {restoreResult.results && Object.entries(restoreResult.results as Record<string, { inserted: number; skipped?: number; errors: string[] }>).map(([table, res]) => (
+                     <div key={table} className="flex items-center justify-between text-xs">
+                       <span className="font-mono">{table}</span>
+                       <div className="flex items-center gap-2">
+                         <span className="text-green-400">{res.inserted} rows</span>
+                         {(res.skipped || 0) > 0 && (
+                           <span className="text-yellow-400">{res.skipped} skipped</span>
+                         )}
+                         {res.errors.length > 0 && (
+                           <span className="text-destructive" title={res.errors.join('\n')}>
+                             {res.errors.length} error
+                           </span>
+                         )}
+                       </div>
+                     </div>
+                   ))}
                 </div>
               </ScrollArea>
             </div>
