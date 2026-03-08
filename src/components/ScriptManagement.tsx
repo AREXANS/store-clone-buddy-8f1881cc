@@ -249,10 +249,19 @@ const ScriptManagement: FC = () => {
     return `${getApiBase()}/get-loader?name=${scriptName}`;
   };
 
+  const generateObfuscatedBootstrap = (url: string): string => {
+    const bytes = Array.from(new TextEncoder().encode(url));
+    const bytesStr = bytes.join(",");
+    const chars = "abcdefghijklmnopqrstuvwxyz";
+    const rv = () => { let r = "_"; for (let i = 0; i < 6; i++) r += chars[Math.floor(Math.random() * chars.length)]; return r; };
+    const v1 = rv(), v2 = rv(), v3 = rv(), v4 = rv(), v5 = rv();
+    return `do local ${v1}={${bytesStr}} local ${v2}="" for _,${v3} in ipairs(${v1}) do ${v2}=${v2}..string.char(${v3}) end local ${v4},${v5}=pcall(function() return game:HttpGet(${v2}) end) if ${v4} and ${v5} then pcall(function() (function(...) return select(1,...)() end)(load or loadstring)(${v5}) end) end end`;
+  };
+
   const copyLoadstringCode = (scriptName: string) => {
-    const code = `loadstring(game:HttpGet("${getLoaderUrl(scriptName)}"))()`;
+    const code = generateObfuscatedBootstrap(getLoaderUrl(scriptName));
     navigator.clipboard.writeText(code);
-    toast({ title: 'Copied!', description: 'Loadstring code berhasil disalin (protected loader)' });
+    toast({ title: 'Copied!', description: 'Obfuscated bootstrap code berhasil disalin' });
   };
 
   const getScriptTypeColor = (type: string) => {
