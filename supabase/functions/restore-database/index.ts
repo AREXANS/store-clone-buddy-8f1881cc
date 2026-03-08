@@ -8,7 +8,7 @@ const corsHeaders = {
 
 // Order matters for foreign key dependencies
 const RESTORE_ORDER = [
-  "site_settings",
+  "app_settings",
   "packages",
   "ads",
   "backgrounds",
