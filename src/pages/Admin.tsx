@@ -272,7 +272,7 @@ const Admin = () => {
 
   const updateSetting = async (key: string, value: string) => {
     const { error } = await supabase
-      .from('site_settings')
+      .from('app_settings')
       .update({ value, updated_at: new Date().toISOString() })
       .eq('key', key);
     
