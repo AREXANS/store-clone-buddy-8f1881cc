@@ -11,13 +11,16 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   Settings, Package, Image, List, CreditCard, LogOut, Save, 
-  Plus, Trash2, Edit2, Eye, EyeOff, RefreshCw, MessageSquare, Shield, Key, FileText 
+  Plus, Trash2, Edit2, Eye, EyeOff, RefreshCw, MessageSquare, Shield, Key, FileText, FileCode, Upload
 } from 'lucide-react';
 import GlobalBackground from '@/components/GlobalBackground';
 import DeviceApprovalScreen from '@/components/DeviceApprovalScreen';
 import DeviceManagement from '@/components/DeviceManagement';
 import KeyManagement from '@/components/KeyManagement';
 import ApiDocumentation from '@/components/ApiDocumentation';
+import ScriptManagement from '@/components/ScriptManagement';
+import WhitelistManagement from '@/components/WhitelistManagement';
+import LuaUploadManager from '@/components/LuaUploadManager';
 import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 
 interface SiteSetting {
@@ -373,6 +376,18 @@ const Admin = () => {
                   <FileText className="w-4 h-4" />
                   <span className="hidden xs:inline">API</span>
                 </TabsTrigger>
+                <TabsTrigger value="scripts" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <FileCode className="w-4 h-4" />
+                  <span className="hidden xs:inline">Scripts</span>
+                </TabsTrigger>
+                <TabsTrigger value="whitelist" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <Shield className="w-4 h-4" />
+                  <span className="hidden xs:inline">Whitelist</span>
+                </TabsTrigger>
+                <TabsTrigger value="upload" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <Upload className="w-4 h-4" />
+                  <span className="hidden xs:inline">Upload</span>
+                </TabsTrigger>
                 <TabsTrigger value="ads" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
                   <Image className="w-4 h-4" />
                   <span className="hidden xs:inline">Ads</span>
@@ -649,6 +664,21 @@ const Admin = () => {
             {/* API Documentation Tab */}
             <TabsContent value="docs" className="space-y-4">
               <ApiDocumentation />
+            </TabsContent>
+
+            {/* Scripts Tab */}
+            <TabsContent value="scripts" className="space-y-4">
+              <ScriptManagement />
+            </TabsContent>
+
+            {/* Whitelist Tab */}
+            <TabsContent value="whitelist" className="space-y-4">
+              <WhitelistManagement />
+            </TabsContent>
+
+            {/* Upload Tab */}
+            <TabsContent value="upload" className="space-y-4">
+              <LuaUploadManager />
             </TabsContent>
 
             {/* Ads Tab */}
