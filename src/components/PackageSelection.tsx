@@ -102,7 +102,7 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
     };
 
     const checkXcoinsSettings = async () => {
-      const { data } = await supabase.from('site_settings').select('key, value').in('key', ['xcoins_enabled', 'xcoins_logo_url']);
+      const { data } = await supabase.from('app_settings').select('key, value').in('key', ['xcoins_enabled', 'xcoins_logo_url']);
       const map = Object.fromEntries((data || []).map((s: any) => [s.key, s.value]));
       setXcoinsEnabled(map.xcoins_enabled === 'on');
       setXcoinsLogoUrl(map.xcoins_logo_url || '');

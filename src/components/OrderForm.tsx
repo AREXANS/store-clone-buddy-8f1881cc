@@ -77,7 +77,7 @@ const OrderForm: FC<OrderFormProps> = ({
     };
 
     const loadXcoinsSettings = async () => {
-      const { data } = await supabase.from('site_settings').select('key, value').in('key', ['xcoins_enabled', 'xcoins_only']);
+      const { data } = await supabase.from('app_settings').select('key, value').in('key', ['xcoins_enabled', 'xcoins_only']);
       const map = Object.fromEntries((data || []).map((s: any) => [s.key, s.value]));
       const enabled = map.xcoins_enabled === 'on';
       const only = map.xcoins_only === 'on';

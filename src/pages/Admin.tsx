@@ -1090,7 +1090,7 @@ const Admin = () => {
                           const val = e.target.value;
                           const exists = settings.find(s => s.key === key);
                           if (exists) { updateSetting(key, val); }
-                          else { supabase.from('site_settings').insert({ key, value: val, description: 'Days before auto-deleting transactions' }).then(() => loadAllData()); }
+                          else { supabase.from('app_settings').insert({ key, value: val, description: 'Days before auto-deleting transactions' }).then(() => loadAllData()); }
                         }}
                       />
                       <span className="text-xs text-muted-foreground">hari</span>

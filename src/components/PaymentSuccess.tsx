@@ -32,7 +32,7 @@ const PaymentSuccess: FC<PaymentSuccessProps> = ({ finalData, onCopy }) => {
   useEffect(() => {
     const fetchData = async () => {
       const { data: settingsData } = await supabase
-        .from('site_settings')
+        .from('app_settings')
         .select('value')
         .eq('key', 'loadstring_script')
         .maybeSingle();

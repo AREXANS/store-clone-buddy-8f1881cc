@@ -106,7 +106,7 @@ const KeySystem = () => {
             
             // Load loadstring from settings
             const { data: settings } = await supabase
-              .from('site_settings')
+              .from('app_settings')
               .select('value')
               .eq('key', 'loadstring_script')
               .maybeSingle();

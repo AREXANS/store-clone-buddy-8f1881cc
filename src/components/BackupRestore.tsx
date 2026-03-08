@@ -21,7 +21,7 @@ const ALL_TABLES = [
   { key: 'admin_sessions', label: 'Admin Sessions', icon: '🔐' },
   { key: 'lua_scripts', label: 'Lua Scripts', icon: '📜' },
   { key: 'package_discounts', label: 'Discounts', icon: '🏷️' },
-  { key: 'xcoins_users', label: 'XCoins Users', icon: '👤' },
+  { key: 'xcoins_balances', label: 'XCoins Balances', icon: '👤' },
   { key: 'xcoins_transactions', label: 'XCoins Transactions', icon: '💰' },
   { key: 'xcoins_otp', label: 'XCoins OTP', icon: '🔑' },
 ];

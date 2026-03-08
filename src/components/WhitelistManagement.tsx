@@ -298,7 +298,7 @@ ${rawScript}`;
       const updatedList = manualWhitelist.filter(u => u.username !== username);
 
       await supabase
-        .from('site_settings')
+        .from('app_settings')
         .update({ 
           value: JSON.stringify(updatedList),
           updated_at: new Date().toISOString()
