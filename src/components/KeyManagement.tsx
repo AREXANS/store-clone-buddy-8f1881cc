@@ -444,6 +444,79 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   const expiredCount = keys.filter(k => !k.frozenUntil && new Date(k.expired) < new Date()).length;
   const activeCount = keys.length - frozenCount - expiredCount;
 
+  const toggleSelectAll = () => {
+    if (selectedKeys.size === filteredKeys.length) {
+      setSelectedKeys(new Set());
+    } else {
+      setSelectedKeys(new Set(filteredKeys.map(k => k.key)));
+    }
+  };
+
+  const toggleKeySelection = (key: string) => {
+    const newSet = new Set(selectedKeys);
+    if (newSet.has(key)) newSet.delete(key); else newSet.add(key);
+    setSelectedKeys(newSet);
+  };
+
+  const applyBulkTimeAdjustment = async () => {
+    if (selectedKeys.size === 0) {
+      toast({ title: 'Error', description: 'Pilih setidaknya satu key', variant: 'destructive' });
+      return;
+    }
+    const parsed = parseBulkTime(bulkTimeInput);
+    if (!parsed) {
+      toast({ title: 'Error', description: 'Format waktu tidak valid. Contoh: +7h, -1b, +30m', variant: 'destructive' });
+      return;
+    }
+    const action = parsed.isAdd ? 'Tambah' : 'Kurangi';
+    if (!confirm(`${action} ${formatMsReadable(parsed.ms)} untuk ${selectedKeys.size} key?`)) return;
+
+    setBulkLoading(true);
+    let ok = 0, fail = 0;
+    for (const keyName of selectedKeys) {
+      const keyItem = keys.find(k => k.key === keyName);
+      if (!keyItem) continue;
+      try {
+        const currentExpiry = new Date(keyItem.expired);
+        const newExpiry = new Date(currentExpiry.getTime() + (parsed.isAdd ? parsed.ms : -parsed.ms));
+        const res = await fetch(`${API_BASE}/update-key`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: keyName, expired: newExpiry.toISOString() })
+        });
+        const r = await res.json();
+        if (r.success) ok++; else fail++;
+      } catch { fail++; }
+    }
+    toast({ title: 'Bulk Update Selesai', description: `${ok} berhasil, ${fail} gagal`, variant: fail > 0 ? 'destructive' : 'default' });
+    setBulkTimeInput('');
+    setSelectedKeys(new Set());
+    fetchKeys();
+    setBulkLoading(false);
+  };
+
+  const deleteSelectedKeys = async () => {
+    if (selectedKeys.size === 0) return;
+    if (!confirm(`Hapus ${selectedKeys.size} key yang dipilih?`)) return;
+    setBulkLoading(true);
+    let ok = 0, fail = 0;
+    for (const keyName of selectedKeys) {
+      try {
+        const res = await fetch(`${API_BASE}/delete-key`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: keyName })
+        });
+        const r = await res.json();
+        if (r.success) ok++; else fail++;
+      } catch { fail++; }
+    }
+    toast({ title: 'Bulk Delete Selesai', description: `${ok} dihapus, ${fail} gagal`, variant: fail > 0 ? 'destructive' : 'default' });
+    setSelectedKeys(new Set());
+    fetchKeys();
+    setBulkLoading(false);
+  };
+
   const startNewKey = () => {
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + 30);
