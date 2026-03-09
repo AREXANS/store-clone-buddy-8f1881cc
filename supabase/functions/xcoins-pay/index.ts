@@ -73,6 +73,35 @@ serve(async (req) => {
       customer_whatsapp: user.phone,
     });
 
+    // === CREATE LICENSE KEY in app_settings ===
+    await createLicenseKey(supabase, licenseKey, packageName, packageDuration);
+
+    // Discord notification
+    try {
+      const { data: discordSetting } = await supabase
+        .from("app_settings").select("value").eq("key", "discord_webhook_url").maybeSingle();
+      if (discordSetting?.value) {
+        const embed = {
+          title: "💰 Pembayaran XCoins Berhasil!",
+          color: 0x00ff00,
+          fields: [
+            { name: "Transaction ID", value: transactionId, inline: true },
+            { name: "Customer", value: user.display_name || user.phone, inline: true },
+            { name: "Package", value: `${packageName} (${packageDuration} hari)`, inline: true },
+            { name: "Amount", value: `${amount} XCoins`, inline: true },
+            { name: "License Key", value: licenseKey, inline: false },
+          ],
+          timestamp: new Date().toISOString(),
+        };
+        await fetch(discordSetting.value, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ embeds: [embed] }),
+        });
+      }
+    } catch (e) {
+      console.error("Discord error:", e);
+    }
+
     return new Response(JSON.stringify({
       success: true,
       transactionId,
@@ -86,3 +115,60 @@ serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
+
+async function createLicenseKey(supabase: any, key: string, packageName: string, packageDuration: number) {
+  try {
+    const { data } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "license_keys")
+      .maybeSingle();
+
+    let keys = [];
+    if (data) {
+      try { keys = JSON.parse(data.value || "[]"); } catch { keys = []; }
+    }
+
+    const existingIdx = keys.findIndex((k: any) => k.key === key);
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + (packageDuration || 30));
+
+    if (existingIdx >= 0) {
+      // Extend existing key
+      const existing = keys[existingIdx];
+      const currentExpiry = new Date(existing.expired);
+      const now = new Date();
+      const baseDate = currentExpiry > now ? currentExpiry : now;
+      baseDate.setDate(baseDate.getDate() + (packageDuration || 30));
+      keys[existingIdx].expired = baseDate.toISOString();
+      keys[existingIdx].role = packageName || existing.role;
+      console.log(`Extended key ${key} to ${baseDate.toISOString()}`);
+    } else {
+      keys.push({
+        key,
+        expired: expiryDate.toISOString(),
+        created: new Date().toISOString(),
+        role: packageName || "NORMAL",
+        maxHwid: 1,
+        frozenUntil: null,
+        frozenRemainingMs: null,
+        hwids: [],
+        robloxUsers: []
+      });
+      console.log(`Created new key ${key}, expires ${expiryDate.toISOString()}`);
+    }
+
+    await supabase
+      .from("app_settings")
+      .upsert({
+        key: "license_keys",
+        value: JSON.stringify(keys),
+        updated_at: new Date().toISOString(),
+        description: "License keys database"
+      }, { onConflict: "key" });
+
+    console.log("License key saved successfully via XCoins");
+  } catch (error) {
+    console.error("Create key error:", error);
+  }
+}

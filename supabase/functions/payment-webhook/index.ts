@@ -54,7 +54,6 @@ serve(async (req) => {
 
     } else if (isCashify) {
       // === CASHIFY WEBHOOK ===
-      // Validate webhook key
       const { data: whSetting } = await supabase
         .from("app_settings").select("value").eq("key", "cashify_webhook_key").maybeSingle();
       
@@ -77,7 +76,6 @@ serve(async (req) => {
         .from("app_settings").select("key, value").eq("value", cashifyTxId).like("key", "cashify_tx_%");
 
       if (!mappings || mappings.length === 0) {
-        // Fallback: try ref field
         const ref = body.ref || body.reference;
         if (ref) {
           const { data: tx } = await supabase.from("transactions").select("*").eq("transaction_id", ref).maybeSingle();
@@ -149,6 +147,9 @@ async function handlePostPayment(supabase: any, transaction: any) {
         balance_after: newBalance, description: `Top-up via webhook`, reference_id: transaction.transaction_id,
       });
     }
+  } else if (transaction.license_key) {
+    // === CREATE LICENSE KEY for regular purchases ===
+    await createLicenseKey(supabase, transaction);
   }
 
   // Discord notification
@@ -175,5 +176,64 @@ async function handlePostPayment(supabase: any, transaction: any) {
     }
   } catch (e) {
     console.error("Discord error:", e);
+  }
+}
+
+async function createLicenseKey(supabase: any, transaction: any) {
+  try {
+    const key = transaction.license_key;
+    if (!key) return;
+
+    const { data } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "license_keys")
+      .maybeSingle();
+
+    let keys = [];
+    if (data) {
+      try { keys = JSON.parse(data.value || "[]"); } catch { keys = []; }
+    }
+
+    const existingIdx = keys.findIndex((k: any) => k.key === key);
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + (transaction.package_duration || 30));
+
+    if (existingIdx >= 0) {
+      const existing = keys[existingIdx];
+      const currentExpiry = new Date(existing.expired);
+      const now = new Date();
+      const baseDate = currentExpiry > now ? currentExpiry : now;
+      baseDate.setDate(baseDate.getDate() + (transaction.package_duration || 30));
+      keys[existingIdx].expired = baseDate.toISOString();
+      keys[existingIdx].role = transaction.package_name || existing.role;
+      console.log(`Webhook: Extended key ${key} to ${baseDate.toISOString()}`);
+    } else {
+      keys.push({
+        key,
+        expired: expiryDate.toISOString(),
+        created: new Date().toISOString(),
+        role: transaction.package_name || "NORMAL",
+        maxHwid: 1,
+        frozenUntil: null,
+        frozenRemainingMs: null,
+        hwids: [],
+        robloxUsers: []
+      });
+      console.log(`Webhook: Created new key ${key}, expires ${expiryDate.toISOString()}`);
+    }
+
+    await supabase
+      .from("app_settings")
+      .upsert({
+        key: "license_keys",
+        value: JSON.stringify(keys),
+        updated_at: new Date().toISOString(),
+        description: "License keys database"
+      }, { onConflict: "key" });
+
+    console.log("License key saved via webhook");
+  } catch (error) {
+    console.error("Create key error:", error);
   }
 }
