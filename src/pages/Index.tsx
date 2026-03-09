@@ -81,6 +81,7 @@ const Index = () => {
   const [ads, setAds] = useState<Ad[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [daysToAdd, setDaysToAdd] = useState(0);
+  const [isMaintenance, setIsMaintenance] = useState(false);
   const deviceId = getDeviceId();
 
   const checkInterval = useRef<number | null>(null);
