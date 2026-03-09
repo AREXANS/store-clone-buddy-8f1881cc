@@ -41,20 +41,19 @@ serve(async (req) => {
     let totalAmount = amount;
 
     if (gateway === "cashify" && s.cashify_license_key) {
-      // === CASHIFY v2 QRIS ===
+      // === CASHIFY QRIS (v1 API - /api/generate/qris) ===
       try {
         const cashifyBody: any = {
-          qr_id: s.cashify_qris_id || "",
+          id: s.cashify_qris_id || "",
           amount: amount,
           useUniqueCode: true,
           packageIds: ["id.dana"],
           expiredInMinutes: 15,
-          qrType: "dynamic",
-          paymentMethod: "qris",
-          useQris: true,
         };
 
-        const cashifyRes = await fetch("https://cashify.my.id/api/generate/v2/qris", {
+        console.log("Cashify request body:", JSON.stringify(cashifyBody));
+
+        const cashifyRes = await fetch("https://cashify.my.id/api/generate/qris", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -70,13 +69,11 @@ serve(async (req) => {
           qrString = cashifyData.data.qr_string || "";
           totalAmount = cashifyData.data.totalAmount || amount;
           qrisUrl = `https://larabert-qrgen.hf.space/v1/create-qr-code?size=500x500&style=2&color=0D8BA5&data=${encodeURIComponent(qrString)}`;
+          
           // Store cashify transactionId for status checking
           const cashifyTxId = cashifyData.data.transactionId;
-          // We'll store it in qr_string field alongside, using a separator
           if (cashifyTxId) {
-            qrString = qrString; // keep qr_string for QR display
-            // Store cashify tx id in the order id mapping
-            orderId && await supabase.from("app_settings").upsert({
+            await supabase.from("app_settings").upsert({
               key: `cashify_tx_${orderId}`,
               value: cashifyTxId,
               description: "Cashify transaction mapping"
@@ -92,23 +89,30 @@ serve(async (req) => {
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     } else if (gateway === "pakasir" && pakasirMode === "live" && s.pakasir_slug && s.pakasir_api_key) {
-      // === PAKASIR LIVE ===
+      // === PAKASIR LIVE QRIS ===
+      // Docs: POST https://app.pakasir.com/api/transactioncreate/qris
+      // Body: { project, order_id, amount, api_key }
       try {
+        const pakasirBody = {
+          project: s.pakasir_slug,
+          order_id: orderId,
+          amount: amount,
+          api_key: s.pakasir_api_key,
+        };
+
+        console.log("Pakasir request:", JSON.stringify(pakasirBody));
+
         const pakasirRes = await fetch("https://app.pakasir.com/api/transactioncreate/qris", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            project: s.pakasir_slug,
-            order_id: orderId,
-            amount: amount,
-            api_key: s.pakasir_api_key,
-          }),
+          body: JSON.stringify(pakasirBody),
         });
 
         const pakasirData = await pakasirRes.json();
         console.log("Pakasir response:", JSON.stringify(pakasirData));
 
         if (pakasirData.payment) {
+          // Response: { payment: { payment_number, total_payment, expired_at, ... } }
           qrString = pakasirData.payment.payment_number || "";
           totalAmount = pakasirData.payment.total_payment || amount;
           qrisUrl = `https://larabert-qrgen.hf.space/v1/create-qr-code?size=500x500&style=2&color=0D8BA5&data=${encodeURIComponent(qrString)}`;
