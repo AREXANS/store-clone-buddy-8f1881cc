@@ -5,11 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { 
   Key, Plus, Trash2, Edit2, RefreshCw, Save, 
   Users, Calendar, Shield, Copy, AlertTriangle,
-  Download, Upload, Pause, Play, Clock
+  Download, Upload, Pause, Play, Clock, CheckSquare, Square
 } from 'lucide-react';
 
 const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
