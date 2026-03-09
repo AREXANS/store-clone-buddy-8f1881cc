@@ -3,6 +3,7 @@ import PackageSelection from '@/components/PackageSelection';
 import OrderForm from '@/components/OrderForm';
 import PaymentQR from '@/components/PaymentQR';
 import PaymentSuccess from '@/components/PaymentSuccess';
+import MaintenancePage from '@/components/MaintenancePage';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -80,6 +81,7 @@ const Index = () => {
   const [ads, setAds] = useState<Ad[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [daysToAdd, setDaysToAdd] = useState(0);
+  const [isMaintenance, setIsMaintenance] = useState(false);
   const deviceId = getDeviceId();
 
   const checkInterval = useRef<number | null>(null);
@@ -142,7 +144,7 @@ const Index = () => {
     }
   }, []);
 
-  // Load ads and packages
+  // Load ads, packages, and maintenance status
   useEffect(() => {
     const loadAds = async () => {
       const { data } = await supabase.from('ads').select('*').eq('is_active', true).order('sort_order');
@@ -154,8 +156,14 @@ const Index = () => {
       if (data) setPackages(data as Package[]);
     };
 
+    const checkMaintenance = async () => {
+      const { data } = await supabase.from('app_settings').select('value').eq('key', 'maintenance_mode').single();
+      if (data) setIsMaintenance(data.value === 'true');
+    };
+
     loadAds();
     loadPackages();
+    checkMaintenance();
   }, []);
 
   const formatRupiah = (number: number) => {
@@ -361,6 +369,7 @@ const Index = () => {
     toast({ title: "Berhasil disalin!", description: "Teks telah disalin ke clipboard" });
   };
 
+  if (isMaintenance) return <MaintenancePage />;
   if (step === 1) return <PackageSelection onSelect={handlePackageSelect} formatRupiah={formatRupiah} prices={PRICES} ads={ads} packages={packages} />;
   if (step === 2) return <OrderForm selectedPkg={selectedPkg} formData={formData} setFormData={setFormData} onSubmit={handleFormSubmit} onBack={() => { setStep(1); setErrorMsg(''); }} onGenerate={generateRandomKey} loading={loading} errorMsg={errorMsg} formatRupiah={formatRupiah} parseDuration={parseDuration} prices={PRICES} />;
   if (step === 3 && paymentData) return <PaymentQR paymentData={paymentData} statusMsg={statusMsg} errorMsg={errorMsg} onCancel={handleCancelOrder} onCopy={copyToClipboard} formatRupiah={formatRupiah} />;
