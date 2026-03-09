@@ -110,8 +110,8 @@ serve(async (req) => {
 
     await supabase.from("transactions").insert({
       transaction_id: orderId,
-      customer_name: `TOPUP-${userId.slice(0, 8)}`,
-      package_name: "XCOINS_TOPUP",
+      customer_name: "Deposit XCoins",
+      package_name: "Deposit XCoins",
       package_duration: 0,
       original_amount: amount,
       total_amount: totalAmount,

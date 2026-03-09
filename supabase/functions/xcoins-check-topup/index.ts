@@ -99,7 +99,7 @@ serve(async (req) => {
 
       await supabase.from('xcoins_transactions').insert({
         user_id: userId, type: 'topup', amount: xcoinsAmount,
-        balance_after: newBalance, description: `Top-up ${xcoinsAmount} XCoins via QRIS`,
+        balance_after: newBalance, description: `Deposit ${xcoinsAmount} XCoins`,
         reference_id: transactionId
       });
 
