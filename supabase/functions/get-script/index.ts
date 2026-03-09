@@ -8,16 +8,15 @@ const corsHeaders = {
 };
 
 function isBrowser(req: Request): boolean {
-  const accept = req.headers.get("accept") || "";
-  if (accept.includes("text/html")) return true;
-
+  // Jangan pakai Accept sebagai sinyal utama (banyak executor mengirim header ini dan bisa false-positive).
+  // Pakai header modern yang biasanya hanya ada di browser.
   const secFetchMode = req.headers.get("sec-fetch-mode");
   const secFetchDest = req.headers.get("sec-fetch-dest");
   const secChUa = req.headers.get("sec-ch-ua");
   const upgrade = req.headers.get("upgrade-insecure-requests");
-
   return Boolean(secFetchMode || secFetchDest || secChUa || upgrade);
 }
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
