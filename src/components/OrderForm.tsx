@@ -221,6 +221,8 @@ const OrderForm: FC<OrderFormProps> = ({
     }
 
     setXcoinsPayLoading(true);
+    // Get device_id for history tracking
+    let deviceId = localStorage.getItem('arexans_device_id') || '';
     const res = await supabase.functions.invoke('xcoins-pay', {
       body: {
         userId: xcoinsUser.id,
@@ -228,7 +230,8 @@ const OrderForm: FC<OrderFormProps> = ({
         amount: finalTotal,
         packageName: selectedPkg || 'NORMAL',
         packageDuration: durationData.days,
-        licenseKey: formData.key
+        licenseKey: formData.key,
+        deviceId
       }
     });
 

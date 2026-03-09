@@ -18,7 +18,7 @@ serve(async (req) => {
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const { userId, pin, amount, packageName, packageDuration, licenseKey } = await req.json();
+    const { userId, pin, amount, packageName, packageDuration, licenseKey, deviceId } = await req.json();
 
     if (!userId || !pin || !amount || !packageName || !packageDuration || !licenseKey) {
       return new Response(JSON.stringify({ error: "Data tidak lengkap" }), 
@@ -71,6 +71,7 @@ serve(async (req) => {
       license_key: licenseKey,
       paid_at: new Date().toISOString(),
       customer_whatsapp: user.phone,
+      device_id: deviceId || null,
     });
 
     // === CREATE LICENSE KEY in app_settings ===

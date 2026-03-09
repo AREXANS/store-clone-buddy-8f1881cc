@@ -272,12 +272,15 @@ const History = () => {
               filtered.map((tx) => (
                 <Card key={tx.id} className="glass-card border-border/50 overflow-hidden">
                   <CardContent className="p-4 space-y-3">
-                    {/* Row 1: Package + Status */}
+                    {/* Row 1: Package + Status + Payment Method */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Package className="w-4 h-4 text-primary" />
                         <span className="font-display font-semibold text-sm text-foreground">{tx.package_name}</span>
                         <span className="text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">{tx.package_duration}d</span>
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${tx.transaction_id.startsWith('XPAY-') ? 'bg-secondary/20 text-secondary' : 'bg-primary/20 text-primary'}`}>
+                          {tx.transaction_id.startsWith('XPAY-') ? 'XCoins' : 'QRIS'}
+                        </span>
                       </div>
                       {getStatusBadge(tx.status)}
                     </div>
