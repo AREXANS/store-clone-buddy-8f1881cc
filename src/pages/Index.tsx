@@ -268,7 +268,7 @@ const Index = () => {
 
 
 
-  const handleFormSubmit = async (e: React.FormEvent, submittedPromoCode?: string) => {
+  const handleFormSubmit = async (e: React.FormEvent, submittedPromoCode?: string, discountedAmount?: number) => {
     e.preventDefault();
     setErrorMsg('');
     const durationData = parseDuration(formData.duration);
@@ -284,7 +284,9 @@ const Index = () => {
 
     setLoading(true);
     const pricePerDay = selectedPkg === 'VIP' ? PRICES.VIP : PRICES.NORMAL;
-    const calculatedAmount = pricePerDay * durationData.days;
+    const fullAmount = pricePerDay * durationData.days;
+    // Use discounted amount if provided, otherwise use full amount
+    const calculatedAmount = discountedAmount && discountedAmount > 0 ? discountedAmount : fullAmount;
 
     if (calculatedAmount < 1000) {
       setErrorMsg("Nominal terlalu kecil untuk QRIS (minimal Rp 1.000)");
