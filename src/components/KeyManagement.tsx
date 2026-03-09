@@ -34,6 +34,63 @@ interface KeyManagementProps {
   onRefresh?: () => void;
 }
 
+const TIME_UNITS: Record<string, number> = {
+  'm': 60 * 1000,
+  'j': 60 * 60 * 1000,
+  'h': 24 * 60 * 60 * 1000,
+  'b': 30 * 24 * 60 * 60 * 1000,
+  't': 365 * 24 * 60 * 60 * 1000,
+  'menit': 60 * 1000,
+  'jam': 60 * 60 * 1000,
+  'hari': 24 * 60 * 60 * 1000,
+  'bulan': 30 * 24 * 60 * 60 * 1000,
+  'tahun': 365 * 24 * 60 * 60 * 1000,
+};
+
+const parseBulkTime = (input: string): { ms: number; isAdd: boolean } | null => {
+  const trimmed = input.trim();
+  let isAdd = true;
+  let workingInput = trimmed;
+
+  if (workingInput.startsWith('+')) {
+    isAdd = true;
+    workingInput = workingInput.substring(1).trim();
+  } else if (workingInput.startsWith('-')) {
+    isAdd = false;
+    workingInput = workingInput.substring(1).trim();
+  }
+
+  const parts = workingInput.split(/[,\s]+/).filter(p => p.length > 0);
+  let totalMs = 0;
+  
+  for (const part of parts) {
+    const match = part.match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)$/);
+    if (match) {
+      const value = parseFloat(match[1]);
+      const unit = match[2].toLowerCase();
+      const multiplier = TIME_UNITS[unit];
+      if (multiplier) {
+        totalMs += value * multiplier;
+      }
+    }
+  }
+
+  if (totalMs === 0) return null;
+  return { ms: totalMs, isAdd };
+};
+
+const formatMsReadable = (ms: number): string => {
+  if (ms <= 0) return '0';
+  const days = Math.floor(ms / (24 * 60 * 60 * 1000));
+  const hours = Math.floor((ms % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+  const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
+  const parts = [];
+  if (days > 0) parts.push(`${days} hari`);
+  if (hours > 0) parts.push(`${hours} jam`);
+  if (minutes > 0) parts.push(`${minutes} menit`);
+  return parts.join(' ') || '0 menit';
+};
+
 const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   const [keys, setKeys] = useState<KeyItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -43,6 +100,9 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'frozen' | 'expired'>('all');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [bulkTimeInput, setBulkTimeInput] = useState('');
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   // Realtime countdown timer
   useEffect(() => {
