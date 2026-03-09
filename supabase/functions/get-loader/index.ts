@@ -23,9 +23,16 @@ function randVar(): string {
 
 function isBrowser(req: Request): boolean {
   const accept = req.headers.get("accept") || "";
-  const ua = (req.headers.get("user-agent") || "").toLowerCase();
+  // Reliable signal: browsers usually request HTML explicitly.
   if (accept.includes("text/html")) return true;
-  if (ua.includes("mozilla") || ua.includes("chrome") || ua.includes("safari") || ua.includes("firefox") || ua.includes("edge") || ua.includes("opera")) return true;
+
+  // Additional browser-only hints (executors / Roblox HttpGet typically won't send these).
+  const secFetchMode = req.headers.get("sec-fetch-mode");
+  const secFetchDest = req.headers.get("sec-fetch-dest");
+  const secChUa = req.headers.get("sec-ch-ua");
+  const upgrade = req.headers.get("upgrade-insecure-requests");
+
+  if (secFetchMode || secFetchDest || secChUa || upgrade) return true;
   return false;
 }
 
@@ -88,10 +95,13 @@ serve(async (req) => {
   try {
     const url = new URL(req.url);
     const scriptName = url.searchParams.get("name");
+    const rawParam = (url.searchParams.get("raw") || "").toLowerCase();
+    const forceRaw = rawParam === "1" || rawParam === "true";
 
     // If accessed from browser → redirect to app-hosted HTML page.
-    // Backend function domains rewrite text/html to text/plain per Supabase policy.
-    if (isBrowser(req)) {
+    // Backend function domains rewrite text/html to text/plain per platform policy.
+    // NOTE: Some Roblox executors send a "Mozilla" UA; we therefore avoid UA heuristics.
+    if (!forceRaw && isBrowser(req)) {
       const deniedUrl = `https://store-clone-buddy.lovable.app/api-access-denied?name=${encodeURIComponent(scriptName || "unknown")}`;
       return Response.redirect(deniedUrl, 302);
     }
