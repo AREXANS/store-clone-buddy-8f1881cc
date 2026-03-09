@@ -12,7 +12,12 @@ function isBrowser(req: Request): boolean {
   const secFetchDest = req.headers.get("sec-fetch-dest");
   const secChUa = req.headers.get("sec-ch-ua");
   const upgrade = req.headers.get("upgrade-insecure-requests");
-  return Boolean(secFetchMode || secFetchDest || secChUa || upgrade);
+  const userAgent = (req.headers.get("user-agent") || "").toLowerCase();
+
+  const hasBrowserClientHints = Boolean(secFetchMode || secFetchDest || secChUa || upgrade);
+  const isCommonBrowserUA = /(mozilla|chrome|safari|firefox|edg|opera)/.test(userAgent);
+
+  return hasBrowserClientHints || isCommonBrowserUA;
 }
 
 function accessDeniedPage(scriptName: string): string {
