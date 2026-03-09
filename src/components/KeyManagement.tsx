@@ -802,7 +802,92 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
         </CardContent>
       </Card>
 
-      {/* Edit/Create Form */}
+      {/* Bulk Selection & Duration Adjustment */}
+      {filteredKeys.length > 0 && (
+        <Card className="glass-card border-yellow-500/30">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={toggleSelectAll}
+                  className="border-yellow-500/50"
+                >
+                  {selectedKeys.size === filteredKeys.length ? (
+                    <><Square className="w-4 h-4 mr-2" /> Batal Pilih Semua</>
+                  ) : (
+                    <><CheckSquare className="w-4 h-4 mr-2" /> Pilih Semua ({filteredKeys.length})</>
+                  )}
+                </Button>
+                {selectedKeys.size > 0 && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={deleteSelectedKeys}
+                    disabled={bulkLoading}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Hapus ({selectedKeys.size})
+                  </Button>
+                )}
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {selectedKeys.size} dari {filteredKeys.length} dipilih
+              </span>
+            </div>
+
+            {selectedKeys.size > 0 && (
+              <div className="space-y-2 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
+                <Label className="flex items-center gap-2 text-yellow-400">
+                  <Clock className="w-4 h-4" />
+                  Adjust Durasi untuk {selectedKeys.size} key
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={bulkTimeInput}
+                    onChange={(e) => setBulkTimeInput(e.target.value)}
+                    placeholder="Contoh: +7h, -1b, +30m, +1t"
+                    className="bg-background/50 font-mono flex-1"
+                  />
+                  <Button 
+                    onClick={applyBulkTimeAdjustment} 
+                    disabled={bulkLoading || !bulkTimeInput.trim()}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-black"
+                  >
+                    {bulkLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Apply'}
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  <span className="text-xs text-muted-foreground mr-1">Quick:</span>
+                  {[
+                    { label: '+30m', value: '+30m' },
+                    { label: '+1j', value: '+1j' },
+                    { label: '+7h', value: '+7h' },
+                    { label: '+1b', value: '+1b' },
+                    { label: '+1t', value: '+1t' },
+                    { label: '-7h', value: '-7h' },
+                    { label: '-1b', value: '-1b' },
+                  ].map(({ label, value }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setBulkTimeInput(value)}
+                      className="px-2 py-0.5 text-xs rounded bg-muted hover:bg-yellow-500/20 transition-colors"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  m=menit, j=jam, h=hari, b=bulan, t=tahun. Gunakan + atau - di depan.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {editingKey && (
         <Card className="glass-card border-primary/50">
           <CardHeader>
