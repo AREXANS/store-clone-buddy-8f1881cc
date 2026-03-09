@@ -1,3 +1,4 @@
 /api-access-denied  https://pahxndxofczkcszqhulz.supabase.co/functions/v1/api-access-denied  200
+/api/get-script  https://pahxndxofczkcszqhulz.supabase.co/functions/v1/get-script  200
 /loader  https://pahxndxofczkcszqhulz.supabase.co/functions/v1/get-loader?name=keysystem  200
 /*  /index.html  200
