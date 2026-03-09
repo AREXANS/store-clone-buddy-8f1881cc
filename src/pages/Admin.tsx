@@ -129,10 +129,11 @@ const Admin = () => {
   const [backgrounds, setBackgrounds] = useState<BackgroundItem[]>([]);
   const [editingBackground, setEditingBackground] = useState<BackgroundItem | null>(null);
   
-  // Transactions state
+   // Transactions state
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [txTab, setTxTab] = useState<'keysystem' | 'xcoins'>('keysystem');
   const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set());
+  const [txSearch, setTxSearch] = useState('');
 
   // Social Links state
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
