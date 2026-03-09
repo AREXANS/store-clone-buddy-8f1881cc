@@ -142,6 +142,12 @@ const PaymentSuccess: FC<PaymentSuccessProps> = ({ finalData, onCopy }) => {
               <span className="text-muted-foreground">Berlaku hingga:</span>
               <span className="text-foreground font-medium">{finalData.expiredDisplay}</span>
             </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Waktu Pembayaran:</span>
+              <span className="text-foreground font-medium">
+                {new Date().toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </span>
+            </div>
           </div>
         </div>
 

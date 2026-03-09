@@ -71,6 +71,7 @@ serve(async (req) => {
       license_key: licenseKey,
       paid_at: new Date().toISOString(),
       customer_whatsapp: user.phone,
+      device_id: deviceId || null,
     });
 
     // === CREATE LICENSE KEY in app_settings ===
