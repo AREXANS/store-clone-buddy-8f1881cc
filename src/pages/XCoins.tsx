@@ -319,14 +319,32 @@ const XCoinsPage = () => {
   };
 
   const filteredTx = useMemo(() => {
-    if (!txSearch.trim()) return transactions;
+    let list = transactions;
+    if (txTypeFilter !== 'all') {
+      list = list.filter(tx => tx.type === txTypeFilter);
+    }
+    if (!txSearch.trim()) return list;
     const q = txSearch.toLowerCase();
-    return transactions.filter(tx =>
+    return list.filter(tx =>
       getTypeLabel(tx.type).toLowerCase().includes(q) ||
       (tx.description && tx.description.toLowerCase().includes(q)) ||
       (tx.reference_id && tx.reference_id.toLowerCase().includes(q))
     );
-  }, [transactions, txSearch]);
+  }, [transactions, txSearch, txTypeFilter]);
+
+  const txTypeCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: transactions.length };
+    transactions.forEach(tx => { counts[tx.type] = (counts[tx.type] || 0) + 1; });
+    return counts;
+  }, [transactions]);
+
+  const typeFilterButtons = [
+    { key: 'all', label: 'Semua', icon: <Coins className="w-3 h-3" /> },
+    { key: 'topup', label: 'Top Up', icon: <ArrowDownCircle className="w-3 h-3" /> },
+    { key: 'purchase', label: 'Beli', icon: <ArrowUpCircle className="w-3 h-3" /> },
+    { key: 'transfer_out', label: 'Kirim', icon: <Send className="w-3 h-3" /> },
+    { key: 'transfer_in', label: 'Terima', icon: <ArrowDownCircle className="w-3 h-3" /> },
+  ];
 
   // Auth screens
   if (!user) {
