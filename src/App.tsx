@@ -9,7 +9,7 @@ import Admin from "./pages/Admin";
 import KeySystem from "./pages/KeySystem";
 import XCoins from "./pages/XCoins";
 import History from "./pages/History";
-import ApiAccessDenied from "./pages/ApiAccessDenied";
+
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
