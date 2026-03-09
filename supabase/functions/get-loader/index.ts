@@ -103,7 +103,7 @@ serve(async (req) => {
         status: 302,
         headers: { 
           ...corsHeaders, 
-          "Location": `/loader${redirectName}`
+          "Location": `https://store-clone-buddy.lovable.app/loader${redirectName}`
         },
       });
     }
