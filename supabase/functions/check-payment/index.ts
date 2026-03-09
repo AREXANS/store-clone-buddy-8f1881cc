@@ -54,9 +54,7 @@ serve(async (req) => {
     let isPaid = false;
 
     if (gateway === "cashify" && s.cashify_license_key) {
-      // Check Cashify status
       try {
-        // Get cashify transaction ID mapping
         const { data: mapping } = await supabase
           .from("app_settings").select("value").eq("key", `cashify_tx_${transactionId}`).maybeSingle();
 
@@ -79,7 +77,6 @@ serve(async (req) => {
         console.error("Cashify check error:", err);
       }
     } else if (gateway === "pakasir" && pakasirMode === "live" && s.pakasir_slug && s.pakasir_api_key) {
-      // Check Pakasir status
       try {
         const url = `https://app.pakasir.com/api/transactiondetail?project=${s.pakasir_slug}&amount=${transaction.total_amount}&order_id=${transactionId}&api_key=${s.pakasir_api_key}`;
         const res = await fetch(url);
@@ -106,7 +103,15 @@ serve(async (req) => {
       await supabase.from("transactions").update({ status: "paid", paid_at: new Date().toISOString() })
         .eq("transaction_id", transactionId);
 
-      await createLicenseKey(transaction);
+      // Create license key directly in app_settings (no separate HTTP call)
+      if (transaction.license_key && transaction.package_name !== "XCOINS_TOPUP") {
+        await createLicenseKey(supabase, transaction);
+      }
+
+      // Clean up cashify mapping
+      if (gateway === "cashify") {
+        await supabase.from("app_settings").delete().eq("key", `cashify_tx_${transactionId}`);
+      }
 
       if (s.discord_webhook_url) {
         await sendDiscordNotification(transaction, s.discord_webhook_url);
@@ -125,20 +130,66 @@ serve(async (req) => {
   }
 });
 
-async function createLicenseKey(transaction: any) {
+async function createLicenseKey(supabase: any, transaction: any) {
   try {
-    if (!transaction.license_key) return;
-    const createKeyApiUrl = Deno.env.get("SUPABASE_URL") + "/functions/v1/create-key";
+    const key = transaction.license_key;
+    if (!key) return;
+
+    const { data } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "license_keys")
+      .maybeSingle();
+
+    let keys = [];
+    if (data) {
+      try { keys = JSON.parse(data.value || "[]"); } catch { keys = []; }
+    }
+
+    // Check if key already exists - if so, extend it
+    const existingIdx = keys.findIndex((k: any) => k.key === key);
+    
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + (transaction.package_duration || 30));
 
-    const response = await fetch(createKeyApiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: transaction.license_key, role: transaction.package_name || "NORMAL", expired: expiryDate.toISOString(), max_hwid: 1 }),
-    });
-    const result = await response.json();
-    console.log("Create key result:", result);
+    if (existingIdx >= 0) {
+      // Extend existing key
+      const existing = keys[existingIdx];
+      const currentExpiry = new Date(existing.expired);
+      const now = new Date();
+      // If key is still valid, extend from current expiry. Otherwise extend from now.
+      const baseDate = currentExpiry > now ? currentExpiry : now;
+      baseDate.setDate(baseDate.getDate() + (transaction.package_duration || 30));
+      keys[existingIdx].expired = baseDate.toISOString();
+      keys[existingIdx].role = transaction.package_name || existing.role;
+      console.log(`Extended key ${key} to ${baseDate.toISOString()}`);
+    } else {
+      // Create new key
+      const newKey = {
+        key,
+        expired: expiryDate.toISOString(),
+        created: new Date().toISOString(),
+        role: transaction.package_name || "NORMAL",
+        maxHwid: 1,
+        frozenUntil: null,
+        frozenRemainingMs: null,
+        hwids: [],
+        robloxUsers: []
+      };
+      keys.push(newKey);
+      console.log(`Created new key ${key}, expires ${expiryDate.toISOString()}`);
+    }
+
+    await supabase
+      .from("app_settings")
+      .upsert({
+        key: "license_keys",
+        value: JSON.stringify(keys),
+        updated_at: new Date().toISOString(),
+        description: "License keys database"
+      }, { onConflict: "key" });
+
+    console.log("License key saved successfully");
   } catch (error) {
     console.error("Create key error:", error);
   }
