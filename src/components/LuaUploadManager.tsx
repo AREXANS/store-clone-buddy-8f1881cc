@@ -226,14 +226,7 @@ const LuaUploadManager: FC = () => {
 
   const copyLoadstring = (scriptName: string) => {
     const url = getLoaderUrlForExecutor(scriptName);
-    const code = [
-      'local __f = loadstring or load',
-      'assert(__f, "Executor tidak mendukung loadstring/load")',
-      `local __src = game:HttpGet("${url}")`,
-      'local __fn, __err = __f(__src)',
-      'if not __fn then error(__err) end',
-      'return __fn()'
-    ].join('\n');
+    const code = `loadstring(game:HttpGet("${url}"))()`;
 
     navigator.clipboard.writeText(code);
     toast({ title: 'Copied!', description: 'Loadstring code berhasil disalin' });
