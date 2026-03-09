@@ -7,6 +7,18 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
+function isBrowser(req: Request): boolean {
+  const accept = req.headers.get("accept") || "";
+  if (accept.includes("text/html")) return true;
+
+  const secFetchMode = req.headers.get("sec-fetch-mode");
+  const secFetchDest = req.headers.get("sec-fetch-dest");
+  const secChUa = req.headers.get("sec-ch-ua");
+  const upgrade = req.headers.get("upgrade-insecure-requests");
+
+  return Boolean(secFetchMode || secFetchDest || secChUa || upgrade);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -15,22 +27,20 @@ serve(async (req) => {
   try {
     const url = new URL(req.url);
     const scriptName = url.searchParams.get("name");
-    const token = url.searchParams.get("token");
-
-    // Secret token untuk akses script - hanya executor yang tahu token ini
-    const SCRIPT_ACCESS_TOKEN = "AXS-SECURE-2026-RBLX";
+    const rawParam = (url.searchParams.get("raw") || "").toLowerCase();
+    const forceRaw = rawParam === "1" || rawParam === "true";
 
     if (!scriptName) {
       return new Response("-- Access Denied: Invalid request", {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "text/plain" },
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "text/plain; charset=utf-8" },
       });
     }
 
-    // Validasi token - tanpa token yang benar, akses ditolak
-    if (token !== SCRIPT_ACCESS_TOKEN) {
-      return new Response("-- [Arexans] Access Denied. This script is protected.\n-- Unauthorized access is not permitted.\n-- If you believe this is an error, contact the administrator.", {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "text/plain" },
-      });
+    // Browser → tampilkan halaman Access Denied (executor tetap dapat Lua)
+    if (!forceRaw && isBrowser(req)) {
+      const deniedUrl = `https://store-clone-buddy.lovable.app/api-access-denied?name=${encodeURIComponent(scriptName)}`;
+      return Response.redirect(deniedUrl, 302);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -44,25 +54,32 @@ serve(async (req) => {
       .eq("is_active", true)
       .maybeSingle();
 
+    // Selalu kembalikan Lua valid agar `loadstring(... )()` tidak jadi nil.
     if (error || !script) {
-      return new Response("-- [Arexans] Access Denied.", {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "text/plain" },
+      return new Response('warn("[Arexans] Script not available")', {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+        },
       });
     }
 
     return new Response(script.content, {
       status: 200,
-      headers: { 
-        ...corsHeaders, 
+      headers: {
+        ...corsHeaders,
         "Content-Type": "text/plain; charset=utf-8",
-        "Cache-Control": "no-cache, no-store, must-revalidate"
+        "Cache-Control": "no-cache, no-store, must-revalidate",
       },
     });
   } catch (error: unknown) {
     console.error("Error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    return new Response(`-- Error: ${errorMessage}`, {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "text/plain" },
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    return new Response(`warn("[Arexans] Error: ${msg.replaceAll('"', "'")}")`, {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "text/plain; charset=utf-8" },
     });
   }
 });
