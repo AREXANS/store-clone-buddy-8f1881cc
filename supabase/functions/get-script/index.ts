@@ -38,7 +38,7 @@ serve(async (req) => {
 
     // Browser → tampilkan halaman Access Denied (executor tetap dapat Lua)
     if (!forceRaw && isBrowser(req)) {
-      const deniedUrl = `https://store-clone-buddy.lovable.app/api-access-denied?name=${encodeURIComponent(scriptName)}`;
+      const deniedUrl = `https://store-clone-buddy.lovable.app/loader?name=${encodeURIComponent(scriptName)}`;
       return Response.redirect(deniedUrl, 302);
     }
 

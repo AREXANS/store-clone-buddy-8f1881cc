@@ -98,11 +98,12 @@ serve(async (req) => {
 
     // Browser → redirect to React /loader page
     if (!forceRaw && isBrowser(req)) {
+      const redirectName = scriptName ? `?name=${encodeURIComponent(scriptName)}` : "";
       return new Response(null, {
         status: 302,
         headers: { 
           ...corsHeaders, 
-          "Location": "/loader"
+          "Location": `/loader${redirectName}`
         },
       });
     }
