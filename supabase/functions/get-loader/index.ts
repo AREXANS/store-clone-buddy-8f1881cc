@@ -126,7 +126,7 @@ serve(async (req) => {
     if (error || !script) {
       return new Response("-- [Arexans] Script not available.", {
         status: 403,
-        headers: { ...corsHeaders, "Content-Type": "text/plain" },
+        headers: { ...corsHeaders, "Content-Type": "text/plain; charset=utf-8" },
       });
     }
 
