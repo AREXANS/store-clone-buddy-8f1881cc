@@ -58,8 +58,12 @@ const PaymentSuccess: FC<PaymentSuccessProps> = ({ finalData, onCopy }) => {
   }, []);
 
   const censorText = (text: string) => {
-    if (text.length <= 6) return '•'.repeat(text.length);
-    return text.slice(0, 3) + '•'.repeat(Math.min(text.length - 6, 20)) + text.slice(-3);
+    return '•'.repeat(Math.min(text.length, 24));
+  };
+
+  const censorKey = (text: string) => {
+    if (text.length <= 4) return '•'.repeat(text.length);
+    return text.slice(0, 4) + '•'.repeat(Math.min(text.length - 4, 16));
   };
 
   const getWhatsAppGroupLink = () => {
