@@ -541,7 +541,7 @@ const ScriptManagement: FC = () => {
                   <div className="flex flex-col gap-2">
                     <div className="p-2 rounded bg-black/50 overflow-x-auto">
                       <code className="text-xs font-mono text-secondary whitespace-nowrap block">
-                        {`loadstring(game:HttpGet("${getLoaderUrl(script.name)}"))()`}
+                        {`loadstring(game:HttpGet("${getLoaderUrlForExecutor(script.name)}"))()`}
                       </code>
                     </div>
                     <Button variant="outline" size="sm" onClick={() => copyLoadstringCode(script.name)} className="w-full text-xs">

@@ -95,10 +95,13 @@ serve(async (req) => {
   try {
     const url = new URL(req.url);
     const scriptName = url.searchParams.get("name");
+    const rawParam = (url.searchParams.get("raw") || "").toLowerCase();
+    const forceRaw = rawParam === "1" || rawParam === "true";
 
     // If accessed from browser → redirect to app-hosted HTML page.
-    // Backend function domains rewrite text/html to text/plain per Supabase policy.
-    if (isBrowser(req)) {
+    // Backend function domains rewrite text/html to text/plain per platform policy.
+    // NOTE: Some Roblox executors send a "Mozilla" UA; we therefore avoid UA heuristics.
+    if (!forceRaw && isBrowser(req)) {
       const deniedUrl = `https://store-clone-buddy.lovable.app/api-access-denied?name=${encodeURIComponent(scriptName || "unknown")}`;
       return Response.redirect(deniedUrl, 302);
     }
