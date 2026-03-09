@@ -144,7 +144,7 @@ async function handlePostPayment(supabase: any, transaction: any) {
       await supabase.from("xcoins_balances").update({ balance: newBalance, updated_at: new Date().toISOString() }).eq("id", userId);
       await supabase.from("xcoins_transactions").insert({
         user_id: userId, type: "topup", amount: transaction.original_amount,
-        balance_after: newBalance, description: `Top-up via webhook`, reference_id: transaction.transaction_id,
+        balance_after: newBalance, description: `Deposit ${transaction.original_amount} XCoins`, reference_id: transaction.transaction_id,
       });
     }
   } else if (transaction.license_key) {
