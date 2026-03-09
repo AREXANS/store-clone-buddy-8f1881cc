@@ -237,7 +237,7 @@ const ScriptManagement: FC = () => {
   };
 
   const getScriptUrl = (scriptName: string) => {
-    return `${getApiBase()}/get-script?name=${scriptName}&token=AXS-SECURE-2026-RBLX`;
+    return `${getApiBase()}/get-script?name=${scriptName}`;
   };
 
   const copyScriptUrl = (scriptName: string) => {
