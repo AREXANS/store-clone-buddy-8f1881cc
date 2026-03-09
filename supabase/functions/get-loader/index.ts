@@ -104,10 +104,11 @@ serve(async (req) => {
       });
     }
 
+    // Executor/script requests → serve Lua
     if (!scriptName) {
       return new Response("-- Access Denied", {
         status: 403,
-        headers: { ...corsHeaders, "Content-Type": "text/plain" },
+        headers: { ...corsHeaders, "Content-Type": "text/plain; charset=utf-8" },
       });
     }
 
