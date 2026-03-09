@@ -9,8 +9,8 @@ import Admin from "./pages/Admin";
 import KeySystem from "./pages/KeySystem";
 import XCoins from "./pages/XCoins";
 import History from "./pages/History";
-
 import NotFound from "./pages/NotFound";
+import LoaderAccessDenied from "./pages/LoaderAccessDenied";
 
 const queryClient = new QueryClient();
 
