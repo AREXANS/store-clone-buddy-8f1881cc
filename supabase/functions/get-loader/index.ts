@@ -96,11 +96,14 @@ serve(async (req) => {
     const rawParam = (url.searchParams.get("raw") || "").toLowerCase();
     const forceRaw = rawParam === "1" || rawParam === "true";
 
-    // Browser → show 403 HTML (but do NOT rely on Accept header)
+    // Browser → redirect to React /loader page
     if (!forceRaw && isBrowser(req)) {
-      return new Response(accessDeniedPage(scriptName || "unknown"), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
+      return new Response(null, {
+        status: 302,
+        headers: { 
+          ...corsHeaders, 
+          "Location": "/loader"
+        },
       });
     }
 
