@@ -28,6 +28,7 @@ const App = () => (
             <Route path="/xcoins" element={<XCoins />} />
             <Route path="/history" element={<History />} />
             <Route path="/loader" element={<LoaderAccessDenied />} />
+            <Route path="/access-denied" element={<LoaderAccessDenied />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
