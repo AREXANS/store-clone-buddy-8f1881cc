@@ -7,6 +7,15 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
+const noCacheHeaders = {
+  "Cache-Control": "private, no-store, no-cache, max-age=0, must-revalidate",
+  Pragma: "no-cache",
+  Expires: "0",
+  "CDN-Cache-Control": "no-store",
+  "Vercel-CDN-Cache-Control": "no-store",
+  Vary: "Accept, User-Agent, Sec-Fetch-Mode, Sec-Fetch-Dest, Sec-CH-UA, Upgrade-Insecure-Requests, X-Requested-With",
+};
+
 function obfuscateString(str: string): string {
   const bytes = Array.from(new TextEncoder().encode(str));
   return `(function() local b={${bytes.join(",")}} local s="" for _,v in ipairs(b) do s=s..string.char(v) end return s end)()`;
@@ -52,7 +61,7 @@ function isBrowser(req: Request): boolean {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: { ...corsHeaders, ...noCacheHeaders } });
   }
 
   try {
@@ -67,8 +76,8 @@ serve(async (req) => {
         status: 302,
         headers: {
           ...corsHeaders,
+          ...noCacheHeaders,
           Location: deniedUrl,
-          "Cache-Control": "no-cache, no-store, must-revalidate",
         },
       });
     }
@@ -76,7 +85,7 @@ serve(async (req) => {
     if (!scriptName) {
       return new Response("-- Access Denied", {
         status: 403,
-        headers: { ...corsHeaders, "Content-Type": "text/plain; charset=utf-8" },
+        headers: { ...corsHeaders, ...noCacheHeaders, "Content-Type": "text/plain; charset=utf-8" },
       });
     }
 
@@ -94,7 +103,7 @@ serve(async (req) => {
     if (error || !script) {
       return new Response("-- [Arexans] Script not available.", {
         status: 403,
-        headers: { ...corsHeaders, "Content-Type": "text/plain; charset=utf-8" },
+        headers: { ...corsHeaders, ...noCacheHeaders, "Content-Type": "text/plain; charset=utf-8" },
       });
     }
 
@@ -122,15 +131,15 @@ serve(async (req) => {
       status: 200,
       headers: {
         ...corsHeaders,
+        ...noCacheHeaders,
         "Content-Type": "text/plain; charset=utf-8",
-        "Cache-Control": "no-cache, no-store, must-revalidate",
       },
     });
   } catch (error: unknown) {
     console.error("Error:", error);
     return new Response("-- [Arexans] Access Denied", {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "text/plain; charset=utf-8" },
+      headers: { ...corsHeaders, ...noCacheHeaders, "Content-Type": "text/plain; charset=utf-8" },
     });
   }
 });

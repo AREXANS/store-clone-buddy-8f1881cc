@@ -7,6 +7,15 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
+const noCacheHeaders = {
+  "Cache-Control": "private, no-store, no-cache, max-age=0, must-revalidate",
+  Pragma: "no-cache",
+  Expires: "0",
+  "CDN-Cache-Control": "no-store",
+  "Vercel-CDN-Cache-Control": "no-store",
+  Vary: "Accept, User-Agent, Sec-Fetch-Mode, Sec-Fetch-Dest, Sec-CH-UA, Upgrade-Insecure-Requests, X-Requested-With",
+};
+
 function isExecutorRequest(req: Request): boolean {
   const userAgent = (req.headers.get("user-agent") || "").toLowerCase();
   const accept = (req.headers.get("accept") || "").toLowerCase();
@@ -38,7 +47,7 @@ function isBrowser(req: Request): boolean {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: { ...corsHeaders, ...noCacheHeaders } });
   }
 
   try {
@@ -50,7 +59,7 @@ serve(async (req) => {
     if (!scriptName) {
       return new Response("-- Access Denied: Invalid request", {
         status: 403,
-        headers: { ...corsHeaders, "Content-Type": "text/plain; charset=utf-8" },
+        headers: { ...corsHeaders, ...noCacheHeaders, "Content-Type": "text/plain; charset=utf-8" },
       });
     }
 
@@ -60,8 +69,8 @@ serve(async (req) => {
         status: 302,
         headers: {
           ...corsHeaders,
+          ...noCacheHeaders,
           Location: deniedUrl,
-          "Cache-Control": "no-cache, no-store, must-revalidate",
         },
       });
     }
@@ -82,8 +91,8 @@ serve(async (req) => {
         status: 200,
         headers: {
           ...corsHeaders,
+          ...noCacheHeaders,
           "Content-Type": "text/plain; charset=utf-8",
-          "Cache-Control": "no-cache, no-store, must-revalidate",
         },
       });
     }
@@ -92,8 +101,8 @@ serve(async (req) => {
       status: 200,
       headers: {
         ...corsHeaders,
+        ...noCacheHeaders,
         "Content-Type": "text/plain; charset=utf-8",
-        "Cache-Control": "no-cache, no-store, must-revalidate",
       },
     });
   } catch (error: unknown) {
@@ -101,7 +110,7 @@ serve(async (req) => {
     const msg = error instanceof Error ? error.message : "Unknown error";
     return new Response(`warn("[Arexans] Error: ${msg.replaceAll('"', "'")}")`, {
       status: 200,
-      headers: { ...corsHeaders, "Content-Type": "text/plain; charset=utf-8" },
+      headers: { ...corsHeaders, ...noCacheHeaders, "Content-Type": "text/plain; charset=utf-8" },
     });
   }
 });
