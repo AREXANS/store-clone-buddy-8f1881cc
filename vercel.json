@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/loader",
+      "destination": "https://pahxndxofczkcszqhulz.supabase.co/functions/v1/get-loader"
+    },
+    {
+      "source": "/api/get-script",
+      "destination": "https://pahxndxofczkcszqhulz.supabase.co/functions/v1/get-script"
+    },
+    {
+      "source": "/((?!assets|images|favicon|robots).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

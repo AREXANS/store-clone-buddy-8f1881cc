@@ -22,8 +22,6 @@ function randVar(): string {
 }
 
 function isBrowser(req: Request): boolean {
-  // Avoid using User-Agent or Accept as primary signals (executors may spoof/send them).
-  // Prefer modern browser-only headers.
   const secFetchMode = req.headers.get("sec-fetch-mode");
   const secFetchDest = req.headers.get("sec-fetch-dest");
   const secChUa = req.headers.get("sec-ch-ua");
@@ -32,7 +30,7 @@ function isBrowser(req: Request): boolean {
 }
 
 function accessDeniedPage(scriptName: string): string {
-  const safeName = scriptName || "unknown";
+  const safeName = (scriptName || "unknown").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -72,10 +70,10 @@ h1 strong{font-weight:700}
     <h1>Access <strong>Denied</strong></h1>
     <p class="desc">
       You don't have permission to access this resource.<br />
-      <span class="highlight">@arexans</span> only [browser_sec_headers]
+      <span class="highlight">@arexans</span> protected endpoint
     </p>
-    <div class="mini">Requested: <span class="highlight">${safeName.replaceAll("<", "&lt;").replaceAll(">", "&gt;")}</span></div>
-    <a href="/" class="btn">
+    <div class="mini">Requested: <span class="highlight">${safeName}</span></div>
+    <a href="https://tools.arexans.my.id/" class="btn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       Return Home
     </a>
@@ -96,14 +94,14 @@ serve(async (req) => {
     const rawParam = (url.searchParams.get("raw") || "").toLowerCase();
     const forceRaw = rawParam === "1" || rawParam === "true";
 
-    // Browser → redirect to React /loader page
+    // Browser → serve Access Denied HTML directly (no redirect, works with any domain)
     if (!forceRaw && isBrowser(req)) {
-      const redirectName = scriptName ? `?name=${encodeURIComponent(scriptName)}` : "";
-      return new Response(null, {
-        status: 302,
-        headers: { 
-          ...corsHeaders, 
-          "Location": `https://store-clone-buddy.lovable.app/loader${redirectName}`
+      return new Response(accessDeniedPage(scriptName || "unknown"), {
+        status: 403,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
         },
       });
     }
@@ -134,7 +132,6 @@ serve(async (req) => {
       });
     }
 
-    // Embed script content directly as obfuscated byte array — no second HTTP call
     const obfuscatedContent = obfuscateString(script.content);
     const vS = randVar();
     const vExec = randVar();
