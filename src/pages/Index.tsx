@@ -3,6 +3,7 @@ import PackageSelection from '@/components/PackageSelection';
 import OrderForm from '@/components/OrderForm';
 import PaymentQR from '@/components/PaymentQR';
 import PaymentSuccess from '@/components/PaymentSuccess';
+import MaintenancePage from '@/components/MaintenancePage';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
