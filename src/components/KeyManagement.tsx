@@ -5,11 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { 
   Key, Plus, Trash2, Edit2, RefreshCw, Save, 
   Users, Calendar, Shield, Copy, AlertTriangle,
-  Download, Upload, Pause, Play, Clock
+  Download, Upload, Pause, Play, Clock, CheckSquare, Square
 } from 'lucide-react';
 
 const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
@@ -33,6 +34,63 @@ interface KeyManagementProps {
   onRefresh?: () => void;
 }
 
+const TIME_UNITS: Record<string, number> = {
+  'm': 60 * 1000,
+  'j': 60 * 60 * 1000,
+  'h': 24 * 60 * 60 * 1000,
+  'b': 30 * 24 * 60 * 60 * 1000,
+  't': 365 * 24 * 60 * 60 * 1000,
+  'menit': 60 * 1000,
+  'jam': 60 * 60 * 1000,
+  'hari': 24 * 60 * 60 * 1000,
+  'bulan': 30 * 24 * 60 * 60 * 1000,
+  'tahun': 365 * 24 * 60 * 60 * 1000,
+};
+
+const parseBulkTime = (input: string): { ms: number; isAdd: boolean } | null => {
+  const trimmed = input.trim();
+  let isAdd = true;
+  let workingInput = trimmed;
+
+  if (workingInput.startsWith('+')) {
+    isAdd = true;
+    workingInput = workingInput.substring(1).trim();
+  } else if (workingInput.startsWith('-')) {
+    isAdd = false;
+    workingInput = workingInput.substring(1).trim();
+  }
+
+  const parts = workingInput.split(/[,\s]+/).filter(p => p.length > 0);
+  let totalMs = 0;
+  
+  for (const part of parts) {
+    const match = part.match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)$/);
+    if (match) {
+      const value = parseFloat(match[1]);
+      const unit = match[2].toLowerCase();
+      const multiplier = TIME_UNITS[unit];
+      if (multiplier) {
+        totalMs += value * multiplier;
+      }
+    }
+  }
+
+  if (totalMs === 0) return null;
+  return { ms: totalMs, isAdd };
+};
+
+const formatMsReadable = (ms: number): string => {
+  if (ms <= 0) return '0';
+  const days = Math.floor(ms / (24 * 60 * 60 * 1000));
+  const hours = Math.floor((ms % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+  const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
+  const parts = [];
+  if (days > 0) parts.push(`${days} hari`);
+  if (hours > 0) parts.push(`${hours} jam`);
+  if (minutes > 0) parts.push(`${minutes} menit`);
+  return parts.join(' ') || '0 menit';
+};
+
 const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   const [keys, setKeys] = useState<KeyItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -42,6 +100,9 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'frozen' | 'expired'>('all');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [bulkTimeInput, setBulkTimeInput] = useState('');
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   // Realtime countdown timer
   useEffect(() => {
@@ -383,6 +444,79 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   const expiredCount = keys.filter(k => !k.frozenUntil && new Date(k.expired) < new Date()).length;
   const activeCount = keys.length - frozenCount - expiredCount;
 
+  const toggleSelectAll = () => {
+    if (selectedKeys.size === filteredKeys.length) {
+      setSelectedKeys(new Set());
+    } else {
+      setSelectedKeys(new Set(filteredKeys.map(k => k.key)));
+    }
+  };
+
+  const toggleKeySelection = (key: string) => {
+    const newSet = new Set(selectedKeys);
+    if (newSet.has(key)) newSet.delete(key); else newSet.add(key);
+    setSelectedKeys(newSet);
+  };
+
+  const applyBulkTimeAdjustment = async () => {
+    if (selectedKeys.size === 0) {
+      toast({ title: 'Error', description: 'Pilih setidaknya satu key', variant: 'destructive' });
+      return;
+    }
+    const parsed = parseBulkTime(bulkTimeInput);
+    if (!parsed) {
+      toast({ title: 'Error', description: 'Format waktu tidak valid. Contoh: +7h, -1b, +30m', variant: 'destructive' });
+      return;
+    }
+    const action = parsed.isAdd ? 'Tambah' : 'Kurangi';
+    if (!confirm(`${action} ${formatMsReadable(parsed.ms)} untuk ${selectedKeys.size} key?`)) return;
+
+    setBulkLoading(true);
+    let ok = 0, fail = 0;
+    for (const keyName of selectedKeys) {
+      const keyItem = keys.find(k => k.key === keyName);
+      if (!keyItem) continue;
+      try {
+        const currentExpiry = new Date(keyItem.expired);
+        const newExpiry = new Date(currentExpiry.getTime() + (parsed.isAdd ? parsed.ms : -parsed.ms));
+        const res = await fetch(`${API_BASE}/update-key`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: keyName, expired: newExpiry.toISOString() })
+        });
+        const r = await res.json();
+        if (r.success) ok++; else fail++;
+      } catch { fail++; }
+    }
+    toast({ title: 'Bulk Update Selesai', description: `${ok} berhasil, ${fail} gagal`, variant: fail > 0 ? 'destructive' : 'default' });
+    setBulkTimeInput('');
+    setSelectedKeys(new Set());
+    fetchKeys();
+    setBulkLoading(false);
+  };
+
+  const deleteSelectedKeys = async () => {
+    if (selectedKeys.size === 0) return;
+    if (!confirm(`Hapus ${selectedKeys.size} key yang dipilih?`)) return;
+    setBulkLoading(true);
+    let ok = 0, fail = 0;
+    for (const keyName of selectedKeys) {
+      try {
+        const res = await fetch(`${API_BASE}/delete-key`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: keyName })
+        });
+        const r = await res.json();
+        if (r.success) ok++; else fail++;
+      } catch { fail++; }
+    }
+    toast({ title: 'Bulk Delete Selesai', description: `${ok} dihapus, ${fail} gagal`, variant: fail > 0 ? 'destructive' : 'default' });
+    setSelectedKeys(new Set());
+    fetchKeys();
+    setBulkLoading(false);
+  };
+
   const startNewKey = () => {
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + 30);
@@ -668,7 +802,92 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
         </CardContent>
       </Card>
 
-      {/* Edit/Create Form */}
+      {/* Bulk Selection & Duration Adjustment */}
+      {filteredKeys.length > 0 && (
+        <Card className="glass-card border-yellow-500/30">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={toggleSelectAll}
+                  className="border-yellow-500/50"
+                >
+                  {selectedKeys.size === filteredKeys.length ? (
+                    <><Square className="w-4 h-4 mr-2" /> Batal Pilih Semua</>
+                  ) : (
+                    <><CheckSquare className="w-4 h-4 mr-2" /> Pilih Semua ({filteredKeys.length})</>
+                  )}
+                </Button>
+                {selectedKeys.size > 0 && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={deleteSelectedKeys}
+                    disabled={bulkLoading}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Hapus ({selectedKeys.size})
+                  </Button>
+                )}
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {selectedKeys.size} dari {filteredKeys.length} dipilih
+              </span>
+            </div>
+
+            {selectedKeys.size > 0 && (
+              <div className="space-y-2 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
+                <Label className="flex items-center gap-2 text-yellow-400">
+                  <Clock className="w-4 h-4" />
+                  Adjust Durasi untuk {selectedKeys.size} key
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={bulkTimeInput}
+                    onChange={(e) => setBulkTimeInput(e.target.value)}
+                    placeholder="Contoh: +7h, -1b, +30m, +1t"
+                    className="bg-background/50 font-mono flex-1"
+                  />
+                  <Button 
+                    onClick={applyBulkTimeAdjustment} 
+                    disabled={bulkLoading || !bulkTimeInput.trim()}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-black"
+                  >
+                    {bulkLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Apply'}
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  <span className="text-xs text-muted-foreground mr-1">Quick:</span>
+                  {[
+                    { label: '+30m', value: '+30m' },
+                    { label: '+1j', value: '+1j' },
+                    { label: '+7h', value: '+7h' },
+                    { label: '+1b', value: '+1b' },
+                    { label: '+1t', value: '+1t' },
+                    { label: '-7h', value: '-7h' },
+                    { label: '-1b', value: '-1b' },
+                  ].map(({ label, value }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setBulkTimeInput(value)}
+                      className="px-2 py-0.5 text-xs rounded bg-muted hover:bg-yellow-500/20 transition-colors"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  m=menit, j=jam, h=hari, b=bulan, t=tahun. Gunakan + atau - di depan.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {editingKey && (
         <Card className="glass-card border-primary/50">
           <CardHeader>
@@ -783,10 +1002,16 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
           filteredKeys.map((k) => {
             const timeRemaining = getTimeRemaining(k);
             return (
-              <Card key={k.key} className={`glass-card transition-all hover:border-primary/50 ${isExpired(k) ? 'opacity-60' : ''} ${k.frozenUntil ? 'border-blue-500/30' : ''}`}>
+              <Card key={k.key} className={`glass-card transition-all hover:border-primary/50 ${isExpired(k) ? 'opacity-60' : ''} ${k.frozenUntil ? 'border-blue-500/30' : ''} ${selectedKeys.has(k.key) ? 'border-yellow-500/50 bg-yellow-500/5' : ''}`}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Checkbox
+                        checked={selectedKeys.has(k.key)}
+                        onCheckedChange={() => toggleKeySelection(k.key)}
+                        className="mt-1"
+                      />
+                      <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <code className="font-mono text-sm bg-muted px-2 py-1 rounded truncate max-w-[300px]">
                           {k.key}
@@ -833,6 +1058,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
                           </span>
                         )}
                       </div>
+                    </div>
                     </div>
                     <div className="flex gap-2">
                       <Button 
