@@ -340,7 +340,7 @@ const XCoinsPage = () => {
 
   const typeFilterButtons = [
     { key: 'all', label: 'Semua', icon: <Coins className="w-3 h-3" /> },
-    { key: 'topup', label: 'Top Up', icon: <ArrowDownCircle className="w-3 h-3" /> },
+    { key: 'topup', label: 'Deposit', icon: <ArrowDownCircle className="w-3 h-3" /> },
     { key: 'purchase', label: 'Beli', icon: <ArrowUpCircle className="w-3 h-3" /> },
     { key: 'transfer_out', label: 'Kirim', icon: <Send className="w-3 h-3" /> },
     { key: 'transfer_in', label: 'Terima', icon: <ArrowDownCircle className="w-3 h-3" /> },
