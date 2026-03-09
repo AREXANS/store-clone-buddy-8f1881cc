@@ -624,20 +624,32 @@ const Admin = () => {
                       {setting.description && (
                         <p className="text-xs text-muted-foreground">{setting.description}</p>
                       )}
-                      <div className="flex gap-2">
-                        <Input
-                          id={setting.key}
-                          type={setting.key.includes('key') || setting.key.includes('password') ? 'password' : 'text'}
-                          value={setting.value}
-                          onChange={(e) => setSettings(prev => 
-                            prev.map(s => s.key === setting.key ? { ...s, value: e.target.value } : s)
-                          )}
-                          className="bg-background/50"
-                        />
-                        <Button onClick={() => updateSetting(setting.key, setting.value)}>
-                          <Save className="w-4 h-4" />
-                        </Button>
-                      </div>
+                      {setting.key === 'maintenance_mode' ? (
+                        <div className="flex items-center gap-4">
+                          <Switch
+                            checked={setting.value === 'true'}
+                            onCheckedChange={(checked) => updateSetting(setting.key, checked ? 'true' : 'false')}
+                          />
+                          <span className={`text-sm font-medium ${setting.value === 'true' ? 'text-destructive' : 'text-muted-foreground'}`}>
+                            {setting.value === 'true' ? '🔴 Maintenance AKTIF - Website tidak bisa diakses' : '🟢 Website Normal'}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Input
+                            id={setting.key}
+                            type={setting.key.includes('key') || setting.key.includes('password') ? 'password' : 'text'}
+                            value={setting.value}
+                            onChange={(e) => setSettings(prev => 
+                              prev.map(s => s.key === setting.key ? { ...s, value: e.target.value } : s)
+                            )}
+                            className="bg-background/50"
+                          />
+                          <Button onClick={() => updateSetting(setting.key, setting.value)}>
+                            <Save className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </CardContent>
