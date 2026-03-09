@@ -529,7 +529,7 @@ ${rawScript}`;
                         <Shield className="w-3 h-3 mr-1" />
                         Salin + Whitelist
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => copyText(`${SUPABASE_API_BASE}/get-script?name=${script.name}&token=AXS-SECURE-2026-RBLX`, 'URL')}>
+                      <Button variant="outline" size="sm" onClick={() => copyText(`${SUPABASE_API_BASE}/get-script?name=${script.name}`, 'URL')}>
                         <Copy className="w-3 h-3 mr-1" />
                         Salin URL
                       </Button>

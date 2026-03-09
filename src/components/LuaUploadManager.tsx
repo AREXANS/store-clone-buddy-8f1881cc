@@ -222,7 +222,7 @@ const LuaUploadManager: FC = () => {
 
   const getLoaderUrl = (scriptName: string) => `${SUPABASE_API_BASE}/get-loader?name=${encodeURIComponent(scriptName)}`;
 
-  const getLoaderUrlForExecutor = (scriptName: string) => `${getLoaderUrl(scriptName)}&raw=1`;
+  const getLoaderUrlForExecutor = (scriptName: string) => `${getLoaderUrl(scriptName)}`;
 
   const copyLoadstring = (scriptName: string) => {
     const url = getLoaderUrlForExecutor(scriptName);
