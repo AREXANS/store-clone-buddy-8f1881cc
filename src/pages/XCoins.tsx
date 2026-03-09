@@ -604,15 +604,20 @@ const XCoinsPage = () => {
                       {/* Expanded Detail */}
                       {isExpanded && (
                         <div className="px-3.5 pb-3.5 space-y-2.5 animate-in slide-in-from-top-1 duration-150">
-                          {/* Description */}
+                          {/* Description — only censor for purchase type (keysistem) */}
                           {tx.description && (
                             <div className="flex items-center gap-2 bg-muted/30 px-3 py-2 rounded-lg">
                               <code className="flex-1 font-mono text-xs text-foreground truncate">
-                                {visibleRefs.has(tx.id) ? tx.description : censorText(tx.description)}
+                                {tx.type === 'purchase'
+                                  ? (visibleRefs.has(tx.id) ? tx.description : censorText(tx.description))
+                                  : tx.description
+                                }
                               </code>
-                              <button onClick={(e) => { e.stopPropagation(); toggleRefVisibility(tx.id); }} className="text-muted-foreground hover:text-foreground transition-colors p-1">
-                                {visibleRefs.has(tx.id) ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                              </button>
+                              {tx.type === 'purchase' && (
+                                <button onClick={(e) => { e.stopPropagation(); toggleRefVisibility(tx.id); }} className="text-muted-foreground hover:text-foreground transition-colors p-1">
+                                  {visibleRefs.has(tx.id) ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                </button>
+                              )}
                             </div>
                           )}
 
