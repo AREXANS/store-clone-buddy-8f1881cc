@@ -11,6 +11,7 @@ interface PaymentSuccessProps {
     expired: string;
     expiredDisplay: string;
     days: number;
+    transactionId?: string;
   };
   onCopy: (text: string) => void;
 }
@@ -97,6 +98,22 @@ const PaymentSuccess: FC<PaymentSuccessProps> = ({ finalData, onCopy }) => {
         {/* Account Info */}
         <div className="space-y-4 mb-8">
           <div className="bg-muted/80 p-5 rounded-xl border border-border space-y-4">
+            {finalData.transactionId && (
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">TX ID:</span>
+                <div className="flex items-center gap-1">
+                  <code className="text-foreground font-mono font-bold text-xs">
+                    {finalData.transactionId}
+                  </code>
+                  <button
+                    onClick={() => onCopy(finalData.transactionId!)}
+                    className="text-primary hover:text-primary/80 transition-colors p-1 rounded hover:bg-primary/10"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Key:</span>
               <div className="flex items-center gap-1">

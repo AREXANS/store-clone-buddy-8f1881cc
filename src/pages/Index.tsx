@@ -41,6 +41,7 @@ interface FinalData {
   expired: string;
   expiredDisplay: string;
   days: number;
+  transactionId?: string;
 }
 
 const STORAGE_KEY = 'arexans_payment_state';
@@ -214,7 +215,8 @@ const Index = () => {
           package: selectedPkg || 'NORMAL',
           expired: expiredDate.toISOString(),
           expiredDisplay: expiredDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
-          days: days
+          days: days,
+          transactionId: transactionId
         };
         
         setFinalData(newFinalData);
