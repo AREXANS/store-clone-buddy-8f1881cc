@@ -144,7 +144,7 @@ const Index = () => {
     }
   }, []);
 
-  // Load ads and packages
+  // Load ads, packages, and maintenance status
   useEffect(() => {
     const loadAds = async () => {
       const { data } = await supabase.from('ads').select('*').eq('is_active', true).order('sort_order');
@@ -156,8 +156,14 @@ const Index = () => {
       if (data) setPackages(data as Package[]);
     };
 
+    const checkMaintenance = async () => {
+      const { data } = await supabase.from('app_settings').select('value').eq('key', 'maintenance_mode').single();
+      if (data) setIsMaintenance(data.value === 'true');
+    };
+
     loadAds();
     loadPackages();
+    checkMaintenance();
   }, []);
 
   const formatRupiah = (number: number) => {
