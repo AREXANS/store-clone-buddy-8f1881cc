@@ -271,14 +271,29 @@ const XCoinsPage = () => {
 
   const formatRp = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
   const formatCoins = (n: number) => new Intl.NumberFormat('id-ID').format(n);
+  const formatDate = (d: string) => new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const censorText = (text: string) => '•'.repeat(text.length);
+
+  const copyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: 'Disalin!', description: `${label} berhasil disalin` });
+  };
+
+  const toggleRefVisibility = (id: string) => {
+    setVisibleRefs(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'topup': return <ArrowDownCircle className="w-5 h-5 text-green-400" />;
-      case 'purchase': return <ArrowUpCircle className="w-5 h-5 text-red-400" />;
-      case 'transfer_out': return <Send className="w-5 h-5 text-orange-400" />;
-      case 'transfer_in': return <ArrowDownCircle className="w-5 h-5 text-blue-400" />;
-      default: return <Coins className="w-5 h-5 text-muted-foreground" />;
+      case 'topup': return <ArrowDownCircle className="w-4 h-4 text-success" />;
+      case 'purchase': return <ArrowUpCircle className="w-4 h-4 text-destructive" />;
+      case 'transfer_out': return <Send className="w-4 h-4 text-warning" />;
+      case 'transfer_in': return <ArrowDownCircle className="w-4 h-4 text-primary" />;
+      default: return <Coins className="w-4 h-4 text-muted-foreground" />;
     }
   };
 
@@ -291,6 +306,26 @@ const XCoinsPage = () => {
       default: return type;
     }
   };
+
+  const getTypeBadgeStyle = (type: string) => {
+    switch (type) {
+      case 'topup': return 'bg-success/20 text-success border-success/30';
+      case 'purchase': return 'bg-destructive/20 text-destructive border-destructive/30';
+      case 'transfer_out': return 'bg-warning/20 text-warning border-warning/30';
+      case 'transfer_in': return 'bg-primary/20 text-primary border-primary/30';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const filteredTx = useMemo(() => {
+    if (!txSearch.trim()) return transactions;
+    const q = txSearch.toLowerCase();
+    return transactions.filter(tx =>
+      getTypeLabel(tx.type).toLowerCase().includes(q) ||
+      (tx.description && tx.description.toLowerCase().includes(q)) ||
+      (tx.reference_id && tx.reference_id.toLowerCase().includes(q))
+    );
+  }, [transactions, txSearch]);
 
   // Auth screens
   if (!user) {
