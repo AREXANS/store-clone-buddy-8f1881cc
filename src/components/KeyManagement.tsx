@@ -1059,6 +1059,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
                         )}
                       </div>
                     </div>
+                    </div>
                     <div className="flex gap-2">
                       <Button 
                         variant="ghost" 
