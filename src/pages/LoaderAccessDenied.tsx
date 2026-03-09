@@ -1,4 +1,14 @@
+import { useEffect, useState } from "react";
+
 const LoaderAccessDenied = () => {
+  const [scriptName, setScriptName] = useState<string>("unknown");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const name = params.get("name");
+    if (name) setScriptName(name);
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white font-sans flex items-center justify-center overflow-hidden relative">
       {/* Grid overlay */}
@@ -28,7 +38,7 @@ const LoaderAccessDenied = () => {
           <span className="text-red-400 font-medium">@arexans</span> protected endpoint
         </p>
         <div className="text-gray-600 text-xs tracking-widest mb-8">
-          Requested: <span className="text-red-400 font-medium">keysystem</span>
+          Requested: <span className="text-red-400 font-medium">{scriptName}</span>
         </div>
         <a
           href="/"
