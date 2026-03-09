@@ -101,14 +101,8 @@ const PaymentSuccess: FC<PaymentSuccessProps> = ({ finalData, onCopy }) => {
               <span className="text-muted-foreground">Key:</span>
               <div className="flex items-center gap-1">
                 <code className="text-foreground font-mono font-bold text-sm">
-                  {showKey ? finalData.key : censorText(finalData.key)}
+                  {censorKey(finalData.key)}
                 </code>
-                <button
-                  onClick={() => setShowKey(!showKey)}
-                  className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded hover:bg-muted"
-                >
-                  {showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                </button>
                 <button
                   onClick={() => onCopy(finalData.key)}
                   className="text-primary hover:text-primary/80 transition-colors p-1 rounded hover:bg-primary/10"
