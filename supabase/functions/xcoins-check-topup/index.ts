@@ -50,6 +50,7 @@ serve(async (req) => {
     let isPaid = false;
 
     if (gateway === "cashify" && s.cashify_license_key) {
+      // Cashify check-status
       try {
         const { data: mapping } = await supabase
           .from("app_settings").select("value").eq("key", `cashify_tx_${transactionId}`).maybeSingle();
@@ -60,16 +61,21 @@ serve(async (req) => {
             body: JSON.stringify({ transactionId: mapping.value }),
           });
           const data = await res.json();
-          if (data.data?.status === "paid" || data.data?.status === "success") isPaid = true;
+          console.log("Cashify topup check:", JSON.stringify(data));
+          if (data.status === 200 && data.data && (data.data.status === "paid" || data.data.status === "success")) {
+            isPaid = true;
+          }
         }
       } catch (err) {
         console.error("Cashify check error:", err);
       }
     } else if (gateway === "pakasir" && pakasirMode === "live" && s.pakasir_slug && s.pakasir_api_key) {
+      // Pakasir transaction detail
       try {
-        const url = `https://app.pakasir.com/api/transactiondetail?project=${s.pakasir_slug}&amount=${tx.total_amount}&order_id=${transactionId}&api_key=${s.pakasir_api_key}`;
+        const url = `https://app.pakasir.com/api/transactiondetail?project=${encodeURIComponent(s.pakasir_slug)}&amount=${tx.total_amount}&order_id=${encodeURIComponent(transactionId)}&api_key=${encodeURIComponent(s.pakasir_api_key)}`;
         const res = await fetch(url);
         const data = await res.json();
+        console.log("Pakasir topup check:", JSON.stringify(data));
         if (data.transaction?.status === "completed") isPaid = true;
       } catch (err) {
         console.error("Pakasir check error:", err);

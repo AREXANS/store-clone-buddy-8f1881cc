@@ -28,13 +28,15 @@ serve(async (req) => {
     const gateway = s.payment_gateway || "pakasir";
 
     if (gateway === "cashify" && s.cashify_license_key) {
-      // Cancel via Cashify
+      // === CASHIFY: Cancel status ===
+      // Docs: POST https://cashify.my.id/api/generate/cancel-status
+      // Body: { transactionId }
       try {
         const { data: mapping } = await supabase
           .from("app_settings").select("value").eq("key", `cashify_tx_${transactionId}`).maybeSingle();
 
         if (mapping?.value) {
-          await fetch("https://cashify.my.id/api/generate/cancel-status", {
+          const res = await fetch("https://cashify.my.id/api/generate/cancel-status", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -42,25 +44,37 @@ serve(async (req) => {
             },
             body: JSON.stringify({ transactionId: mapping.value }),
           });
+          const data = await res.json();
+          console.log("Cashify cancel response:", JSON.stringify(data));
           // Clean up mapping
           await supabase.from("app_settings").delete().eq("key", `cashify_tx_${transactionId}`);
         }
       } catch (err) {
         console.error("Cashify cancel error:", err);
       }
-    } else if (s.pakasir_mode === "live" && s.pakasir_slug && s.pakasir_api_key) {
-      // Cancel via Pakasir
+    } else if (gateway === "pakasir" && s.pakasir_mode === "live" && s.pakasir_slug && s.pakasir_api_key) {
+      // === PAKASIR: Transaction cancel ===
+      // Docs: POST https://app.pakasir.com/api/transactioncancel
+      // Body: { project, order_id, amount, api_key }
       try {
-        await fetch("https://app.pakasir.com/api/transactioncancel", {
+        // Get transaction amount for the cancel request
+        const { data: tx } = await supabase
+          .from("transactions").select("total_amount").eq("transaction_id", transactionId).maybeSingle();
+
+        const cancelBody = {
+          project: s.pakasir_slug,
+          order_id: transactionId,
+          amount: tx?.total_amount || 0,
+          api_key: s.pakasir_api_key,
+        };
+
+        const res = await fetch("https://app.pakasir.com/api/transactioncancel", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            project: s.pakasir_slug,
-            order_id: transactionId,
-            amount: 0,
-            api_key: s.pakasir_api_key,
-          }),
+          body: JSON.stringify(cancelBody),
         });
+        const data = await res.json();
+        console.log("Pakasir cancel response:", JSON.stringify(data));
       } catch (err) {
         console.error("Pakasir cancel error:", err);
       }

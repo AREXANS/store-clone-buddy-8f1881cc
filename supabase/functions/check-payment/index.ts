@@ -54,6 +54,10 @@ serve(async (req) => {
     let isPaid = false;
 
     if (gateway === "cashify" && s.cashify_license_key) {
+      // === CASHIFY: Check status ===
+      // Docs: POST https://cashify.my.id/api/generate/check-status
+      // Body: { transactionId }
+      // Response: { status: 200, data: { transactionId, amount, status: "paid"|"pending", expiredAt } }
       try {
         const { data: mapping } = await supabase
           .from("app_settings").select("value").eq("key", `cashify_tx_${transactionId}`).maybeSingle();
@@ -68,20 +72,25 @@ serve(async (req) => {
             body: JSON.stringify({ transactionId: mapping.value }),
           });
           const data = await res.json();
-          console.log("Cashify check:", JSON.stringify(data));
-          if (data.data?.status === "paid" || data.data?.status === "success") {
-            isPaid = true;
+          console.log("Cashify check-status response:", JSON.stringify(data));
+          if (data.status === 200 && data.data) {
+            if (data.data.status === "paid" || data.data.status === "success") {
+              isPaid = true;
+            }
           }
         }
       } catch (err) {
         console.error("Cashify check error:", err);
       }
     } else if (gateway === "pakasir" && pakasirMode === "live" && s.pakasir_slug && s.pakasir_api_key) {
+      // === PAKASIR: Transaction detail ===
+      // Docs: GET https://app.pakasir.com/api/transactiondetail?project={slug}&amount={amount}&order_id={order_id}&api_key={api_key}
+      // Response: { transaction: { amount, order_id, project, status: "completed", payment_method, completed_at } }
       try {
-        const url = `https://app.pakasir.com/api/transactiondetail?project=${s.pakasir_slug}&amount=${transaction.total_amount}&order_id=${transactionId}&api_key=${s.pakasir_api_key}`;
+        const url = `https://app.pakasir.com/api/transactiondetail?project=${encodeURIComponent(s.pakasir_slug)}&amount=${transaction.total_amount}&order_id=${encodeURIComponent(transactionId)}&api_key=${encodeURIComponent(s.pakasir_api_key)}`;
         const res = await fetch(url);
         const data = await res.json();
-        console.log("Pakasir check:", JSON.stringify(data));
+        console.log("Pakasir transactiondetail response:", JSON.stringify(data));
         if (data.transaction?.status === "completed") {
           isPaid = true;
         }
@@ -93,7 +102,7 @@ serve(async (req) => {
     // Simulation mode
     if (simulation === "on") isPaid = true;
 
-    // Demo/sandbox auto-pay after 5s
+    // Demo/sandbox auto-pay after 5s (Pakasir sandbox)
     if (gateway === "pakasir" && (pakasirMode === "sandbox" || pakasirMode === "demo")) {
       const elapsed = Date.now() - new Date(transaction.created_at).getTime();
       if (elapsed > 5000) isPaid = true;
@@ -103,7 +112,7 @@ serve(async (req) => {
       await supabase.from("transactions").update({ status: "paid", paid_at: new Date().toISOString() })
         .eq("transaction_id", transactionId);
 
-      // Create license key directly in app_settings (no separate HTTP call)
+      // Create license key directly (no separate HTTP call)
       if (transaction.license_key && transaction.package_name !== "XCOINS_TOPUP") {
         await createLicenseKey(supabase, transaction);
       }
@@ -146,26 +155,21 @@ async function createLicenseKey(supabase: any, transaction: any) {
       try { keys = JSON.parse(data.value || "[]"); } catch { keys = []; }
     }
 
-    // Check if key already exists - if so, extend it
     const existingIdx = keys.findIndex((k: any) => k.key === key);
-    
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + (transaction.package_duration || 30));
 
     if (existingIdx >= 0) {
-      // Extend existing key
       const existing = keys[existingIdx];
       const currentExpiry = new Date(existing.expired);
       const now = new Date();
-      // If key is still valid, extend from current expiry. Otherwise extend from now.
       const baseDate = currentExpiry > now ? currentExpiry : now;
       baseDate.setDate(baseDate.getDate() + (transaction.package_duration || 30));
       keys[existingIdx].expired = baseDate.toISOString();
       keys[existingIdx].role = transaction.package_name || existing.role;
       console.log(`Extended key ${key} to ${baseDate.toISOString()}`);
     } else {
-      // Create new key
-      const newKey = {
+      keys.push({
         key,
         expired: expiryDate.toISOString(),
         created: new Date().toISOString(),
@@ -175,8 +179,7 @@ async function createLicenseKey(supabase: any, transaction: any) {
         frozenRemainingMs: null,
         hwids: [],
         robloxUsers: []
-      };
-      keys.push(newKey);
+      });
       console.log(`Created new key ${key}, expires ${expiryDate.toISOString()}`);
     }
 
