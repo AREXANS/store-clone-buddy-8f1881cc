@@ -215,7 +215,8 @@ const Index = () => {
           package: selectedPkg || 'NORMAL',
           expired: expiredDate.toISOString(),
           expiredDisplay: expiredDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
-          days: days
+          days: days,
+          transactionId: transactionId
         };
         
         setFinalData(newFinalData);

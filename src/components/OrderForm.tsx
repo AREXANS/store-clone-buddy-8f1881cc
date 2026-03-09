@@ -253,7 +253,8 @@ const OrderForm: FC<OrderFormProps> = ({
           package: selectedPkg || 'NORMAL',
           expired: expiredDate.toISOString(),
           expiredDisplay: expiredDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
-          days: durationData.days
+          days: durationData.days,
+          transactionId: res.data.transactionId
         },
         daysToAdd: durationData.days
       };
