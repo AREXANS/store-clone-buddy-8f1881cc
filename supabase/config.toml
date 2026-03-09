@@ -1,1 +1,4 @@
 project_id = "pahxndxofczkcszqhulz"
+
+[functions.api-access-denied]
+verify_jwt = false
