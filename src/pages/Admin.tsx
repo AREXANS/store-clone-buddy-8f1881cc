@@ -144,7 +144,17 @@ const Admin = () => {
 
   const keySystemTx = transactions.filter(tx => tx.package_name !== 'XCOINS_TOPUP');
   const xcoinsTx = transactions.filter(tx => tx.package_name === 'XCOINS_TOPUP');
-  const currentTxList = txTab === 'xcoins' ? xcoinsTx : keySystemTx;
+  const filteredTxList = (txTab === 'xcoins' ? xcoinsTx : keySystemTx).filter(tx => {
+    if (!txSearch.trim()) return true;
+    const q = txSearch.toLowerCase();
+    return tx.transaction_id.toLowerCase().includes(q) || 
+           tx.customer_name.toLowerCase().includes(q) || 
+           (tx.customer_whatsapp || '').toLowerCase().includes(q) || 
+           (tx.license_key || '').toLowerCase().includes(q) || 
+           tx.package_name.toLowerCase().includes(q) ||
+           tx.status.toLowerCase().includes(q);
+  });
+  const currentTxList = filteredTxList;
 
   const toggleSelectTx = (id: string) => {
     setSelectedTxIds(prev => {
