@@ -1002,10 +1002,16 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
           filteredKeys.map((k) => {
             const timeRemaining = getTimeRemaining(k);
             return (
-              <Card key={k.key} className={`glass-card transition-all hover:border-primary/50 ${isExpired(k) ? 'opacity-60' : ''} ${k.frozenUntil ? 'border-blue-500/30' : ''}`}>
+              <Card key={k.key} className={`glass-card transition-all hover:border-primary/50 ${isExpired(k) ? 'opacity-60' : ''} ${k.frozenUntil ? 'border-blue-500/30' : ''} ${selectedKeys.has(k.key) ? 'border-yellow-500/50 bg-yellow-500/5' : ''}`}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Checkbox
+                        checked={selectedKeys.has(k.key)}
+                        onCheckedChange={() => toggleKeySelection(k.key)}
+                        className="mt-1"
+                      />
+                      <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <code className="font-mono text-sm bg-muted px-2 py-1 rounded truncate max-w-[300px]">
                           {k.key}
