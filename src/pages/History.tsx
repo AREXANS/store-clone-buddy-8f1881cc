@@ -206,7 +206,7 @@ const History = () => {
             ) : (
               transactions.map((tx) => (
                 <Card key={tx.id} className="glass-card border-border/50">
-                  <CardContent className="pt-4 pb-3 space-y-3">
+                  <CardContent className="pt-3 pb-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Package className="w-4 h-4 text-primary" />
@@ -216,39 +216,44 @@ const History = () => {
                       {getStatusBadge(tx.status)}
                     </div>
 
-                    <div className="flex items-center gap-2 bg-muted/20 p-2 rounded text-xs">
-                      <span className="text-muted-foreground">ID:</span>
-                      <code className="flex-1 font-mono truncate">{tx.transaction_id}</code>
-                      <button onClick={() => copyText(tx.transaction_id, 'ID Transaksi')} className="text-muted-foreground hover:text-primary">
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    {tx.license_key && (
-                      <div className="flex items-center gap-2 bg-muted/20 p-2 rounded text-xs">
-                        <span className="text-muted-foreground">Key:</span>
-                        <code className="flex-1 font-mono truncate">{tx.license_key}</code>
-                        <button onClick={() => copyText(tx.license_key!, 'Key')} className="text-muted-foreground hover:text-primary">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{formatDate(tx.created_at)}</span>
+                      <div className="flex items-center gap-1">
+                        <span className="font-medium text-foreground">{formatRupiah(tx.total_amount)}</span>
+                        <button
+                          onClick={() => copyText(tx.transaction_id, 'ID Transaksi')}
+                          className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                          title="Salin ID Transaksi"
+                        >
                           <Copy className="w-3.5 h-3.5" />
                         </button>
+                        {tx.license_key && (
+                          <button
+                            onClick={() => copyText(tx.license_key!, 'Key')}
+                            className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                            title="Salin Key"
+                          >
+                            <span className="font-mono text-[10px]">KEY</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setDetailId(detailId === tx.id ? null : tx.id)}
+                          className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
+                          title="Detail"
+                        >
+                          <Clock className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                    )}
+                    </div>
 
-                    {detailId === tx.id ? (
-                      <div className="bg-muted/10 p-3 rounded space-y-1 text-xs">
+                    {detailId === tx.id && (
+                      <div className="bg-muted/10 p-3 rounded space-y-1 text-xs animate-in fade-in">
+                        <div className="flex justify-between"><span className="text-muted-foreground">ID</span><code className="font-mono truncate max-w-[180px]">{tx.transaction_id}</code></div>
+                        {tx.license_key && <div className="flex justify-between"><span className="text-muted-foreground">Key</span><code className="font-mono">{'•'.repeat(12)}</code></div>}
                         <div className="flex justify-between"><span className="text-muted-foreground">Harga Asli</span><span>{formatRupiah(tx.original_amount)}</span></div>
                         <div className="flex justify-between"><span className="text-muted-foreground">Total Bayar</span><span className="font-medium">{formatRupiah(tx.total_amount)}</span></div>
                         <div className="flex justify-between"><span className="text-muted-foreground">Tanggal</span><span>{formatDate(tx.created_at)}</span></div>
                         {tx.paid_at && <div className="flex justify-between"><span className="text-muted-foreground">Dibayar</span><span>{formatDate(tx.paid_at)}</span></div>}
-                        <button onClick={() => setDetailId(null)} className="text-primary text-xs mt-2 hover:underline w-full text-center">Tutup detail</button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{formatDate(tx.created_at)}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="font-medium text-foreground">{formatRupiah(tx.total_amount)}</span>
-                          <button onClick={() => setDetailId(tx.id)} className="text-primary hover:underline">Detail</button>
-                        </div>
                       </div>
                     )}
 
