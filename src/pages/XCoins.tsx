@@ -506,30 +506,119 @@ const XCoinsPage = () => {
           </TabsList>
 
           {/* History Tab */}
-          <TabsContent value="dashboard" className="mt-4 space-y-2">
+          <TabsContent value="dashboard" className="mt-4 space-y-2.5">
             <div className="flex items-center justify-between">
               <h3 className="font-display text-sm">Riwayat Transaksi</h3>
               <Button variant="ghost" size="sm" onClick={loadDashboardData}><RefreshCw className="w-4 h-4" /></Button>
             </div>
-            {transactions.length === 0 ? (
-              <Card className="glass-card"><CardContent className="p-6 text-center text-muted-foreground text-sm">Belum ada transaksi</CardContent></Card>
+
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Cari transaksi..."
+                value={txSearch}
+                onChange={e => setTxSearch(e.target.value)}
+                className="pl-9 bg-muted/50 border-border"
+              />
+            </div>
+
+            {filteredTx.length === 0 ? (
+              <Card className="glass-card"><CardContent className="p-6 text-center text-muted-foreground text-sm">
+                <Package className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p>{txSearch ? 'Tidak ditemukan' : 'Belum ada transaksi'}</p>
+              </CardContent></Card>
             ) : (
-              transactions.map(tx => (
-                <Card key={tx.id} className="glass-card hover:border-border/80 transition-colors">
-                  <CardContent className="p-3 flex items-center gap-3">
-                    {getTypeIcon(tx.type)}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{getTypeLabel(tx.type)}</span>
-                        <span className={`text-sm font-mono font-bold ${tx.amount >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {tx.amount >= 0 ? '+' : ''}{formatCoins(tx.amount)}
+              filteredTx.map(tx => (
+                <Card key={tx.id} className="glass-card border-border/50 overflow-hidden">
+                  <CardContent className="p-4 space-y-3">
+                    {/* Row 1: Type + Amount */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {getTypeIcon(tx.type)}
+                        <span className="font-display font-semibold text-sm text-foreground">{getTypeLabel(tx.type)}</span>
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${getTypeBadgeStyle(tx.type)}`}>
+                          {tx.type}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between mt-0.5">
-                        <span className="text-xs text-muted-foreground truncate max-w-[200px]">{tx.description}</span>
-                        <span className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleDateString('id-ID')}</span>
-                      </div>
+                      <span className={`text-sm font-mono font-bold ${tx.amount >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {tx.amount >= 0 ? '+' : ''}{formatCoins(tx.amount)}
+                      </span>
                     </div>
+
+                    {/* Row 2: Date + Balance */}
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">{formatDate(tx.created_at)}</span>
+                      <span className="text-muted-foreground">Saldo: {formatCoins(tx.balance_after)}</span>
+                    </div>
+
+                    {/* Row 3: Description censored */}
+                    {tx.description && (
+                      <div className="flex items-center gap-2 bg-muted/30 px-3 py-2 rounded-lg">
+                        <code className="flex-1 font-mono text-xs text-foreground truncate">
+                          {visibleRefs.has(tx.id) ? tx.description : censorText(tx.description)}
+                        </code>
+                        <button onClick={() => toggleRefVisibility(tx.id)} className="text-muted-foreground hover:text-foreground transition-colors p-1">
+                          {visibleRefs.has(tx.id) ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Row 4: Actions */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {tx.reference_id && (
+                        <button onClick={() => copyText(tx.reference_id, 'TX ID')}
+                          className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border border-border transition-colors">
+                          TX ID
+                        </button>
+                      )}
+                      {tx.description && (
+                        <button onClick={() => copyText(tx.description, 'Deskripsi')}
+                          className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30 transition-colors">
+                          SALIN
+                        </button>
+                      )}
+                      <button onClick={() => setTxDetailId(txDetailId === tx.id ? null : tx.id)}
+                        className={`text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-colors ${
+                          txDetailId === tx.id ? 'bg-accent text-accent-foreground border-accent' : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground border-border'
+                        }`}>
+                        DETAIL
+                      </button>
+                    </div>
+
+                    {/* Detail panel */}
+                    {txDetailId === tx.id && (
+                      <div className="bg-muted/20 p-3 rounded-lg space-y-1.5 text-xs border border-border/50 animate-in slide-in-from-top-2 duration-200">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Tipe</span>
+                          <span className="text-foreground">{getTypeLabel(tx.type)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Jumlah</span>
+                          <span className={`font-semibold ${tx.amount >= 0 ? 'text-success' : 'text-destructive'}`}>{tx.amount >= 0 ? '+' : ''}{formatCoins(tx.amount)} XCoins</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Saldo Setelah</span>
+                          <span className="text-foreground">{formatCoins(tx.balance_after)} XCoins</span>
+                        </div>
+                        {tx.reference_id && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Ref ID</span>
+                            <code className="font-mono text-foreground truncate max-w-[200px]">{tx.reference_id}</code>
+                          </div>
+                        )}
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Tanggal</span>
+                          <span className="text-foreground">{formatDate(tx.created_at)}</span>
+                        </div>
+                        {tx.description && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Keterangan</span>
+                            <span className="text-foreground truncate max-w-[200px]">{tx.description}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))
