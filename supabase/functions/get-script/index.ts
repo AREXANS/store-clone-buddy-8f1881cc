@@ -13,11 +13,13 @@ function isBrowser(req: Request): boolean {
   const secChUa = req.headers.get("sec-ch-ua");
   const upgrade = req.headers.get("upgrade-insecure-requests");
   const userAgent = (req.headers.get("user-agent") || "").toLowerCase();
+  const accept = req.headers.get("accept") || "";
 
   const hasBrowserClientHints = Boolean(secFetchMode || secFetchDest || secChUa || upgrade);
   const isCommonBrowserUA = /(mozilla|chrome|safari|firefox|edg|opera)/.test(userAgent);
+  const acceptsHtml = accept.includes("text/html");
 
-  return hasBrowserClientHints || isCommonBrowserUA;
+  return hasBrowserClientHints || isCommonBrowserUA || acceptsHtml;
 }
 
 function accessDeniedPage(scriptName: string): string {
@@ -27,6 +29,7 @@ function accessDeniedPage(scriptName: string): string {
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <title>403 - Access Denied | Arexans</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -79,18 +82,21 @@ serve(async (req) => {
       });
     }
 
-    // Browser → serve Access Denied HTML directly (no redirect, works with any domain)
+    // Browser → serve Access Denied HTML
+    // Status 200 to ensure proxy (Vercel/Nginx) doesn't intercept and replace response
     if (!forceRaw && isBrowser(req)) {
       return new Response(accessDeniedPage(scriptName), {
-        status: 403,
+        status: 200,
         headers: {
           ...corsHeaders,
           "Content-Type": "text/html; charset=utf-8",
+          "X-Content-Type-Options": "nosniff",
           "Cache-Control": "no-cache, no-store, must-revalidate",
         },
       });
     }
 
+    // Executor/script requests → serve raw Lua
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
