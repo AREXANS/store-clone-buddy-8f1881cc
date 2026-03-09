@@ -34,11 +34,13 @@ serve(async (req) => {
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
-    // Get leaderboard (top 10)
+    // Get leaderboard (top 10, exclude owner)
+    const OWNER_PHONE = '6289518030035';
     const { data: leaderboard } = await supabase
       .from('xcoins_balances')
       .select('id, display_name, phone, balance')
       .eq('is_active', true)
+      .neq('phone', OWNER_PHONE)
       .order('balance', { ascending: false })
       .limit(10);
 

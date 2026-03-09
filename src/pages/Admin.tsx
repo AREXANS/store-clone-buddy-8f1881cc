@@ -129,10 +129,11 @@ const Admin = () => {
   const [backgrounds, setBackgrounds] = useState<BackgroundItem[]>([]);
   const [editingBackground, setEditingBackground] = useState<BackgroundItem | null>(null);
   
-  // Transactions state
+   // Transactions state
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [txTab, setTxTab] = useState<'keysystem' | 'xcoins'>('keysystem');
   const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set());
+  const [txSearch, setTxSearch] = useState('');
 
   // Social Links state
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
@@ -143,7 +144,17 @@ const Admin = () => {
 
   const keySystemTx = transactions.filter(tx => tx.package_name !== 'XCOINS_TOPUP');
   const xcoinsTx = transactions.filter(tx => tx.package_name === 'XCOINS_TOPUP');
-  const currentTxList = txTab === 'xcoins' ? xcoinsTx : keySystemTx;
+  const filteredTxList = (txTab === 'xcoins' ? xcoinsTx : keySystemTx).filter(tx => {
+    if (!txSearch.trim()) return true;
+    const q = txSearch.toLowerCase();
+    return tx.transaction_id.toLowerCase().includes(q) || 
+           tx.customer_name.toLowerCase().includes(q) || 
+           (tx.customer_whatsapp || '').toLowerCase().includes(q) || 
+           (tx.license_key || '').toLowerCase().includes(q) || 
+           tx.package_name.toLowerCase().includes(q) ||
+           tx.status.toLowerCase().includes(q);
+  });
+  const currentTxList = filteredTxList;
 
   const toggleSelectTx = (id: string) => {
     setSelectedTxIds(prev => {
@@ -1111,14 +1122,22 @@ const Admin = () => {
                 </CardContent>
               </Card>
 
-              {/* Sub-tabs */}
-              <div className="flex gap-2">
-                <Button variant={txTab === 'keysystem' ? 'default' : 'outline'} size="sm" onClick={() => { setTxTab('keysystem'); setSelectedTxIds(new Set()); }}>
-                  KeySystem ({keySystemTx.length})
-                </Button>
-                <Button variant={txTab === 'xcoins' ? 'default' : 'outline'} size="sm" onClick={() => { setTxTab('xcoins'); setSelectedTxIds(new Set()); }}>
-                  XCoins ({xcoinsTx.length})
-                </Button>
+              {/* Sub-tabs + Search */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex gap-2">
+                  <Button variant={txTab === 'keysystem' ? 'default' : 'outline'} size="sm" onClick={() => { setTxTab('keysystem'); setSelectedTxIds(new Set()); }}>
+                    KeySystem ({keySystemTx.length})
+                  </Button>
+                  <Button variant={txTab === 'xcoins' ? 'default' : 'outline'} size="sm" onClick={() => { setTxTab('xcoins'); setSelectedTxIds(new Set()); }}>
+                    XCoins ({xcoinsTx.length})
+                  </Button>
+                </div>
+                <Input 
+                  placeholder="Cari transaksi (ID, customer, key, status...)" 
+                  value={txSearch} 
+                  onChange={e => setTxSearch(e.target.value)} 
+                  className="bg-background/50 sm:max-w-xs"
+                />
               </div>
 
               {editingTransaction && (
