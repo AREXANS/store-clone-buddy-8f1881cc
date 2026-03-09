@@ -56,6 +56,9 @@ const XCoinsPage = () => {
   const [transactions, setTransactions] = useState<XCoinsTransaction[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [txSearch, setTxSearch] = useState('');
+  const [txDetailId, setTxDetailId] = useState<string | null>(null);
+  const [visibleRefs, setVisibleRefs] = useState<Set<string>>(new Set());
 
   // Top-up state
   const [topupAmount, setTopupAmount] = useState('');
