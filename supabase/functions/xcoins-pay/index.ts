@@ -62,7 +62,7 @@ serve(async (req) => {
     // Create payment transaction (auto-paid)
     await supabase.from("transactions").insert({
       transaction_id: transactionId,
-      customer_name: user.display_name || user.phone,
+      customer_name: "Keysistem",
       package_name: packageName,
       package_duration: packageDuration,
       original_amount: amount,

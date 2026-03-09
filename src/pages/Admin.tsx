@@ -1122,14 +1122,22 @@ const Admin = () => {
                 </CardContent>
               </Card>
 
-              {/* Sub-tabs */}
-              <div className="flex gap-2">
-                <Button variant={txTab === 'keysystem' ? 'default' : 'outline'} size="sm" onClick={() => { setTxTab('keysystem'); setSelectedTxIds(new Set()); }}>
-                  KeySystem ({keySystemTx.length})
-                </Button>
-                <Button variant={txTab === 'xcoins' ? 'default' : 'outline'} size="sm" onClick={() => { setTxTab('xcoins'); setSelectedTxIds(new Set()); }}>
-                  XCoins ({xcoinsTx.length})
-                </Button>
+              {/* Sub-tabs + Search */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex gap-2">
+                  <Button variant={txTab === 'keysystem' ? 'default' : 'outline'} size="sm" onClick={() => { setTxTab('keysystem'); setSelectedTxIds(new Set()); }}>
+                    KeySystem ({keySystemTx.length})
+                  </Button>
+                  <Button variant={txTab === 'xcoins' ? 'default' : 'outline'} size="sm" onClick={() => { setTxTab('xcoins'); setSelectedTxIds(new Set()); }}>
+                    XCoins ({xcoinsTx.length})
+                  </Button>
+                </div>
+                <Input 
+                  placeholder="Cari transaksi (ID, customer, key, status...)" 
+                  value={txSearch} 
+                  onChange={e => setTxSearch(e.target.value)} 
+                  className="bg-background/50 sm:max-w-xs"
+                />
               </div>
 
               {editingTransaction && (
