@@ -300,7 +300,7 @@ const XCoinsPage = () => {
 
   const getTypeLabel = (type: string) => {
     switch (type) {
-      case 'topup': return 'Top Up';
+      case 'topup': return 'Deposit';
       case 'purchase': return 'Pembelian';
       case 'transfer_out': return 'Transfer Keluar';
       case 'transfer_in': return 'Transfer Masuk';
