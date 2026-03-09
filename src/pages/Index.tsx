@@ -41,6 +41,7 @@ interface FinalData {
   expired: string;
   expiredDisplay: string;
   days: number;
+  transactionId?: string;
 }
 
 const STORAGE_KEY = 'arexans_payment_state';
