@@ -27,8 +27,6 @@ const App = () => (
             <Route path="/key-system" element={<KeySystem />} />
             <Route path="/xcoins" element={<XCoins />} />
             <Route path="/history" element={<History />} />
-            <Route path="/api-access-denied" element={<ApiAccessDenied />} />
-            <Route path="/loader" element={<ApiAccessDenied />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
