@@ -47,8 +47,7 @@ const getDeviceId = (): string => {
 };
 
 const censorKey = (key: string) => {
-  if (key.length <= 6) return '•'.repeat(key.length);
-  return key.slice(0, 4) + '•'.repeat(key.length - 7) + key.slice(-3);
+  return '•'.repeat(key.length);
 };
 
 const History = () => {
