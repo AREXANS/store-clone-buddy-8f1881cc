@@ -82,9 +82,9 @@ serve(async (req) => {
       });
     }
 
-    // Browser → redirect to app Access Denied page to guarantee proper HTML rendering across proxies
+    // Browser → redirect to SPA Access Denied page to guarantee proper HTML rendering
     if (!forceRaw && isBrowser(req)) {
-      const deniedUrl = `https://tools.arexans.my.id/loader?name=${encodeURIComponent(scriptName)}`;
+      const deniedUrl = `https://tools.arexans.my.id/access-denied?name=${encodeURIComponent(scriptName)}`;
       return new Response(null, {
         status: 302,
         headers: {
