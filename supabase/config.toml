@@ -1,7 +1,4 @@
 project_id = "pahxndxofczkcszqhulz"
 
-[functions.api-access-denied]
-verify_jwt = false
-
 [functions.get-script]
 verify_jwt = false

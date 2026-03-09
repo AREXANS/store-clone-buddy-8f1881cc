@@ -162,7 +162,7 @@ serve(async (req) => {
     console.error("Error:", error);
     return new Response("-- [Arexans] Access Denied", {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "text/plain" },
+      headers: { ...corsHeaders, "Content-Type": "text/plain; charset=utf-8" },
     });
   }
 });
