@@ -22,18 +22,13 @@ function randVar(): string {
 }
 
 function isBrowser(req: Request): boolean {
-  const accept = req.headers.get("accept") || "";
-  // Reliable signal: browsers usually request HTML explicitly.
-  if (accept.includes("text/html")) return true;
-
-  // Additional browser-only hints (executors / Roblox HttpGet typically won't send these).
+  // Avoid using User-Agent or Accept as primary signals (executors may spoof/send them).
+  // Prefer modern browser-only headers.
   const secFetchMode = req.headers.get("sec-fetch-mode");
   const secFetchDest = req.headers.get("sec-fetch-dest");
   const secChUa = req.headers.get("sec-ch-ua");
   const upgrade = req.headers.get("upgrade-insecure-requests");
-
-  if (secFetchMode || secFetchDest || secChUa || upgrade) return true;
-  return false;
+  return Boolean(secFetchMode || secFetchDest || secChUa || upgrade);
 }
 
 function accessDeniedPage(scriptName: string): string {
