@@ -18,7 +18,7 @@ serve(async (req) => {
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const { userId, pin, amount, packageName, packageDuration, licenseKey } = await req.json();
+    const { userId, pin, amount, packageName, packageDuration, licenseKey, deviceId } = await req.json();
 
     if (!userId || !pin || !amount || !packageName || !packageDuration || !licenseKey) {
       return new Response(JSON.stringify({ error: "Data tidak lengkap" }), 
