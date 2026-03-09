@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import GlobalBackground from '@/components/GlobalBackground';
 import { 
   Coins, Send, ArrowUpCircle, ArrowDownCircle, Trophy, History, 
-  LogOut, ArrowLeft, Wallet, RefreshCw, Eye, EyeOff, Copy, ChevronRight
+  LogOut, ArrowLeft, Wallet, RefreshCw, Eye, EyeOff, Copy, ChevronRight,
+  Search, Package, CheckCircle, XCircle, Gift, Clock
 } from 'lucide-react';
 
 const XCOINS_SESSION_KEY = 'xcoins_session';
