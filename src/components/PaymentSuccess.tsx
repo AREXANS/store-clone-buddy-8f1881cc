@@ -11,6 +11,7 @@ interface PaymentSuccessProps {
     expired: string;
     expiredDisplay: string;
     days: number;
+    transactionId?: string;
   };
   onCopy: (text: string) => void;
 }
