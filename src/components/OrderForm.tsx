@@ -26,7 +26,7 @@ interface OrderFormProps {
   selectedPkg: 'NORMAL' | 'VIP' | null;
   formData: { key: string; duration: string };
   setFormData: (data: { key: string; duration: string }) => void;
-  onSubmit: (e: React.FormEvent, promoCode?: string) => void;
+  onSubmit: (e: React.FormEvent, promoCode?: string, discountedAmount?: number) => void;
   onBack: () => void;
   onGenerate: () => void;
   loading: boolean;
