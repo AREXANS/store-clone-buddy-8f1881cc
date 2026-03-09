@@ -256,7 +256,7 @@ const ScriptManagement: FC = () => {
   const getLoaderUrlForExecutor = (scriptName: string) => {
     // Force-raw mode bypasses browser redirect heuristics so executors get pure Lua.
     // Always prefer Cloud API base to avoid needing /api proxy on the current domain.
-    return `${SUPABASE_API_BASE}/get-loader?name=${encodeURIComponent(scriptName)}&raw=1`;
+    return `${SUPABASE_API_BASE}/get-loader?name=${encodeURIComponent(scriptName)}`;
   };
 
   const copyLoadstringCode = (scriptName: string) => {
