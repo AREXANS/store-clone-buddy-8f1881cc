@@ -82,15 +82,14 @@ serve(async (req) => {
       });
     }
 
-    // Browser → serve Access Denied HTML
-    // Status 200 to ensure proxy (Vercel/Nginx) doesn't intercept and replace response
+    // Browser → redirect to app Access Denied page to guarantee proper HTML rendering across proxies
     if (!forceRaw && isBrowser(req)) {
-      return new Response(accessDeniedPage(scriptName), {
-        status: 200,
+      const deniedUrl = `https://tools.arexans.my.id/loader?name=${encodeURIComponent(scriptName)}`;
+      return new Response(null, {
+        status: 302,
         headers: {
           ...corsHeaders,
-          "Content-Type": "text/html; charset=utf-8",
-          "X-Content-Type-Options": "nosniff",
+          Location: deniedUrl,
           "Cache-Control": "no-cache, no-store, must-revalidate",
         },
       });
