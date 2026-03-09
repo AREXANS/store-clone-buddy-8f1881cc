@@ -137,13 +137,18 @@ serve(async (req) => {
     const vErr = randVar();
     const vLoad = randVar();
 
-    const loaderScript = `-- Arexans Loader v4.0
-do
-  local ${vLoad}=load or loadstring
-  local ${vS}=${obfuscatedContent}
-  local ${vExec},${vErr}=pcall(function() return ${vLoad}(${vS})() end)
-  if not ${vExec} then warn("[Arexans] Runtime error") end
-end`;
+    const loaderScript = `-- Arexans Loader v4.1\n` +
+      `do\n` +
+      `  local ${vLoad}=loadstring or load\n` +
+      `  if not ${vLoad} then error("[Arexans] Executor missing loadstring/load") end\n` +
+      `  local ${vS}=${obfuscatedContent}\n` +
+      `  local ${vExec},${vErr}=pcall(function()\n` +
+      `    local fn,err=${vLoad}(${vS})\n` +
+      `    if not fn then error(err) end\n` +
+      `    return fn()\n` +
+      `  end)\n` +
+      `  if not ${vExec} then warn("[Arexans] Runtime error") end\n` +
+      `end\n`;
 
     return new Response(loaderScript, {
       status: 200,
