@@ -200,7 +200,7 @@ const OrderForm: FC<OrderFormProps> = ({
     if (paymentMethod === 'xcoins') {
       handleXcoinsPay(e);
     } else {
-      onSubmit(e, appliedPromo?.promo_code || undefined);
+      onSubmit(e, appliedPromo?.promo_code || undefined, finalTotal > 0 ? finalTotal : undefined);
     }
   };
 
