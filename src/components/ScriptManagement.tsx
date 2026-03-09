@@ -245,18 +245,31 @@ const ScriptManagement: FC = () => {
     toast({ title: 'Copied!', description: 'URL script berhasil disalin' });
   };
 
-  const getLoaderUrl = (scriptName: string) => {
-    // Pretty, executor-friendly URL for the main keysystem loader on the published domain.
-    // Browser hits will still be redirected to the Access Denied page by the backend function.
+  const getLoaderUrlForBrowser = (scriptName: string) => {
+    // Pretty URL for the main keysystem loader on the published domain (browser will see Access Denied).
     if (scriptName === 'keysystem' && import.meta.env.PROD && currentDomain) {
       return `${currentDomain}/loader`;
     }
+    return `${getApiBase()}/get-loader?name=${encodeURIComponent(scriptName)}`;
+  };
 
-    return `${getApiBase()}/get-loader?name=${scriptName}`;
+  const getLoaderUrlForExecutor = (scriptName: string) => {
+    // Force-raw mode bypasses browser redirect heuristics so executors get pure Lua.
+    // Always prefer Cloud API base to avoid needing /api proxy on the current domain.
+    return `${SUPABASE_API_BASE}/get-loader?name=${encodeURIComponent(scriptName)}&raw=1`;
   };
 
   const copyLoadstringCode = (scriptName: string) => {
-    const code = `loadstring(game:HttpGet("${getLoaderUrl(scriptName)}"))()`;
+    const url = getLoaderUrlForExecutor(scriptName);
+    const code = [
+      'local __f = loadstring or load',
+      'assert(__f, "Executor tidak mendukung loadstring/load")',
+      `local __src = game:HttpGet("${url}")`,
+      'local __fn, __err = __f(__src)',
+      'if not __fn then error(__err) end',
+      'return __fn()'
+    ].join('\n');
+
     navigator.clipboard.writeText(code);
     toast({ title: 'Copied!', description: 'Loadstring code berhasil disalin' });
   };

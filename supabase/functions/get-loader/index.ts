@@ -23,9 +23,16 @@ function randVar(): string {
 
 function isBrowser(req: Request): boolean {
   const accept = req.headers.get("accept") || "";
-  const ua = (req.headers.get("user-agent") || "").toLowerCase();
+  // Reliable signal: browsers usually request HTML explicitly.
   if (accept.includes("text/html")) return true;
-  if (ua.includes("mozilla") || ua.includes("chrome") || ua.includes("safari") || ua.includes("firefox") || ua.includes("edge") || ua.includes("opera")) return true;
+
+  // Additional browser-only hints (executors / Roblox HttpGet typically won't send these).
+  const secFetchMode = req.headers.get("sec-fetch-mode");
+  const secFetchDest = req.headers.get("sec-fetch-dest");
+  const secChUa = req.headers.get("sec-ch-ua");
+  const upgrade = req.headers.get("upgrade-insecure-requests");
+
+  if (secFetchMode || secFetchDest || secChUa || upgrade) return true;
   return false;
 }
 
