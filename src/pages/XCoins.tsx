@@ -59,6 +59,7 @@ const XCoinsPage = () => {
   const [txSearch, setTxSearch] = useState('');
   const [txDetailId, setTxDetailId] = useState<string | null>(null);
   const [visibleRefs, setVisibleRefs] = useState<Set<string>>(new Set());
+  const [txTypeFilter, setTxTypeFilter] = useState<string>('all');
 
   // Top-up state
   const [topupAmount, setTopupAmount] = useState('');
