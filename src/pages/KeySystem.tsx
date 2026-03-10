@@ -378,7 +378,15 @@ const KeySystem = () => {
                 <CardContent className="space-y-4">
                   {/* Key Display */}
                   <div className="flex items-center gap-2 bg-muted/30 p-3 rounded-lg">
-                    <code className="flex-1 font-mono text-sm truncate">{keyData.key}</code>
+                    <code className="flex-1 font-mono text-sm truncate">
+                      {keyVisible ? keyData.key : censorKey(keyData.key)}
+                    </code>
+                    <button
+                      onClick={() => setKeyVisible(!keyVisible)}
+                      className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                    >
+                      {keyVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                     <Button variant="ghost" size="sm" onClick={() => copyToClipboard(keyData.key, 'Key')}>
                       <Copy className="w-4 h-4" />
                     </Button>
