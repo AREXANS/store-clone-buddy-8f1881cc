@@ -461,15 +461,17 @@ const KeySystem = () => {
                   <CardContent>
                     <div className="relative">
                       <pre className="bg-muted/30 p-4 rounded-lg overflow-x-auto text-xs font-mono whitespace-pre-wrap break-all max-h-40">
-                        {loadstring}
+                        {loadstringVisible ? loadstring : censorKey(loadstring)}
                       </pre>
-                      <Button 
-                        className="absolute top-2 right-2" size="sm"
-                        onClick={() => copyToClipboard(loadstring, 'Loadstring')}
-                      >
-                        <Copy className="w-4 h-4 mr-2" />
-                        Salin
-                      </Button>
+                      <div className="absolute top-2 right-2 flex gap-1">
+                        <Button size="sm" variant="outline" onClick={() => setLoadstringVisible(!loadstringVisible)}>
+                          {loadstringVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </Button>
+                        <Button size="sm" onClick={() => copyToClipboard(loadstring, 'Loadstring')}>
+                          <Copy className="w-4 h-4 mr-2" />
+                          Salin
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
