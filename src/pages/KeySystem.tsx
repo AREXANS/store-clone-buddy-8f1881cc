@@ -157,7 +157,7 @@ const KeySystem = () => {
         const now = new Date();
         const expiredDate = new Date(foundKey.expired);
         if (expiredDate < now && !foundKey.frozenUntil) {
-          setErrorMsg('Key sudah expired');
+          setErrorMsg('Key sudah expired! Silakan beli perpanjangan untuk mengaktifkan kembali.');
           setKeyData(null);
         } else {
           setKeyData(foundKey);
