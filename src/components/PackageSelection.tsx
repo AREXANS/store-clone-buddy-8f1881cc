@@ -109,8 +109,20 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
       setXcoinsLogoUrl(map.xcoins_logo_url || '');
     };
 
+    const checkUnclaimed = async () => {
+      let deviceId = localStorage.getItem('arexans_device_id');
+      if (!deviceId) return;
+      const { count } = await supabase
+        .from('transactions')
+        .select('*', { count: 'exact', head: true })
+        .eq('device_id', deviceId)
+        .eq('status', 'paid') as any;
+      setUnclaimedCount(count || 0);
+    };
+
     fetchSocialLinks();
     checkXcoinsSettings();
+    checkUnclaimed();
   }, []);
 
   const normalPkg = packages?.find(p => p.name === 'NORMAL');
