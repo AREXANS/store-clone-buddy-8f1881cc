@@ -125,6 +125,23 @@ const KeySystem = () => {
     if (settings?.value) setLoadstring(settings.value);
   }, []);
 
+  // Realtime loadstring updates
+  useEffect(() => {
+    loadLoadstring();
+    const channel = supabase
+      .channel('loadstring-changes')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'app_settings',
+        filter: 'key=eq.loadstring_script',
+      }, (payload: any) => {
+        if (payload.new?.value) setLoadstring(payload.new.value);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [loadLoadstring]);
+
   const validateAndLogin = async (keyStr?: string) => {
     const targetKey = (keyStr || keyInput).trim();
     if (!targetKey) {
