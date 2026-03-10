@@ -113,7 +113,11 @@ const History = () => {
       }
       setClaimResult({ key: data.key, package: data.package, days: data.days, expired: data.expired, expiredDisplay: data.expiredDisplay });
       loadTransactions();
-      toast({ title: 'Berhasil!', description: 'Key berhasil diklaim!' });
+      toast({ title: 'Berhasil!', description: 'Key berhasil diklaim! Redirecting ke Cek Key...' });
+      // Redirect to KeySystem for loadstring
+      setTimeout(() => {
+        navigate(`/key-system?key=${encodeURIComponent(data.key)}`);
+      }, 1500);
     } catch (err) {
       console.error(err);
       toast({ title: 'Error', description: 'Gagal klaim key', variant: 'destructive' });
