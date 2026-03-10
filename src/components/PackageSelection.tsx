@@ -168,10 +168,15 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
           {/* Right: History */}
           <button
             onClick={() => navigate('/history')}
-            className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors px-2 py-1.5 rounded-lg hover:bg-primary/10"
+            className="relative flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors px-2 py-1.5 rounded-lg hover:bg-primary/10"
           >
             <History className="w-4 h-4" />
             <span className="text-xs md:text-sm font-medium">History</span>
+            {unclaimedCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full px-1 animate-pulse">
+                {unclaimedCount}
+              </span>
+            )}
           </button>
         </div>
 
