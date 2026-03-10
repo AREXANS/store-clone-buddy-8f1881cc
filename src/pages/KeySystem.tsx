@@ -45,8 +45,11 @@ function saveSavedKeys(keys: SavedKey[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(keys));
 }
 
+const censorKey = (key: string) => '•'.repeat(key.length);
+
 const KeySystem = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [keyInput, setKeyInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [keyData, setKeyData] = useState<KeyData | null>(null);
@@ -55,6 +58,17 @@ const KeySystem = () => {
   const [timeRemaining, setTimeRemaining] = useState({ text: '', className: '' });
   const [savedKeys, setSavedKeys] = useState<SavedKey[]>(getSavedKeys);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [keyVisible, setKeyVisible] = useState(false);
+  const [loadstringVisible, setLoadstringVisible] = useState(false);
+
+  // Auto-validate if redirected from claim with ?key=xxx
+  useEffect(() => {
+    const autoKey = searchParams.get('key');
+    if (autoKey) {
+      setKeyInput(autoKey);
+      validateAndLogin(autoKey);
+    }
+  }, []);
 
   // Determine current view: 'list' (has saved keys, no active), 'add' (adding new), 'detail' (viewing key)
   const currentView = keyData ? 'detail' : (savedKeys.length === 0 || showAddForm) ? 'add' : 'list';
