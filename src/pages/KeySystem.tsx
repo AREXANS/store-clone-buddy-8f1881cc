@@ -157,7 +157,7 @@ const KeySystem = () => {
         const now = new Date();
         const expiredDate = new Date(foundKey.expired);
         if (expiredDate < now && !foundKey.frozenUntil) {
-          setErrorMsg('Key sudah expired');
+          setErrorMsg('Key sudah expired! Silakan beli perpanjangan untuk mengaktifkan kembali.');
           setKeyData(null);
         } else {
           setKeyData(foundKey);
@@ -346,7 +346,14 @@ const KeySystem = () => {
                 </div>
                 
                 {errorMsg && (
-                  <p className="text-sm text-destructive text-center">{errorMsg}</p>
+                  <div className="text-center space-y-2">
+                    <p className="text-sm text-destructive">{errorMsg}</p>
+                    {errorMsg.includes('expired') && (
+                      <Button size="sm" onClick={() => navigate('/')} className="w-full">
+                        Beli Perpanjangan
+                      </Button>
+                    )}
+                  </div>
                 )}
 
                 {savedKeys.length > 0 && (
