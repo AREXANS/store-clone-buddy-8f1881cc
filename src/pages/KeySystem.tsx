@@ -4,8 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import GlobalBackground from '@/components/GlobalBackground';
-import { Key, RefreshCw, Copy, ArrowLeft, Shield, Calendar, Clock, User, Plus, LogOut, ChevronRight, Trash2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Key, RefreshCw, Copy, ArrowLeft, Shield, Calendar, Clock, User, Plus, LogOut, ChevronRight, Trash2, Eye, EyeOff } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -45,8 +45,11 @@ function saveSavedKeys(keys: SavedKey[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(keys));
 }
 
+const censorKey = (key: string) => '•'.repeat(key.length);
+
 const KeySystem = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [keyInput, setKeyInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [keyData, setKeyData] = useState<KeyData | null>(null);
@@ -55,6 +58,17 @@ const KeySystem = () => {
   const [timeRemaining, setTimeRemaining] = useState({ text: '', className: '' });
   const [savedKeys, setSavedKeys] = useState<SavedKey[]>(getSavedKeys);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [keyVisible, setKeyVisible] = useState(false);
+  const [loadstringVisible, setLoadstringVisible] = useState(false);
+
+  // Auto-validate if redirected from claim with ?key=xxx
+  useEffect(() => {
+    const autoKey = searchParams.get('key');
+    if (autoKey) {
+      setKeyInput(autoKey);
+      validateAndLogin(autoKey);
+    }
+  }, []);
 
   // Determine current view: 'list' (has saved keys, no active), 'add' (adding new), 'detail' (viewing key)
   const currentView = keyData ? 'detail' : (savedKeys.length === 0 || showAddForm) ? 'add' : 'list';
@@ -110,6 +124,23 @@ const KeySystem = () => {
       .maybeSingle();
     if (settings?.value) setLoadstring(settings.value);
   }, []);
+
+  // Realtime loadstring updates
+  useEffect(() => {
+    loadLoadstring();
+    const channel = supabase
+      .channel('loadstring-changes')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'app_settings',
+        filter: 'key=eq.loadstring_script',
+      }, (payload: any) => {
+        if (payload.new?.value) setLoadstring(payload.new.value);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [loadLoadstring]);
 
   const validateAndLogin = async (keyStr?: string) => {
     const targetKey = (keyStr || keyInput).trim();
@@ -347,7 +378,15 @@ const KeySystem = () => {
                 <CardContent className="space-y-4">
                   {/* Key Display */}
                   <div className="flex items-center gap-2 bg-muted/30 p-3 rounded-lg">
-                    <code className="flex-1 font-mono text-sm truncate">{keyData.key}</code>
+                    <code className="flex-1 font-mono text-sm truncate">
+                      {keyVisible ? keyData.key : censorKey(keyData.key)}
+                    </code>
+                    <button
+                      onClick={() => setKeyVisible(!keyVisible)}
+                      className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                    >
+                      {keyVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                     <Button variant="ghost" size="sm" onClick={() => copyToClipboard(keyData.key, 'Key')}>
                       <Copy className="w-4 h-4" />
                     </Button>
@@ -422,15 +461,17 @@ const KeySystem = () => {
                   <CardContent>
                     <div className="relative">
                       <pre className="bg-muted/30 p-4 rounded-lg overflow-x-auto text-xs font-mono whitespace-pre-wrap break-all max-h-40">
-                        {loadstring}
+                        {loadstringVisible ? loadstring : censorKey(loadstring)}
                       </pre>
-                      <Button 
-                        className="absolute top-2 right-2" size="sm"
-                        onClick={() => copyToClipboard(loadstring, 'Loadstring')}
-                      >
-                        <Copy className="w-4 h-4 mr-2" />
-                        Salin
-                      </Button>
+                      <div className="absolute top-2 right-2 flex gap-1">
+                        <Button size="sm" variant="outline" onClick={() => setLoadstringVisible(!loadstringVisible)}>
+                          {loadstringVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </Button>
+                        <Button size="sm" onClick={() => copyToClipboard(loadstring, 'Loadstring')}>
+                          <Copy className="w-4 h-4 mr-2" />
+                          Salin
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

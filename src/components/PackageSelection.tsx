@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import AdSlider from './AdSlider';
 import GlobalBackground from './GlobalBackground';
 import { supabase } from '@/integrations/supabase/client';
-import { Link as LinkIcon, Key, Coins, History, Search } from 'lucide-react';
+import { Link as LinkIcon, Key, Coins, History, Search, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface Ad {
@@ -89,6 +89,7 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   const [xcoinsEnabled, setXcoinsEnabled] = useState(false);
   const [xcoinsLogoUrl, setXcoinsLogoUrl] = useState('');
+  const [unclaimedCount, setUnclaimedCount] = useState(0);
 
   useEffect(() => {
     const fetchSocialLinks = async () => {
@@ -108,8 +109,20 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
       setXcoinsLogoUrl(map.xcoins_logo_url || '');
     };
 
+    const checkUnclaimed = async () => {
+      let deviceId = localStorage.getItem('arexans_device_id');
+      if (!deviceId) return;
+      const { count } = await supabase
+        .from('transactions')
+        .select('*', { count: 'exact', head: true })
+        .eq('device_id', deviceId)
+        .eq('status', 'paid') as any;
+      setUnclaimedCount(count || 0);
+    };
+
     fetchSocialLinks();
     checkXcoinsSettings();
+    checkUnclaimed();
   }, []);
 
   const normalPkg = packages?.find(p => p.name === 'NORMAL');
@@ -155,10 +168,15 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
           {/* Right: History */}
           <button
             onClick={() => navigate('/history')}
-            className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors px-2 py-1.5 rounded-lg hover:bg-primary/10"
+            className="relative flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors px-2 py-1.5 rounded-lg hover:bg-primary/10"
           >
             <History className="w-4 h-4" />
             <span className="text-xs md:text-sm font-medium">History</span>
+            {unclaimedCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full px-1 animate-pulse">
+                {unclaimedCount}
+              </span>
+            )}
           </button>
         </div>
 

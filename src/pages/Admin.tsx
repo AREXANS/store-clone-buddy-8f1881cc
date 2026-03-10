@@ -464,6 +464,10 @@ const Admin = () => {
                   <Package className="w-4 h-4" />
                   <span className="hidden xs:inline">Packages</span>
                 </TabsTrigger>
+                <TabsTrigger value="transactions" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <CreditCard className="w-4 h-4" />
+                  <span className="hidden xs:inline">Trans</span>
+                </TabsTrigger>
                 <TabsTrigger value="keys" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
                   <Key className="w-4 h-4" />
                   <span className="hidden xs:inline">Keys</span>
@@ -491,10 +495,6 @@ const Admin = () => {
                 <TabsTrigger value="backgrounds" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
                   <Image className="w-4 h-4" />
                   <span className="hidden xs:inline">BG</span>
-                </TabsTrigger>
-                <TabsTrigger value="transactions" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
-                  <CreditCard className="w-4 h-4" />
-                  <span className="hidden xs:inline">Trans</span>
                 </TabsTrigger>
                 <TabsTrigger value="social" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
                   <MessageSquare className="w-4 h-4" />
