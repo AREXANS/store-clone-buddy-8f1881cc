@@ -346,7 +346,14 @@ const KeySystem = () => {
                 </div>
                 
                 {errorMsg && (
-                  <p className="text-sm text-destructive text-center">{errorMsg}</p>
+                  <div className="text-center space-y-2">
+                    <p className="text-sm text-destructive">{errorMsg}</p>
+                    {errorMsg.includes('expired') && (
+                      <Button size="sm" onClick={() => navigate('/')} className="w-full">
+                        Beli Perpanjangan
+                      </Button>
+                    )}
+                  </div>
                 )}
 
                 {savedKeys.length > 0 && (
