@@ -89,6 +89,7 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   const [xcoinsEnabled, setXcoinsEnabled] = useState(false);
   const [xcoinsLogoUrl, setXcoinsLogoUrl] = useState('');
+  const [unclaimedCount, setUnclaimedCount] = useState(0);
 
   useEffect(() => {
     const fetchSocialLinks = async () => {
