@@ -285,13 +285,14 @@ const Admin = () => {
   };
 
   const loadAllData = async () => {
-    const [settingsRes, packagesRes, adsRes, backgroundsRes, transactionsRes, socialLinksRes] = await Promise.all([
+    const [settingsRes, packagesRes, adsRes, backgroundsRes, transactionsRes, socialLinksRes, blockedIpsRes] = await Promise.all([
       supabase.from('app_settings').select('*').order('key'),
       supabase.from('packages').select('*').order('sort_order'),
       supabase.from('ads').select('*').order('sort_order'),
       supabase.from('backgrounds').select('*').order('sort_order'),
       supabase.from('transactions').select('*').order('created_at', { ascending: false }),
-      supabase.from('social_links').select('*').order('sort_order')
+      supabase.from('social_links').select('*').order('sort_order'),
+      supabase.from('blocked_ips').select('*').order('created_at', { ascending: false })
     ]);
     
     if (settingsRes.data) setSettings(settingsRes.data);
@@ -300,6 +301,35 @@ const Admin = () => {
     if (backgroundsRes.data) setBackgrounds(backgroundsRes.data);
     if (transactionsRes.data) setTransactions(transactionsRes.data);
     if (socialLinksRes.data) setSocialLinks(socialLinksRes.data);
+    if (blockedIpsRes.data) setBlockedIps(blockedIpsRes.data);
+  };
+
+  const addBlockedIp = async () => {
+    if (!newBlockIp.trim()) return;
+    const { error } = await supabase.from('blocked_ips').insert({ ip_address: newBlockIp.trim(), reason: newBlockReason.trim() || 'Diblokir oleh admin' });
+    if (error) {
+      if (error.code === '23505') {
+        toast({ title: "Info", description: "IP ini sudah diblokir sebelumnya" });
+      } else {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      }
+    } else {
+      toast({ title: "Berhasil", description: `IP ${newBlockIp} berhasil diblokir` });
+      setNewBlockIp('');
+      setNewBlockReason('');
+      loadAllData();
+    }
+  };
+
+  const unblockIp = async (id: string, ip: string) => {
+    if (!confirm(`Yakin unblock IP ${ip}?`)) return;
+    const { error } = await supabase.from('blocked_ips').delete().eq('id', id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Berhasil", description: `IP ${ip} berhasil di-unblock` });
+      loadAllData();
+    }
   };
 
   const updateSetting = async (key: string, value: string) => {
