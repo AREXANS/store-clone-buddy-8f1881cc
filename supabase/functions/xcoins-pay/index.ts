@@ -18,6 +18,12 @@ serve(async (req) => {
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    // Capture IP address
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() 
+      || req.headers.get("x-real-ip") 
+      || req.headers.get("cf-connecting-ip") 
+      || "unknown";
+
     const { userId, pin, amount, packageName, packageDuration, licenseKey, deviceId } = await req.json();
 
     if (!userId || !pin || !amount || !packageName || !packageDuration || !licenseKey) {
