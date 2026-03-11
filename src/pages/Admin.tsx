@@ -1211,6 +1211,7 @@ const Admin = () => {
                       <th className="text-left p-3">{txTab === 'xcoins' ? 'Amount' : 'Package'}</th>
                       <th className="text-left p-3">Total</th>
                       <th className="text-left p-3">Status</th>
+                      <th className="text-left p-3">IP Address</th>
                       <th className="text-left p-3">Date</th>
                       <th className="text-left p-3">Actions</th>
                     </tr>
