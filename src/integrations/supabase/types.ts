@@ -310,6 +310,7 @@ export type Database = {
           device_id: string | null
           expires_at: string | null
           id: string
+          ip_address: string | null
           license_key: string | null
           original_amount: number
           package_duration: number
@@ -327,6 +328,7 @@ export type Database = {
           device_id?: string | null
           expires_at?: string | null
           id?: string
+          ip_address?: string | null
           license_key?: string | null
           original_amount: number
           package_duration: number
@@ -344,6 +346,7 @@ export type Database = {
           device_id?: string | null
           expires_at?: string | null
           id?: string
+          ip_address?: string | null
           license_key?: string | null
           original_amount?: number
           package_duration?: number
