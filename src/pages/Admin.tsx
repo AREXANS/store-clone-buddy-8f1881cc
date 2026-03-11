@@ -76,6 +76,7 @@ interface TransactionItem {
   license_key: string | null;
   created_at: string;
   paid_at: string | null;
+  ip_address: string | null;
 }
 
 interface SocialLink {
