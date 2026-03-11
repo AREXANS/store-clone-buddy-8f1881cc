@@ -1290,7 +1290,7 @@ const Admin = () => {
                       </tr>
                     ))}
                     {currentTxList.length === 0 && (
-                      <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Tidak ada transaksi</td></tr>
+                      <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">Tidak ada transaksi</td></tr>
                     )}
                   </tbody>
                 </table>

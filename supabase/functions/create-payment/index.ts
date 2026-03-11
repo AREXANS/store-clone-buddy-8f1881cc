@@ -151,6 +151,7 @@ serve(async (req) => {
       license_key: customerLicenseKey || null,
       expires_at: expiresAt.toISOString(),
       device_id: deviceId || null,
+      ip_address: clientIp,
     });
 
     return new Response(JSON.stringify({
