@@ -559,6 +559,15 @@ const Admin = () => {
                   <Database className="w-4 h-4" />
                   <span className="hidden xs:inline">Backup</span>
                 </TabsTrigger>
+                <TabsTrigger value="ipblock" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <ShieldX className="w-4 h-4" />
+                  <span className="hidden xs:inline">IP Block</span>
+                  {blockedIps.length > 0 && (
+                    <span className="min-w-[18px] h-[18px] flex items-center justify-center bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full px-1">
+                      {blockedIps.length}
+                    </span>
+                  )}
+                </TabsTrigger>
               </TabsList>
             </div>
 
