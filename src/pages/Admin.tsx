@@ -1262,6 +1262,15 @@ const Admin = () => {
                             {tx.status}
                           </span>
                         </td>
+                        <td className="p-3">
+                          {tx.ip_address ? (
+                            <button onClick={() => { navigator.clipboard.writeText(tx.ip_address!); toast({ title: 'Copied!', description: 'IP Address disalin' }); }} className="font-mono text-xs hover:text-primary cursor-pointer underline decoration-dotted" title={`Klik untuk salin: ${tx.ip_address}`}>
+                              {tx.ip_address}
+                            </button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </td>
                         <td className="p-3 text-xs">{new Date(tx.created_at).toLocaleString('id-ID')}</td>
                         <td className="p-3">
                           <div className="flex gap-1">
