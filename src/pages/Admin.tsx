@@ -218,6 +218,21 @@ const Admin = () => {
     }
   };
 
+  const blockIp = async (ip: string) => {
+    if (!confirm(`Yakin blokir IP ${ip}? User dengan IP ini tidak bisa mengakses website lagi.`)) return;
+    const reason = prompt('Alasan blokir (opsional):') || 'Diblokir oleh admin';
+    const { error } = await supabase.from('blocked_ips').insert({ ip_address: ip, reason });
+    if (error) {
+      if (error.code === '23505') {
+        toast({ title: "Info", description: "IP ini sudah diblokir sebelumnya" });
+      } else {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      }
+    } else {
+      toast({ title: "Berhasil", description: `IP ${ip} berhasil diblokir` });
+    }
+  };
+
   const setTransactionPaid = async (id: string) => {
     const { error } = await supabase.from('transactions').update({
       status: 'paid',
@@ -1264,9 +1279,14 @@ const Admin = () => {
                         </td>
                         <td className="p-3">
                           {tx.ip_address ? (
-                            <button onClick={() => { navigator.clipboard.writeText(tx.ip_address!); toast({ title: 'Copied!', description: 'IP Address disalin' }); }} className="font-mono text-xs hover:text-primary cursor-pointer underline decoration-dotted" title={`Klik untuk salin: ${tx.ip_address}`}>
-                              {tx.ip_address}
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => { navigator.clipboard.writeText(tx.ip_address!); toast({ title: 'Copied!', description: 'IP Address disalin' }); }} className="font-mono text-xs hover:text-primary cursor-pointer underline decoration-dotted" title={`Klik untuk salin: ${tx.ip_address}`}>
+                                {tx.ip_address}
+                              </button>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10" title="Blokir IP ini" onClick={() => blockIp(tx.ip_address!)}>
+                                <Shield className="w-3 h-3" />
+                              </Button>
+                            </div>
                           ) : (
                             <span className="text-xs text-muted-foreground">-</span>
                           )}
