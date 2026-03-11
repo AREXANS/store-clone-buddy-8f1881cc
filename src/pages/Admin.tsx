@@ -233,6 +233,7 @@ const Admin = () => {
     }
   };
 
+  const setTransactionPaid = async (id: string) => {
     const { error } = await supabase.from('transactions').update({
       status: 'paid',
       paid_at: new Date().toISOString()
