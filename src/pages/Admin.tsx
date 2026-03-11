@@ -218,7 +218,21 @@ const Admin = () => {
     }
   };
 
-  const setTransactionPaid = async (id: string) => {
+  const blockIp = async (ip: string) => {
+    if (!confirm(`Yakin blokir IP ${ip}? User dengan IP ini tidak bisa mengakses website lagi.`)) return;
+    const reason = prompt('Alasan blokir (opsional):') || 'Diblokir oleh admin';
+    const { error } = await supabase.from('blocked_ips').insert({ ip_address: ip, reason });
+    if (error) {
+      if (error.code === '23505') {
+        toast({ title: "Info", description: "IP ini sudah diblokir sebelumnya" });
+      } else {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      }
+    } else {
+      toast({ title: "Berhasil", description: `IP ${ip} berhasil diblokir` });
+    }
+  };
+
     const { error } = await supabase.from('transactions').update({
       status: 'paid',
       paid_at: new Date().toISOString()
