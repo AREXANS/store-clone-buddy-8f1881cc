@@ -25,6 +25,12 @@ serve(async (req) => {
     const gateway = s.payment_gateway || "pakasir";
     const pakasirMode = s.pakasir_mode || "sandbox";
 
+    // Capture IP address
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() 
+      || req.headers.get("x-real-ip") 
+      || req.headers.get("cf-connecting-ip") 
+      || "unknown";
+
     const body = await req.json();
     const { amount, customerName, packageName, packageDuration, licenseKey: customerLicenseKey, promoCode, customerWhatsapp, deviceId } = body;
 
@@ -145,6 +151,7 @@ serve(async (req) => {
       license_key: customerLicenseKey || null,
       expires_at: expiresAt.toISOString(),
       device_id: deviceId || null,
+      ip_address: clientIp,
     });
 
     return new Response(JSON.stringify({

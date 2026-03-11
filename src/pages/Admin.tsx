@@ -76,6 +76,7 @@ interface TransactionItem {
   license_key: string | null;
   created_at: string;
   paid_at: string | null;
+  ip_address: string | null;
 }
 
 interface SocialLink {
@@ -1210,6 +1211,7 @@ const Admin = () => {
                       <th className="text-left p-3">{txTab === 'xcoins' ? 'Amount' : 'Package'}</th>
                       <th className="text-left p-3">Total</th>
                       <th className="text-left p-3">Status</th>
+                      <th className="text-left p-3">IP Address</th>
                       <th className="text-left p-3">Date</th>
                       <th className="text-left p-3">Actions</th>
                     </tr>
@@ -1260,6 +1262,15 @@ const Admin = () => {
                             {tx.status}
                           </span>
                         </td>
+                        <td className="p-3">
+                          {tx.ip_address ? (
+                            <button onClick={() => { navigator.clipboard.writeText(tx.ip_address!); toast({ title: 'Copied!', description: 'IP Address disalin' }); }} className="font-mono text-xs hover:text-primary cursor-pointer underline decoration-dotted" title={`Klik untuk salin: ${tx.ip_address}`}>
+                              {tx.ip_address}
+                            </button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </td>
                         <td className="p-3 text-xs">{new Date(tx.created_at).toLocaleString('id-ID')}</td>
                         <td className="p-3">
                           <div className="flex gap-1">
@@ -1279,7 +1290,7 @@ const Admin = () => {
                       </tr>
                     ))}
                     {currentTxList.length === 0 && (
-                      <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Tidak ada transaksi</td></tr>
+                      <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">Tidak ada transaksi</td></tr>
                     )}
                   </tbody>
                 </table>
