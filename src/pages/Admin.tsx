@@ -140,6 +140,11 @@ const Admin = () => {
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   const [editingSocialLink, setEditingSocialLink] = useState<SocialLink | null>(null);
 
+  // Blocked IPs state
+  const [blockedIps, setBlockedIps] = useState<{id: string; ip_address: string; reason: string | null; blocked_by: string | null; created_at: string}[]>([]);
+  const [newBlockIp, setNewBlockIp] = useState('');
+  const [newBlockReason, setNewBlockReason] = useState('');
+
   // Transaction editing state
   const [editingTransaction, setEditingTransaction] = useState<TransactionItem | null>(null);
 
