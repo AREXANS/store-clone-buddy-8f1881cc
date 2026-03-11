@@ -1516,6 +1516,73 @@ const Admin = () => {
             <TabsContent value="backup" className="space-y-4">
               <BackupRestore />
             </TabsContent>
+
+            {/* IP Block Tab */}
+            <TabsContent value="ipblock" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ShieldX className="w-5 h-5 text-destructive" />
+                    IP Address Blocking
+                  </CardTitle>
+                  <CardDescription>Blokir IP address agar tidak bisa mengakses website</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                      placeholder="Masukkan IP address (contoh: 192.168.1.1)"
+                      value={newBlockIp}
+                      onChange={(e) => setNewBlockIp(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Input
+                      placeholder="Alasan blokir (opsional)"
+                      value={newBlockReason}
+                      onChange={(e) => setNewBlockReason(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button onClick={addBlockedIp} variant="destructive" className="gap-1.5">
+                      <ShieldX className="w-4 h-4" />
+                      Blokir
+                    </Button>
+                  </div>
+
+                  {blockedIps.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">Belum ada IP yang diblokir</p>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-muted/50">
+                            <th className="text-left p-3 font-medium">IP Address</th>
+                            <th className="text-left p-3 font-medium">Alasan</th>
+                            <th className="text-left p-3 font-medium hidden sm:table-cell">Tanggal Blokir</th>
+                            <th className="text-right p-3 font-medium">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {blockedIps.map((ip) => (
+                            <tr key={ip.id} className="border-t">
+                              <td className="p-3 font-mono text-xs">{ip.ip_address}</td>
+                              <td className="p-3 text-muted-foreground">{ip.reason || '-'}</td>
+                              <td className="p-3 text-muted-foreground hidden sm:table-cell">
+                                {new Date(ip.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              </td>
+                              <td className="p-3 text-right">
+                                <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => unblockIp(ip.id, ip.ip_address)}>
+                                  <ShieldOff className="w-3 h-3" />
+                                  Unblock
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
         </div>
       </div>
