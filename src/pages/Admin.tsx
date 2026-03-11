@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   Settings, Package, Image, List, CreditCard, LogOut, Save, 
-  Plus, Trash2, Edit2, Eye, EyeOff, RefreshCw, MessageSquare, Shield, Key, FileText, FileCode, Upload, Tag, CheckCircle, Copy, Database
+  Plus, Trash2, Edit2, Eye, EyeOff, RefreshCw, MessageSquare, Shield, ShieldX, ShieldOff, Key, FileText, FileCode, Upload, Tag, CheckCircle, Copy, Database
 } from 'lucide-react';
 import GlobalBackground from '@/components/GlobalBackground';
 import DeviceApprovalScreen from '@/components/DeviceApprovalScreen';
@@ -139,6 +139,11 @@ const Admin = () => {
   // Social Links state
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   const [editingSocialLink, setEditingSocialLink] = useState<SocialLink | null>(null);
+
+  // Blocked IPs state
+  const [blockedIps, setBlockedIps] = useState<{id: string; ip_address: string; reason: string | null; blocked_by: string | null; created_at: string}[]>([]);
+  const [newBlockIp, setNewBlockIp] = useState('');
+  const [newBlockReason, setNewBlockReason] = useState('');
 
   // Transaction editing state
   const [editingTransaction, setEditingTransaction] = useState<TransactionItem | null>(null);
@@ -280,13 +285,14 @@ const Admin = () => {
   };
 
   const loadAllData = async () => {
-    const [settingsRes, packagesRes, adsRes, backgroundsRes, transactionsRes, socialLinksRes] = await Promise.all([
+    const [settingsRes, packagesRes, adsRes, backgroundsRes, transactionsRes, socialLinksRes, blockedIpsRes] = await Promise.all([
       supabase.from('app_settings').select('*').order('key'),
       supabase.from('packages').select('*').order('sort_order'),
       supabase.from('ads').select('*').order('sort_order'),
       supabase.from('backgrounds').select('*').order('sort_order'),
       supabase.from('transactions').select('*').order('created_at', { ascending: false }),
-      supabase.from('social_links').select('*').order('sort_order')
+      supabase.from('social_links').select('*').order('sort_order'),
+      supabase.from('blocked_ips').select('*').order('created_at', { ascending: false })
     ]);
     
     if (settingsRes.data) setSettings(settingsRes.data);
@@ -295,6 +301,35 @@ const Admin = () => {
     if (backgroundsRes.data) setBackgrounds(backgroundsRes.data);
     if (transactionsRes.data) setTransactions(transactionsRes.data);
     if (socialLinksRes.data) setSocialLinks(socialLinksRes.data);
+    if (blockedIpsRes.data) setBlockedIps(blockedIpsRes.data);
+  };
+
+  const addBlockedIp = async () => {
+    if (!newBlockIp.trim()) return;
+    const { error } = await supabase.from('blocked_ips').insert({ ip_address: newBlockIp.trim(), reason: newBlockReason.trim() || 'Diblokir oleh admin' });
+    if (error) {
+      if (error.code === '23505') {
+        toast({ title: "Info", description: "IP ini sudah diblokir sebelumnya" });
+      } else {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      }
+    } else {
+      toast({ title: "Berhasil", description: `IP ${newBlockIp} berhasil diblokir` });
+      setNewBlockIp('');
+      setNewBlockReason('');
+      loadAllData();
+    }
+  };
+
+  const unblockIp = async (id: string, ip: string) => {
+    if (!confirm(`Yakin unblock IP ${ip}?`)) return;
+    const { error } = await supabase.from('blocked_ips').delete().eq('id', id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Berhasil", description: `IP ${ip} berhasil di-unblock` });
+      loadAllData();
+    }
   };
 
   const updateSetting = async (key: string, value: string) => {
@@ -523,6 +558,15 @@ const Admin = () => {
                 <TabsTrigger value="backup" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
                   <Database className="w-4 h-4" />
                   <span className="hidden xs:inline">Backup</span>
+                </TabsTrigger>
+                <TabsTrigger value="ipblock" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                  <ShieldX className="w-4 h-4" />
+                  <span className="hidden xs:inline">IP Block</span>
+                  {blockedIps.length > 0 && (
+                    <span className="min-w-[18px] h-[18px] flex items-center justify-center bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full px-1">
+                      {blockedIps.length}
+                    </span>
+                  )}
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -1471,6 +1515,73 @@ const Admin = () => {
             {/* Backup Tab */}
             <TabsContent value="backup" className="space-y-4">
               <BackupRestore />
+            </TabsContent>
+
+            {/* IP Block Tab */}
+            <TabsContent value="ipblock" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ShieldX className="w-5 h-5 text-destructive" />
+                    IP Address Blocking
+                  </CardTitle>
+                  <CardDescription>Blokir IP address agar tidak bisa mengakses website</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                      placeholder="Masukkan IP address (contoh: 192.168.1.1)"
+                      value={newBlockIp}
+                      onChange={(e) => setNewBlockIp(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Input
+                      placeholder="Alasan blokir (opsional)"
+                      value={newBlockReason}
+                      onChange={(e) => setNewBlockReason(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button onClick={addBlockedIp} variant="destructive" className="gap-1.5">
+                      <ShieldX className="w-4 h-4" />
+                      Blokir
+                    </Button>
+                  </div>
+
+                  {blockedIps.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">Belum ada IP yang diblokir</p>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-muted/50">
+                            <th className="text-left p-3 font-medium">IP Address</th>
+                            <th className="text-left p-3 font-medium">Alasan</th>
+                            <th className="text-left p-3 font-medium hidden sm:table-cell">Tanggal Blokir</th>
+                            <th className="text-right p-3 font-medium">Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {blockedIps.map((ip) => (
+                            <tr key={ip.id} className="border-t">
+                              <td className="p-3 font-mono text-xs">{ip.ip_address}</td>
+                              <td className="p-3 text-muted-foreground">{ip.reason || '-'}</td>
+                              <td className="p-3 text-muted-foreground hidden sm:table-cell">
+                                {new Date(ip.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              </td>
+                              <td className="p-3 text-right">
+                                <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => unblockIp(ip.id, ip.ip_address)}>
+                                  <ShieldOff className="w-3 h-3" />
+                                  Unblock
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </div>
