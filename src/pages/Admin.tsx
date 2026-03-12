@@ -342,7 +342,22 @@ const Admin = () => {
     }
   };
 
-  const updateSetting = async (key: string, value: string) => {
+  const lookupIpGeolocation = async (ip: string) => {
+    setGeoIp(ip);
+    setGeoData(null);
+    setGeoLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('ip-geolocation', { body: { ip } });
+      if (error) throw error;
+      setGeoData(data);
+    } catch {
+      toast({ title: "Error", description: "Gagal mendapatkan lokasi IP", variant: "destructive" });
+    } finally {
+      setGeoLoading(false);
+    }
+  };
+
+
     const { error } = await supabase
       .from('app_settings')
       .update({ value, updated_at: new Date().toISOString() })
