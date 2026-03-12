@@ -293,14 +293,15 @@ const Admin = () => {
   };
 
   const loadAllData = async () => {
-    const [settingsRes, packagesRes, adsRes, backgroundsRes, transactionsRes, socialLinksRes, blockedIpsRes] = await Promise.all([
+    const [settingsRes, packagesRes, adsRes, backgroundsRes, transactionsRes, socialLinksRes, blockedIpsRes, xcoinsUsersRes] = await Promise.all([
       supabase.from('app_settings').select('*').order('key'),
       supabase.from('packages').select('*').order('sort_order'),
       supabase.from('ads').select('*').order('sort_order'),
       supabase.from('backgrounds').select('*').order('sort_order'),
       supabase.from('transactions').select('*').order('created_at', { ascending: false }),
       supabase.from('social_links').select('*').order('sort_order'),
-      supabase.from('blocked_ips').select('*').order('created_at', { ascending: false })
+      supabase.from('blocked_ips').select('*').order('created_at', { ascending: false }),
+      supabase.from('xcoins_balances').select('*').order('created_at', { ascending: false })
     ]);
     
     if (settingsRes.data) setSettings(settingsRes.data);
@@ -310,6 +311,7 @@ const Admin = () => {
     if (transactionsRes.data) setTransactions(transactionsRes.data);
     if (socialLinksRes.data) setSocialLinks(socialLinksRes.data);
     if (blockedIpsRes.data) setBlockedIps(blockedIpsRes.data);
+    if (xcoinsUsersRes.data) setXcoinsUsers(xcoinsUsersRes.data);
   };
 
   const addBlockedIp = async () => {
