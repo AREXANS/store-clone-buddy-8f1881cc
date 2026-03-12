@@ -879,8 +879,76 @@ const Admin = () => {
             </TabsContent>
 
             {/* Keys Tab */}
-            <TabsContent value="keys" className="space-y-4">
+            <TabsContent value="keys" className="space-y-6">
               <KeyManagement />
+              
+              {/* XCoins Registered Users */}
+              <Card className="glass-card">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Coins className="w-5 h-5 text-primary" />
+                    Pengguna XCoins Terdaftar
+                    <span className="text-sm font-normal text-muted-foreground">({xcoinsUsers.length})</span>
+                  </CardTitle>
+                  <CardDescription>Daftar semua pengguna XCoins yang terdaftar di sistem</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {xcoinsUsers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-6">Belum ada pengguna XCoins terdaftar</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="text-left p-3">Nama</th>
+                            <th className="text-left p-3">No. WhatsApp</th>
+                            <th className="text-left p-3">Saldo</th>
+                            <th className="text-left p-3">Status</th>
+                            <th className="text-left p-3">IP Terakhir</th>
+                            <th className="text-left p-3">Terdaftar</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {xcoinsUsers.map(user => {
+                            // Find last transaction IP for this user's phone
+                            const userTx = transactions.find(tx => tx.customer_whatsapp === user.phone || tx.customer_whatsapp === user.phone.replace(/^62/, '0'));
+                            const lastIp = userTx?.ip_address;
+                            return (
+                              <tr key={user.id} className="border-b border-border/50 hover:bg-muted/20">
+                                <td className="p-3 font-medium">{user.display_name || '-'}</td>
+                                <td className="p-3">
+                                  <button onClick={() => { navigator.clipboard.writeText(user.phone); toast({ title: 'Copied!', description: 'Nomor disalin' }); }} className="font-mono text-xs hover:text-primary cursor-pointer underline decoration-dotted">
+                                    {user.phone}
+                                  </button>
+                                </td>
+                                <td className="p-3 font-mono">{new Intl.NumberFormat('id-ID').format(user.balance)}</td>
+                                <td className="p-3">
+                                  <span className={`px-2 py-1 rounded text-xs ${user.is_active ? 'bg-primary/20 text-primary' : 'bg-destructive/20 text-destructive'}`}>
+                                    {user.is_active ? 'Aktif' : 'Nonaktif'}
+                                  </span>
+                                </td>
+                                <td className="p-3">
+                                  {lastIp ? (
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-mono text-xs">{lastIp}</span>
+                                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Lacak lokasi" onClick={() => lookupIpGeolocation(lastIp)}>
+                                        <MapPin className="w-3 h-3" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">-</span>
+                                  )}
+                                </td>
+                                <td className="p-3 text-xs text-muted-foreground">{new Date(user.created_at).toLocaleDateString('id-ID')}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
 
             {/* API Documentation Tab */}
