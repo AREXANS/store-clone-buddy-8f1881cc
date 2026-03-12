@@ -1673,6 +1673,98 @@ const Admin = () => {
               </Card>
             </TabsContent>
           </Tabs>
+
+          {/* IP Geolocation Modal */}
+          {geoIp && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setGeoIp(null)}>
+              <div className="bg-card border border-border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-display font-bold flex items-center gap-2">
+                      <MapPin className="w-5 h-5 text-primary" />
+                      Lokasi IP: {geoIp}
+                    </h3>
+                    <Button variant="ghost" size="sm" onClick={() => setGeoIp(null)}>✕</Button>
+                  </div>
+
+                  {geoLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <RefreshCw className="w-6 h-6 animate-spin text-primary" />
+                      <span className="ml-2 text-muted-foreground">Melacak lokasi...</span>
+                    </div>
+                  ) : geoData?.status === 'success' ? (
+                    <div className="space-y-4">
+                      {/* Map */}
+                      <div className="rounded-lg overflow-hidden border border-border">
+                        <iframe
+                          src={`https://www.openstreetmap.org/export/embed.html?bbox=${geoData.lon - 0.05},${geoData.lat - 0.03},${geoData.lon + 0.05},${geoData.lat + 0.03}&layer=mapnik&marker=${geoData.lat},${geoData.lon}`}
+                          className="w-full h-64"
+                          style={{ border: 0 }}
+                          title="IP Location Map"
+                        />
+                      </div>
+
+                      {/* Details */}
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="bg-muted/50 rounded-lg p-3">
+                          <p className="text-muted-foreground text-xs">Negara</p>
+                          <p className="font-medium">{geoData.country} ({geoData.countryCode})</p>
+                        </div>
+                        <div className="bg-muted/50 rounded-lg p-3">
+                          <p className="text-muted-foreground text-xs">Provinsi/Region</p>
+                          <p className="font-medium">{geoData.regionName}</p>
+                        </div>
+                        <div className="bg-muted/50 rounded-lg p-3">
+                          <p className="text-muted-foreground text-xs">Kota</p>
+                          <p className="font-medium">{geoData.city}</p>
+                        </div>
+                        <div className="bg-muted/50 rounded-lg p-3">
+                          <p className="text-muted-foreground text-xs">Kode Pos</p>
+                          <p className="font-medium">{geoData.zip || '-'}</p>
+                        </div>
+                        <div className="bg-muted/50 rounded-lg p-3">
+                          <p className="text-muted-foreground text-xs">Latitude</p>
+                          <p className="font-mono font-medium">{geoData.lat}</p>
+                        </div>
+                        <div className="bg-muted/50 rounded-lg p-3">
+                          <p className="text-muted-foreground text-xs">Longitude</p>
+                          <p className="font-mono font-medium">{geoData.lon}</p>
+                        </div>
+                        <div className="bg-muted/50 rounded-lg p-3">
+                          <p className="text-muted-foreground text-xs">Timezone</p>
+                          <p className="font-medium">{geoData.timezone}</p>
+                        </div>
+                        <div className="bg-muted/50 rounded-lg p-3">
+                          <p className="text-muted-foreground text-xs">ISP</p>
+                          <p className="font-medium">{geoData.isp}</p>
+                        </div>
+                        <div className="col-span-2 bg-muted/50 rounded-lg p-3">
+                          <p className="text-muted-foreground text-xs">Organisasi / AS</p>
+                          <p className="font-medium">{geoData.org} — {geoData.as}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="flex-1" onClick={() => window.open(`https://www.google.com/maps?q=${geoData.lat},${geoData.lon}`, '_blank')}>
+                          <MapPin className="w-4 h-4 mr-1" />
+                          Buka di Google Maps
+                        </Button>
+                        <Button variant="destructive" size="sm" className="flex-1" onClick={() => { blockIp(geoIp!); setGeoIp(null); }}>
+                          <ShieldX className="w-4 h-4 mr-1" />
+                          Blokir IP Ini
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>Gagal mendapatkan lokasi untuk IP ini.</p>
+                      <p className="text-xs mt-1">{geoData?.message || 'IP mungkin bersifat privat atau tidak terdaftar.'}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
