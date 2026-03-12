@@ -145,6 +145,14 @@ const Admin = () => {
   const [newBlockIp, setNewBlockIp] = useState('');
   const [newBlockReason, setNewBlockReason] = useState('');
 
+  // XCoins users state
+  const [xcoinsUsers, setXcoinsUsers] = useState<{id: string; phone: string; display_name: string | null; balance: number; is_active: boolean; created_at: string}[]>([]);
+
+  // IP Geolocation state
+  const [geoIp, setGeoIp] = useState<string | null>(null);
+  const [geoData, setGeoData] = useState<any>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
+
   // Transaction editing state
   const [editingTransaction, setEditingTransaction] = useState<TransactionItem | null>(null);
 
