@@ -1585,8 +1585,8 @@ const Admin = () => {
 
             {/* Promo tab removed - merged into Packages */}
 
-            {/* Devices Tab */}
-            <TabsContent value="devices" className="space-y-4">
+            {/* Devices + IP Block Tab (merged) */}
+            <TabsContent value="devices" className="space-y-6">
               <DeviceManagement
                 sessions={allSessions}
                 currentDeviceId={deviceId}
@@ -1594,20 +1594,18 @@ const Admin = () => {
                 onRemove={removeDevice}
                 onRefresh={loadAllSessions}
               />
-            </TabsContent>
 
-            {/* Backup Tab */}
-            <TabsContent value="backup" className="space-y-4">
-              <BackupRestore />
-            </TabsContent>
-
-            {/* IP Block Tab */}
-            <TabsContent value="ipblock" className="space-y-4">
-              <Card>
+              {/* IP Blocking Section */}
+              <Card className="glass-card">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <ShieldX className="w-5 h-5 text-destructive" />
                     IP Address Blocking
+                    {blockedIps.length > 0 && (
+                      <span className="min-w-[20px] h-[20px] flex items-center justify-center bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full px-1">
+                        {blockedIps.length}
+                      </span>
+                    )}
                   </CardTitle>
                   <CardDescription>Blokir IP address agar tidak bisa mengakses website</CardDescription>
                 </CardHeader>
@@ -1647,7 +1645,14 @@ const Admin = () => {
                         <tbody>
                           {blockedIps.map((ip) => (
                             <tr key={ip.id} className="border-t">
-                              <td className="p-3 font-mono text-xs">{ip.ip_address}</td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-1">
+                                  <span className="font-mono text-xs">{ip.ip_address}</span>
+                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Lacak lokasi" onClick={() => lookupIpGeolocation(ip.ip_address)}>
+                                    <MapPin className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </td>
                               <td className="p-3 text-muted-foreground">{ip.reason || '-'}</td>
                               <td className="p-3 text-muted-foreground hidden sm:table-cell">
                                 {new Date(ip.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
