@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   Settings, Package, Image, List, CreditCard, LogOut, Save, 
-  Plus, Trash2, Edit2, Eye, EyeOff, RefreshCw, MessageSquare, Shield, ShieldX, ShieldOff, Key, FileText, FileCode, Upload, Tag, CheckCircle, Copy, Database
+  Plus, Trash2, Edit2, Eye, EyeOff, RefreshCw, MessageSquare, Shield, ShieldX, ShieldOff, Key, FileText, FileCode, Upload, Tag, CheckCircle, Copy, Database, MapPin, Coins, Users
 } from 'lucide-react';
 import GlobalBackground from '@/components/GlobalBackground';
 import DeviceApprovalScreen from '@/components/DeviceApprovalScreen';
@@ -144,6 +144,14 @@ const Admin = () => {
   const [blockedIps, setBlockedIps] = useState<{id: string; ip_address: string; reason: string | null; blocked_by: string | null; created_at: string}[]>([]);
   const [newBlockIp, setNewBlockIp] = useState('');
   const [newBlockReason, setNewBlockReason] = useState('');
+
+  // XCoins users state
+  const [xcoinsUsers, setXcoinsUsers] = useState<{id: string; phone: string; display_name: string | null; balance: number; is_active: boolean; created_at: string}[]>([]);
+
+  // IP Geolocation state
+  const [geoIp, setGeoIp] = useState<string | null>(null);
+  const [geoData, setGeoData] = useState<any>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
 
   // Transaction editing state
   const [editingTransaction, setEditingTransaction] = useState<TransactionItem | null>(null);
@@ -285,14 +293,15 @@ const Admin = () => {
   };
 
   const loadAllData = async () => {
-    const [settingsRes, packagesRes, adsRes, backgroundsRes, transactionsRes, socialLinksRes, blockedIpsRes] = await Promise.all([
+    const [settingsRes, packagesRes, adsRes, backgroundsRes, transactionsRes, socialLinksRes, blockedIpsRes, xcoinsUsersRes] = await Promise.all([
       supabase.from('app_settings').select('*').order('key'),
       supabase.from('packages').select('*').order('sort_order'),
       supabase.from('ads').select('*').order('sort_order'),
       supabase.from('backgrounds').select('*').order('sort_order'),
       supabase.from('transactions').select('*').order('created_at', { ascending: false }),
       supabase.from('social_links').select('*').order('sort_order'),
-      supabase.from('blocked_ips').select('*').order('created_at', { ascending: false })
+      supabase.from('blocked_ips').select('*').order('created_at', { ascending: false }),
+      supabase.from('xcoins_balances').select('*').order('created_at', { ascending: false })
     ]);
     
     if (settingsRes.data) setSettings(settingsRes.data);
@@ -302,6 +311,7 @@ const Admin = () => {
     if (transactionsRes.data) setTransactions(transactionsRes.data);
     if (socialLinksRes.data) setSocialLinks(socialLinksRes.data);
     if (blockedIpsRes.data) setBlockedIps(blockedIpsRes.data);
+    if (xcoinsUsersRes.data) setXcoinsUsers(xcoinsUsersRes.data);
   };
 
   const addBlockedIp = async () => {
@@ -329,6 +339,21 @@ const Admin = () => {
     } else {
       toast({ title: "Berhasil", description: `IP ${ip} berhasil di-unblock` });
       loadAllData();
+    }
+  };
+
+  const lookupIpGeolocation = async (ip: string) => {
+    setGeoIp(ip);
+    setGeoData(null);
+    setGeoLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('ip-geolocation', { body: { ip } });
+      if (error) throw error;
+      setGeoData(data);
+    } catch {
+      toast({ title: "Error", description: "Gagal mendapatkan lokasi IP", variant: "destructive" });
+    } finally {
+      setGeoLoading(false);
     }
   };
 
@@ -558,15 +583,6 @@ const Admin = () => {
                 <TabsTrigger value="backup" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
                   <Database className="w-4 h-4" />
                   <span className="hidden xs:inline">Backup</span>
-                </TabsTrigger>
-                <TabsTrigger value="ipblock" className="gap-1.5 px-3 py-2 text-xs md:text-sm whitespace-nowrap">
-                  <ShieldX className="w-4 h-4" />
-                  <span className="hidden xs:inline">IP Block</span>
-                  {blockedIps.length > 0 && (
-                    <span className="min-w-[18px] h-[18px] flex items-center justify-center bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full px-1">
-                      {blockedIps.length}
-                    </span>
-                  )}
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -863,8 +879,76 @@ const Admin = () => {
             </TabsContent>
 
             {/* Keys Tab */}
-            <TabsContent value="keys" className="space-y-4">
+            <TabsContent value="keys" className="space-y-6">
               <KeyManagement />
+              
+              {/* XCoins Registered Users */}
+              <Card className="glass-card">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Coins className="w-5 h-5 text-primary" />
+                    Pengguna XCoins Terdaftar
+                    <span className="text-sm font-normal text-muted-foreground">({xcoinsUsers.length})</span>
+                  </CardTitle>
+                  <CardDescription>Daftar semua pengguna XCoins yang terdaftar di sistem</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {xcoinsUsers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-6">Belum ada pengguna XCoins terdaftar</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="text-left p-3">Nama</th>
+                            <th className="text-left p-3">No. WhatsApp</th>
+                            <th className="text-left p-3">Saldo</th>
+                            <th className="text-left p-3">Status</th>
+                            <th className="text-left p-3">IP Terakhir</th>
+                            <th className="text-left p-3">Terdaftar</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {xcoinsUsers.map(user => {
+                            // Find last transaction IP for this user's phone
+                            const userTx = transactions.find(tx => tx.customer_whatsapp === user.phone || tx.customer_whatsapp === user.phone.replace(/^62/, '0'));
+                            const lastIp = userTx?.ip_address;
+                            return (
+                              <tr key={user.id} className="border-b border-border/50 hover:bg-muted/20">
+                                <td className="p-3 font-medium">{user.display_name || '-'}</td>
+                                <td className="p-3">
+                                  <button onClick={() => { navigator.clipboard.writeText(user.phone); toast({ title: 'Copied!', description: 'Nomor disalin' }); }} className="font-mono text-xs hover:text-primary cursor-pointer underline decoration-dotted">
+                                    {user.phone}
+                                  </button>
+                                </td>
+                                <td className="p-3 font-mono">{new Intl.NumberFormat('id-ID').format(user.balance)}</td>
+                                <td className="p-3">
+                                  <span className={`px-2 py-1 rounded text-xs ${user.is_active ? 'bg-primary/20 text-primary' : 'bg-destructive/20 text-destructive'}`}>
+                                    {user.is_active ? 'Aktif' : 'Nonaktif'}
+                                  </span>
+                                </td>
+                                <td className="p-3">
+                                  {lastIp ? (
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-mono text-xs">{lastIp}</span>
+                                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Lacak lokasi" onClick={() => lookupIpGeolocation(lastIp)}>
+                                        <MapPin className="w-3 h-3" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">-</span>
+                                  )}
+                                </td>
+                                <td className="p-3 text-xs text-muted-foreground">{new Date(user.created_at).toLocaleDateString('id-ID')}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
 
             {/* API Documentation Tab */}
@@ -1501,8 +1585,8 @@ const Admin = () => {
 
             {/* Promo tab removed - merged into Packages */}
 
-            {/* Devices Tab */}
-            <TabsContent value="devices" className="space-y-4">
+            {/* Devices + IP Block Tab (merged) */}
+            <TabsContent value="devices" className="space-y-6">
               <DeviceManagement
                 sessions={allSessions}
                 currentDeviceId={deviceId}
@@ -1510,20 +1594,18 @@ const Admin = () => {
                 onRemove={removeDevice}
                 onRefresh={loadAllSessions}
               />
-            </TabsContent>
 
-            {/* Backup Tab */}
-            <TabsContent value="backup" className="space-y-4">
-              <BackupRestore />
-            </TabsContent>
-
-            {/* IP Block Tab */}
-            <TabsContent value="ipblock" className="space-y-4">
-              <Card>
+              {/* IP Blocking Section */}
+              <Card className="glass-card">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <ShieldX className="w-5 h-5 text-destructive" />
                     IP Address Blocking
+                    {blockedIps.length > 0 && (
+                      <span className="min-w-[20px] h-[20px] flex items-center justify-center bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full px-1">
+                        {blockedIps.length}
+                      </span>
+                    )}
                   </CardTitle>
                   <CardDescription>Blokir IP address agar tidak bisa mengakses website</CardDescription>
                 </CardHeader>
@@ -1563,7 +1645,14 @@ const Admin = () => {
                         <tbody>
                           {blockedIps.map((ip) => (
                             <tr key={ip.id} className="border-t">
-                              <td className="p-3 font-mono text-xs">{ip.ip_address}</td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-1">
+                                  <span className="font-mono text-xs">{ip.ip_address}</span>
+                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Lacak lokasi" onClick={() => lookupIpGeolocation(ip.ip_address)}>
+                                    <MapPin className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </td>
                               <td className="p-3 text-muted-foreground">{ip.reason || '-'}</td>
                               <td className="p-3 text-muted-foreground hidden sm:table-cell">
                                 {new Date(ip.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -1584,6 +1673,98 @@ const Admin = () => {
               </Card>
             </TabsContent>
           </Tabs>
+
+          {/* IP Geolocation Modal */}
+          {geoIp && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setGeoIp(null)}>
+              <div className="bg-card border border-border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-display font-bold flex items-center gap-2">
+                      <MapPin className="w-5 h-5 text-primary" />
+                      Lokasi IP: {geoIp}
+                    </h3>
+                    <Button variant="ghost" size="sm" onClick={() => setGeoIp(null)}>✕</Button>
+                  </div>
+
+                  {geoLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <RefreshCw className="w-6 h-6 animate-spin text-primary" />
+                      <span className="ml-2 text-muted-foreground">Melacak lokasi...</span>
+                    </div>
+                  ) : geoData?.status === 'success' ? (
+                    <div className="space-y-4">
+                      {/* Map */}
+                      <div className="rounded-lg overflow-hidden border border-border">
+                        <iframe
+                          src={`https://www.openstreetmap.org/export/embed.html?bbox=${geoData.lon - 0.05},${geoData.lat - 0.03},${geoData.lon + 0.05},${geoData.lat + 0.03}&layer=mapnik&marker=${geoData.lat},${geoData.lon}`}
+                          className="w-full h-64"
+                          style={{ border: 0 }}
+                          title="IP Location Map"
+                        />
+                      </div>
+
+                      {/* Details */}
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="bg-muted/50 rounded-lg p-3">
+                          <p className="text-muted-foreground text-xs">Negara</p>
+                          <p className="font-medium">{geoData.country} ({geoData.countryCode})</p>
+                        </div>
+                        <div className="bg-muted/50 rounded-lg p-3">
+                          <p className="text-muted-foreground text-xs">Provinsi/Region</p>
+                          <p className="font-medium">{geoData.regionName}</p>
+                        </div>
+                        <div className="bg-muted/50 rounded-lg p-3">
+                          <p className="text-muted-foreground text-xs">Kota</p>
+                          <p className="font-medium">{geoData.city}</p>
+                        </div>
+                        <div className="bg-muted/50 rounded-lg p-3">
+                          <p className="text-muted-foreground text-xs">Kode Pos</p>
+                          <p className="font-medium">{geoData.zip || '-'}</p>
+                        </div>
+                        <div className="bg-muted/50 rounded-lg p-3">
+                          <p className="text-muted-foreground text-xs">Latitude</p>
+                          <p className="font-mono font-medium">{geoData.lat}</p>
+                        </div>
+                        <div className="bg-muted/50 rounded-lg p-3">
+                          <p className="text-muted-foreground text-xs">Longitude</p>
+                          <p className="font-mono font-medium">{geoData.lon}</p>
+                        </div>
+                        <div className="bg-muted/50 rounded-lg p-3">
+                          <p className="text-muted-foreground text-xs">Timezone</p>
+                          <p className="font-medium">{geoData.timezone}</p>
+                        </div>
+                        <div className="bg-muted/50 rounded-lg p-3">
+                          <p className="text-muted-foreground text-xs">ISP</p>
+                          <p className="font-medium">{geoData.isp}</p>
+                        </div>
+                        <div className="col-span-2 bg-muted/50 rounded-lg p-3">
+                          <p className="text-muted-foreground text-xs">Organisasi / AS</p>
+                          <p className="font-medium">{geoData.org} — {geoData.as}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="flex-1" onClick={() => window.open(`https://www.google.com/maps?q=${geoData.lat},${geoData.lon}`, '_blank')}>
+                          <MapPin className="w-4 h-4 mr-1" />
+                          Buka di Google Maps
+                        </Button>
+                        <Button variant="destructive" size="sm" className="flex-1" onClick={() => { blockIp(geoIp!); setGeoIp(null); }}>
+                          <ShieldX className="w-4 h-4 mr-1" />
+                          Blokir IP Ini
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>Gagal mendapatkan lokasi untuk IP ini.</p>
+                      <p className="text-xs mt-1">{geoData?.message || 'IP mungkin bersifat privat atau tidak terdaftar.'}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -165,25 +165,30 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
             </div>
           )}
 
-          {/* Right: History + Claim */}
+          {/* Right: History / Klaim Key */}
           <div className="flex items-center gap-2">
-            {unclaimedCount > 0 && (
-              <button
-                onClick={() => navigate('/history')}
-                className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold hover:bg-primary/90 transition-colors animate-pulse"
-              >
-                Klaim Key
-                <span className="min-w-[20px] h-[20px] flex items-center justify-center bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full px-1">
-                  {unclaimedCount}
-                </span>
-              </button>
-            )}
             <button
               onClick={() => navigate('/history')}
-              className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors px-2 py-1.5 rounded-lg hover:bg-primary/10"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold transition-colors ${
+                unclaimedCount > 0
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 animate-pulse'
+                  : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+              }`}
             >
-              <History className="w-4 h-4" />
-              <span className="text-xs md:text-sm font-medium">History</span>
+              {unclaimedCount > 0 ? (
+                <>
+                  <Key className="w-4 h-4" />
+                  <span>Klaim Key</span>
+                  <span className="min-w-[20px] h-[20px] flex items-center justify-center bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full px-1">
+                    {unclaimedCount}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <History className="w-4 h-4" />
+                  <span className="font-medium">History</span>
+                </>
+              )}
             </button>
           </div>
         </div>
