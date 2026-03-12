@@ -357,7 +357,7 @@ const Admin = () => {
     }
   };
 
-
+  const updateSetting = async (key: string, value: string) => {
     const { error } = await supabase
       .from('app_settings')
       .update({ value, updated_at: new Date().toISOString() })
