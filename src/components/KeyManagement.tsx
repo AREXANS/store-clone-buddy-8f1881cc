@@ -103,6 +103,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [bulkTimeInput, setBulkTimeInput] = useState('');
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [editTimeInput, setEditTimeInput] = useState('');
 
   // Realtime countdown timer
   useEffect(() => {
