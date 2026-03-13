@@ -484,6 +484,33 @@ const KeySystem = () => {
                 </Card>
               )}
 
+              {/* Quick Actions */}
+              <Card className="glass-card border-primary/30">
+                <CardContent className="p-4 space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Aksi Cepat</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button 
+                      variant="outline" 
+                      className="w-full border-secondary/50 text-secondary hover:bg-secondary/10"
+                      onClick={() => navigate('/')}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Perpanjang Key
+                    </Button>
+                    {loadstring && (
+                      <Button 
+                        variant="outline"
+                        className="w-full border-primary/50 text-primary hover:bg-primary/10"
+                        onClick={() => copyToClipboard(loadstring, 'Loadstring')}
+                      >
+                        <Copy className="w-4 h-4 mr-2" />
+                        Salin Loadstring
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Actions */}
               <div className="flex gap-2">
                 <Button 
