@@ -50,23 +50,33 @@ serve(async (req) => {
     const existingKeyIndex = keys.findIndex((k: any) => k.key === licenseKey);
     let newExpiry: Date;
 
-    if (existingKeyIndex >= 0 && !forceRecreate) {
+    // If status is "paid", the key was already created/extended by check-payment or payment-webhook.
+    // Just mark as claimed without modifying the key again.
+    if (transaction.status === "paid" && existingKeyIndex >= 0 && !forceRecreate) {
+      // Key already exists and was already extended by payment flow - don't extend again
+      newExpiry = new Date(keys[existingKeyIndex].expired);
+      console.log(`Key ${licenseKey} already extended by payment flow, skipping double extension`);
+    } else if (existingKeyIndex >= 0 && forceRecreate) {
+      newExpiry = new Date(now.getTime() + (transaction.package_duration * 24 * 60 * 60 * 1000));
+      keys[existingKeyIndex] = { ...keys[existingKeyIndex], expired: newExpiry.toISOString(), role: transaction.package_name };
+      await supabase.from("app_settings").update({ value: JSON.stringify(keys), updated_at: now.toISOString() }).eq("key", "license_keys");
+    } else if (existingKeyIndex >= 0) {
+      // Status is 'claimable' - key exists but wasn't extended yet
       const existingKey = keys[existingKeyIndex];
       const currentExpiry = new Date(existingKey.expired);
       newExpiry = currentExpiry < now
         ? new Date(now.getTime() + (transaction.package_duration * 24 * 60 * 60 * 1000))
         : new Date(currentExpiry.getTime() + (transaction.package_duration * 24 * 60 * 60 * 1000));
       keys[existingKeyIndex] = { ...existingKey, expired: newExpiry.toISOString(), role: transaction.package_name };
-    } else if (existingKeyIndex >= 0 && forceRecreate) {
-      newExpiry = new Date(now.getTime() + (transaction.package_duration * 24 * 60 * 60 * 1000));
-      keys[existingKeyIndex] = { ...keys[existingKeyIndex], expired: newExpiry.toISOString(), role: transaction.package_name };
+      await supabase.from("app_settings").update({ value: JSON.stringify(keys), updated_at: now.toISOString() }).eq("key", "license_keys");
     } else {
+      // Key doesn't exist - create it
       newExpiry = new Date(now.getTime() + (transaction.package_duration * 24 * 60 * 60 * 1000));
       keys.push({ key: licenseKey, expired: newExpiry.toISOString(), created: now.toISOString(), role: transaction.package_name, maxHwid: 1, frozenUntil: null, frozenRemainingMs: null, hwids: [], robloxUsers: [] });
+      await supabase.from("app_settings").update({ value: JSON.stringify(keys), updated_at: now.toISOString() }).eq("key", "license_keys");
     }
 
-    await supabase.from("app_settings").update({ value: JSON.stringify(keys), updated_at: now.toISOString() }).eq("key", "license_keys");
-    await supabase.from("transactions").update({ status: "claimed", paid_at: now.toISOString() }).eq("transaction_id", transactionId);
+    await supabase.from("transactions").update({ status: "claimed", paid_at: transaction.paid_at || now.toISOString() }).eq("transaction_id", transactionId);
 
     return new Response(
       JSON.stringify({ success: true, key: licenseKey, package: transaction.package_name, days: transaction.package_duration, expired: newExpiry.toISOString(), expiredDisplay: newExpiry.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }), recreated: !!forceRecreate }),
