@@ -298,7 +298,7 @@ const Index = () => {
       return;
     }
     if (!durationData) {
-      setErrorMsg("Format durasi salah! Gunakan format: '1h' untuk 1 hari, '1b' untuk 1 bulan");
+      setErrorMsg("Format durasi salah! Gunakan: '1h' = 1 hari, '1b' = 1 bulan, '1t' = 1 tahun");
       return;
     }
 
