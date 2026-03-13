@@ -103,6 +103,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [bulkTimeInput, setBulkTimeInput] = useState('');
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [editTimeInput, setEditTimeInput] = useState('');
 
   // Realtime countdown timer
   useEffect(() => {
@@ -942,6 +943,55 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
                   className="bg-background/50"
                 />
               </div>
+            </div>
+
+            {/* Quick time adjustment */}
+            <div className="space-y-2 p-3 bg-primary/5 rounded-lg border border-primary/20">
+              <Label className="flex items-center gap-2 text-primary">
+                <Clock className="w-4 h-4" />
+                Tambah/Kurangi Waktu (opsional)
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  value={editTimeInput}
+                  onChange={(e) => setEditTimeInput(e.target.value)}
+                  placeholder="Contoh: +7h, -1b, +30m, +1t"
+                  className="bg-background/50 font-mono flex-1"
+                />
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  disabled={!editTimeInput.trim()}
+                  onClick={() => {
+                    const parsed = parseBulkTime(editTimeInput);
+                    if (!parsed) {
+                      toast({ title: 'Error', description: 'Format waktu tidak valid', variant: 'destructive' });
+                      return;
+                    }
+                    const currentExpiry = new Date(editingKey.expired);
+                    const newExpiry = new Date(currentExpiry.getTime() + (parsed.isAdd ? parsed.ms : -parsed.ms));
+                    setEditingKey({ ...editingKey, expired: newExpiry.toISOString() });
+                    setEditTimeInput('');
+                    toast({ title: 'Diterapkan', description: `${parsed.isAdd ? '+' : '-'}${formatMsReadable(parsed.ms)}` });
+                  }}
+                >
+                  Apply
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="text-xs text-muted-foreground mr-1">Quick:</span>
+                {['+30m', '+1j', '+7h', '+1b', '+1t', '-7h', '-1b'].map(v => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setEditTimeInput(v)}
+                    className="px-2 py-0.5 text-xs rounded bg-muted hover:bg-primary/20 transition-colors"
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">m=menit, j=jam, h=hari, b=bulan, t=tahun</p>
             </div>
             
             {!isNewKey && editingKey.robloxUsers.length > 0 && (
