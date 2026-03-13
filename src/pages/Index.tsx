@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import PackageSelection from '@/components/PackageSelection';
 import OrderForm from '@/components/OrderForm';
 import PaymentQR from '@/components/PaymentQR';
@@ -71,6 +72,7 @@ const getDeviceId = (): string => {
 };
 
 const Index = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [step, setStep] = useState(1);
   const [selectedPkg, setSelectedPkg] = useState<'NORMAL' | 'VIP' | null>(null);
   const [formData, setFormData] = useState({ key: '', duration: '' });
@@ -84,6 +86,22 @@ const Index = () => {
   const [daysToAdd, setDaysToAdd] = useState(0);
   const [isMaintenance, setIsMaintenance] = useState(false);
   const deviceId = getDeviceId();
+
+  // Auto-fill key from URL params (from KeySystem perpanjang button)
+  const prefilledKey = searchParams.get('key');
+  const prefilledRole = searchParams.get('role');
+
+  useEffect(() => {
+    if (prefilledKey) {
+      setFormData(prev => ({ ...prev, key: prefilledKey }));
+      // Auto-select package based on role
+      const pkg = prefilledRole?.toUpperCase() === 'VIP' || prefilledRole?.toUpperCase() === 'DEVELOPER' ? 'VIP' : 'NORMAL';
+      setSelectedPkg(pkg);
+      setStep(2);
+      // Clear URL params
+      setSearchParams({}, { replace: true });
+    }
+  }, [prefilledKey]);
 
   const checkInterval = useRef<number | null>(null);
 
@@ -173,12 +191,12 @@ const Index = () => {
 
   const parseDuration = (input: string) => {
     if (!input) return null;
-    const match = input.toLowerCase().match(/^(\d+)([hb])$/);
+    const match = input.toLowerCase().match(/^(\d+)([hbt])$/);
     if (!match) return null;
     const value = parseInt(match[1]);
     const unit = match[2];
-    const days = unit === 'h' ? value : value * 30;
-    const label = unit === 'h' ? `${value} Hari` : `${value} Bulan`;
+    const days = unit === 'h' ? value : unit === 'b' ? value * 30 : value * 365;
+    const label = unit === 'h' ? `${value} Hari` : unit === 'b' ? `${value} Bulan` : `${value} Tahun`;
     return { days, text: label };
   };
 
@@ -280,7 +298,7 @@ const Index = () => {
       return;
     }
     if (!durationData) {
-      setErrorMsg("Format durasi salah! Gunakan format: '1h' untuk 1 hari, '1b' untuk 1 bulan");
+      setErrorMsg("Format durasi salah! Gunakan: '1h' = 1 hari, '1b' = 1 bulan, '1t' = 1 tahun");
       return;
     }
 
