@@ -72,6 +72,7 @@ const getDeviceId = (): string => {
 };
 
 const Index = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [step, setStep] = useState(1);
   const [selectedPkg, setSelectedPkg] = useState<'NORMAL' | 'VIP' | null>(null);
   const [formData, setFormData] = useState({ key: '', duration: '' });
@@ -85,6 +86,22 @@ const Index = () => {
   const [daysToAdd, setDaysToAdd] = useState(0);
   const [isMaintenance, setIsMaintenance] = useState(false);
   const deviceId = getDeviceId();
+
+  // Auto-fill key from URL params (from KeySystem perpanjang button)
+  const prefilledKey = searchParams.get('key');
+  const prefilledRole = searchParams.get('role');
+
+  useEffect(() => {
+    if (prefilledKey) {
+      setFormData(prev => ({ ...prev, key: prefilledKey }));
+      // Auto-select package based on role
+      const pkg = prefilledRole?.toUpperCase() === 'VIP' || prefilledRole?.toUpperCase() === 'DEVELOPER' ? 'VIP' : 'NORMAL';
+      setSelectedPkg(pkg);
+      setStep(2);
+      // Clear URL params
+      setSearchParams({}, { replace: true });
+    }
+  }, [prefilledKey]);
 
   const checkInterval = useRef<number | null>(null);
 
