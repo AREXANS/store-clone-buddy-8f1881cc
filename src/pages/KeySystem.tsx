@@ -492,7 +492,7 @@ const KeySystem = () => {
                     <Button 
                       variant="outline" 
                       className="w-full border-secondary/50 text-secondary hover:bg-secondary/10"
-                      onClick={() => navigate('/')}
+                      onClick={() => navigate(`/?key=${encodeURIComponent(keyData.key)}&role=${encodeURIComponent(keyData.role)}`)}
                     >
                       <Plus className="w-4 h-4 mr-2" />
                       Perpanjang Key

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import PackageSelection from '@/components/PackageSelection';
 import OrderForm from '@/components/OrderForm';
 import PaymentQR from '@/components/PaymentQR';
