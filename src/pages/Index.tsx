@@ -191,12 +191,12 @@ const Index = () => {
 
   const parseDuration = (input: string) => {
     if (!input) return null;
-    const match = input.toLowerCase().match(/^(\d+)([hb])$/);
+    const match = input.toLowerCase().match(/^(\d+)([hbt])$/);
     if (!match) return null;
     const value = parseInt(match[1]);
     const unit = match[2];
-    const days = unit === 'h' ? value : value * 30;
-    const label = unit === 'h' ? `${value} Hari` : `${value} Bulan`;
+    const days = unit === 'h' ? value : unit === 'b' ? value * 30 : value * 365;
+    const label = unit === 'h' ? `${value} Hari` : unit === 'b' ? `${value} Bulan` : `${value} Tahun`;
     return { days, text: label };
   };
 
