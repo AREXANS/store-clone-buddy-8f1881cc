@@ -1,1 +1,0 @@
-ALTER TABLE public.transactions ADD COLUMN ip_address text DEFAULT NULL;
