@@ -529,7 +529,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
     
     setEditingKey({
       key: '',
-      expired: now.toISOString().slice(0, 16),
+      expired: toLocalDatetimeString(now),
       role: 'VIP',
       maxHwid: 1,
       frozenUntil: null,
