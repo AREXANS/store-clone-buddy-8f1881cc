@@ -46,7 +46,7 @@ serve(async (req) => {
 
     const newKey = {
       key,
-      expired: expired || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      expired: expired || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       created: new Date().toISOString(),
       role: role || "VIP",
       maxHwid: max_hwid || 1,

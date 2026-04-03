@@ -195,7 +195,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
         body: JSON.stringify({
           key: editingKey.key,
           role: editingKey.role,
-          expired: editingKey.expired,
+          expired: new Date(editingKey.expired).toISOString(),
           max_hwid: editingKey.maxHwid,
           frozenUntil: editingKey.frozenUntil,
           frozenRemainingMs: editingKey.frozenRemainingMs
