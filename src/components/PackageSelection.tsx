@@ -116,7 +116,7 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
         .from('transactions')
         .select('*', { count: 'exact', head: true })
         .eq('device_id', deviceId)
-        .eq('status', 'paid') as any;
+        .eq('status', 'claimable') as any;
       setUnclaimedCount(count || 0);
     };
 
