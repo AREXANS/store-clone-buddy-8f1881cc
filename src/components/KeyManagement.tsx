@@ -975,7 +975,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
                     }
                     const currentExpiry = new Date(editingKey.expired);
                     const newExpiry = new Date(currentExpiry.getTime() + (parsed.isAdd ? parsed.ms : -parsed.ms));
-                    setEditingKey({ ...editingKey, expired: newExpiry.toISOString() });
+                    setEditingKey({ ...editingKey, expired: toLocalDatetimeString(newExpiry) });
                     setEditTimeInput('');
                     toast({ title: 'Diterapkan', description: `${parsed.isAdd ? '+' : '-'}${formatMsReadable(parsed.ms)}` });
                   }}
