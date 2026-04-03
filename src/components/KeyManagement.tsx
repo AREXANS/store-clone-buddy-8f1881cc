@@ -1128,7 +1128,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        onClick={() => { setEditingKey(k); setIsNewKey(false); }}
+                        onClick={() => { setEditingKey({ ...k, expired: toLocalDatetimeString(new Date(k.expired)) }); setIsNewKey(false); }}
                       >
                         <Edit2 className="w-4 h-4" />
                       </Button>
