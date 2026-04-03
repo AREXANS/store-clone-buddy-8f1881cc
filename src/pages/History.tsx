@@ -179,7 +179,8 @@ const History = () => {
   const filterButtons = [
     { key: 'all', label: 'Semua' },
     { key: 'pending', label: 'Pending' },
-    { key: 'paid', label: 'Klaim' },
+    { key: 'paid', label: 'Berhasil' },
+    { key: 'claimable', label: 'Klaim' },
     { key: 'claimed', label: 'Diklaim' },
     { key: 'expired', label: 'Expired' },
   ];
