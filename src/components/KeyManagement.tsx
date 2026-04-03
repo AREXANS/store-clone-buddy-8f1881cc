@@ -162,7 +162,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
         body: JSON.stringify({
           key: keyToCreate,
           role: editingKey.role || 'VIP',
-          expired: editingKey.expired,
+          expired: new Date(editingKey.expired).toISOString(),
           max_hwid: editingKey.maxHwid || 1
         })
       });
