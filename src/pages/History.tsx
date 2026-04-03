@@ -148,18 +148,20 @@ const History = () => {
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       paid: 'bg-success/20 text-success border-success/30',
+      claimable: 'bg-warning/20 text-warning border-warning/30',
       claimed: 'bg-secondary/20 text-secondary border-secondary/30',
-      pending: 'bg-warning/20 text-warning border-warning/30',
+      pending: 'bg-muted/20 text-muted-foreground border-border',
       expired: 'bg-destructive/20 text-destructive border-destructive/30',
     };
     const icons: Record<string, React.ReactNode> = {
       paid: <CheckCircle className="w-3 h-3" />,
-      claimed: <Gift className="w-3 h-3" />,
+      claimable: <Gift className="w-3 h-3" />,
+      claimed: <CheckCircle className="w-3 h-3" />,
       pending: <Clock className="w-3 h-3" />,
       expired: <XCircle className="w-3 h-3" />,
     };
     const labels: Record<string, string> = {
-      paid: 'Klaim', claimed: 'Diklaim', pending: 'Pending', expired: 'Expired',
+      paid: 'Berhasil', claimable: 'Klaim', claimed: 'Diklaim', pending: 'Pending', expired: 'Expired',
     };
     return (
       <span className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${styles[status] || 'bg-muted text-muted-foreground'}`}>
@@ -177,7 +179,8 @@ const History = () => {
   const filterButtons = [
     { key: 'all', label: 'Semua' },
     { key: 'pending', label: 'Pending' },
-    { key: 'paid', label: 'Klaim' },
+    { key: 'paid', label: 'Berhasil' },
+    { key: 'claimable', label: 'Klaim' },
     { key: 'claimed', label: 'Diklaim' },
     { key: 'expired', label: 'Expired' },
   ];
@@ -366,8 +369,8 @@ const History = () => {
                       </div>
                     )}
 
-                    {/* Claim button */}
-                    {tx.status === 'paid' && (
+                    {/* Claim button - only for manually set claimable status */}
+                    {tx.status === 'claimable' && (
                       <Button className="w-full" size="sm" onClick={() => handleClaim(tx.transaction_id)} disabled={claimingId === tx.transaction_id}>
                         {claimingId === tx.transaction_id ? (
                           <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Mengklaim...</>
