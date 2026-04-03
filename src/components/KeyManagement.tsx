@@ -519,12 +519,11 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   };
 
   const startNewKey = () => {
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + 30);
+    const now = new Date();
     
     setEditingKey({
       key: '',
-      expired: expiryDate.toISOString().slice(0, 16),
+      expired: now.toISOString().slice(0, 16),
       role: 'VIP',
       maxHwid: 1,
       frozenUntil: null,

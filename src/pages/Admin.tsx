@@ -247,16 +247,64 @@ const Admin = () => {
   };
 
   const setTransactionPaid = async (id: string) => {
+    // Get the transaction first to check if it's XCOINS_TOPUP
+    const tx = transactions.find(t => t.id === id);
+    
     const { error } = await supabase.from('transactions').update({
-      status: 'paid',
+      status: 'claimable',
       paid_at: new Date().toISOString()
     }).eq('id', id);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Berhasil", description: "Transaksi berhasil diset paid" });
-      loadAllData();
+      return;
     }
+    
+    // If it's an XCoins topup, auto-credit the user's balance
+    if (tx && tx.package_name === 'XCOINS_TOPUP' && tx.license_key) {
+      try {
+        const userId = tx.license_key; // license_key stores user ID for XCoins topups
+        const amount = tx.total_amount;
+        
+        // Get current balance
+        const { data: userData } = await supabase
+          .from('xcoins_balances')
+          .select('balance, display_name')
+          .eq('id', userId)
+          .single();
+        
+        if (userData) {
+          const newBalance = userData.balance + amount;
+          
+          // Update balance
+          await supabase.from('xcoins_balances')
+            .update({ balance: newBalance, updated_at: new Date().toISOString() })
+            .eq('id', userId);
+          
+          // Record transaction
+          await supabase.from('xcoins_transactions').insert({
+            user_id: userId,
+            type: 'deposit',
+            amount: amount,
+            balance_after: newBalance,
+            description: `Deposit ${amount} XCoins (manual approve)`,
+            reference_id: tx.transaction_id
+          });
+          
+          // Update transaction status to claimed
+          await supabase.from('transactions').update({ status: 'claimed' }).eq('id', id);
+          
+          toast({ title: "Berhasil", description: `Transaksi diset paid & saldo ${userData.display_name || 'user'} ditambah ${amount} XCoins` });
+        } else {
+          toast({ title: "Berhasil", description: "Transaksi diset paid (user XCoins tidak ditemukan)" });
+        }
+      } catch (e) {
+        console.error('XCoins credit error:', e);
+        toast({ title: "Berhasil", description: "Transaksi diset paid (gagal kredit XCoins)" });
+      }
+    } else {
+      toast({ title: "Berhasil", description: "Transaksi berhasil diset paid (claimable)" });
+    }
+    loadAllData();
   };
 
   // Effect to load data on mount if already logged in

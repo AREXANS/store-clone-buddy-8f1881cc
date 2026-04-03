@@ -366,8 +366,8 @@ const History = () => {
                       </div>
                     )}
 
-                    {/* Claim button */}
-                    {tx.status === 'paid' && (
+                    {/* Claim button - only for manually set claimable status */}
+                    {tx.status === 'claimable' && (
                       <Button className="w-full" size="sm" onClick={() => handleClaim(tx.transaction_id)} disabled={claimingId === tx.transaction_id}>
                         {claimingId === tx.transaction_id ? (
                           <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Mengklaim...</>
