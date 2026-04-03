@@ -933,8 +933,8 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
                 <Label>Expired Date</Label>
                 <Input
                   type="datetime-local"
-                  value={editingKey.expired.slice(0, 16)}
-                  onChange={(e) => setEditingKey({ ...editingKey, expired: new Date(e.target.value).toISOString() })}
+                  value={editingKey.expired.includes('T') ? editingKey.expired.slice(0, 16) : editingKey.expired}
+                  onChange={(e) => setEditingKey({ ...editingKey, expired: e.target.value })}
                   className="bg-background/50"
                 />
               </div>
