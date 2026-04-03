@@ -91,6 +91,12 @@ const formatMsReadable = (ms: number): string => {
   return parts.join(' ') || '0 menit';
 };
 
+// Helper to convert Date to local datetime-local format (YYYY-MM-DDTHH:MM)
+const toLocalDatetimeString = (date: Date): string => {
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
 const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   const [keys, setKeys] = useState<KeyItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -156,7 +162,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
         body: JSON.stringify({
           key: keyToCreate,
           role: editingKey.role || 'VIP',
-          expired: editingKey.expired,
+          expired: new Date(editingKey.expired).toISOString(),
           max_hwid: editingKey.maxHwid || 1
         })
       });
@@ -189,7 +195,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
         body: JSON.stringify({
           key: editingKey.key,
           role: editingKey.role,
-          expired: editingKey.expired,
+          expired: new Date(editingKey.expired).toISOString(),
           max_hwid: editingKey.maxHwid,
           frozenUntil: editingKey.frozenUntil,
           frozenRemainingMs: editingKey.frozenRemainingMs
@@ -523,7 +529,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
     
     setEditingKey({
       key: '',
-      expired: now.toISOString().slice(0, 16),
+      expired: toLocalDatetimeString(now),
       role: 'VIP',
       maxHwid: 1,
       frozenUntil: null,
@@ -927,8 +933,8 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
                 <Label>Expired Date</Label>
                 <Input
                   type="datetime-local"
-                  value={editingKey.expired.slice(0, 16)}
-                  onChange={(e) => setEditingKey({ ...editingKey, expired: new Date(e.target.value).toISOString() })}
+                  value={editingKey.expired.includes('T') ? editingKey.expired.slice(0, 16) : editingKey.expired}
+                  onChange={(e) => setEditingKey({ ...editingKey, expired: e.target.value })}
                   className="bg-background/50"
                 />
               </div>
@@ -969,7 +975,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
                     }
                     const currentExpiry = new Date(editingKey.expired);
                     const newExpiry = new Date(currentExpiry.getTime() + (parsed.isAdd ? parsed.ms : -parsed.ms));
-                    setEditingKey({ ...editingKey, expired: newExpiry.toISOString() });
+                    setEditingKey({ ...editingKey, expired: toLocalDatetimeString(newExpiry) });
                     setEditTimeInput('');
                     toast({ title: 'Diterapkan', description: `${parsed.isAdd ? '+' : '-'}${formatMsReadable(parsed.ms)}` });
                   }}
@@ -1122,7 +1128,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        onClick={() => { setEditingKey(k); setIsNewKey(false); }}
+                        onClick={() => { setEditingKey({ ...k, expired: toLocalDatetimeString(new Date(k.expired)) }); setIsNewKey(false); }}
                       >
                         <Edit2 className="w-4 h-4" />
                       </Button>
