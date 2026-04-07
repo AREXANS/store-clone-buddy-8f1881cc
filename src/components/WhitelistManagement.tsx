@@ -131,9 +131,9 @@ ${rawScript}`;
       name: scriptName,
       display_name: displayName,
       content: rawContent,
-      description: rawContent, // store raw content
+      description: rawContent,
       script_type: 'whitelist_upload',
-      is_active: false // default: no whitelist
+      is_active: true
     });
 
     if (error) {
