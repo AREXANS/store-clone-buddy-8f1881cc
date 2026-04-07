@@ -172,6 +172,12 @@ ${rawScript}`;
     toast({ title: 'Copied!', description: `${label} berhasil disalin` });
   };
 
+  const getScriptRuntimeUrl = (scriptName: string) =>
+    `${SUPABASE_API_BASE}/get-script?name=${encodeURIComponent(scriptName)}&raw=1`;
+
+  const getScriptLoadstring = (scriptName: string) =>
+    `loadstring(game:HttpGet("${getScriptRuntimeUrl(scriptName)}"))()`;
+
   const fetchWhitelist = async () => {
     setLoading(true);
     try {
