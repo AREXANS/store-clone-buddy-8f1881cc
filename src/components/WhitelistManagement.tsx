@@ -172,6 +172,12 @@ ${rawScript}`;
     toast({ title: 'Copied!', description: `${label} berhasil disalin` });
   };
 
+  const getScriptRuntimeUrl = (scriptName: string) =>
+    `${SUPABASE_API_BASE}/get-script?name=${encodeURIComponent(scriptName)}&raw=1`;
+
+  const getScriptLoadstring = (scriptName: string) =>
+    `loadstring(game:HttpGet("${getScriptRuntimeUrl(scriptName)}"))()`;
+
   const fetchWhitelist = async () => {
     setLoading(true);
     try {
@@ -529,11 +535,11 @@ ${rawScript}`;
                         <Shield className="w-3 h-3 mr-1" />
                         Salin + Whitelist
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => copyText(`${SUPABASE_API_BASE}/get-script?name=${script.name}`, 'URL')}>
+                      <Button variant="outline" size="sm" onClick={() => copyText(getScriptRuntimeUrl(script.name), 'URL')}>
                         <Copy className="w-3 h-3 mr-1" />
                         Salin URL
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => copyText(`loadstring(game:HttpGet("${SUPABASE_API_BASE}/get-script?name=${script.name}"))()`, 'Loadstring')}>
+                      <Button variant="outline" size="sm" onClick={() => copyText(getScriptLoadstring(script.name), 'Loadstring')}>
                         <FileCode className="w-3 h-3 mr-1" />
                         Salin Loadstring
                       </Button>
