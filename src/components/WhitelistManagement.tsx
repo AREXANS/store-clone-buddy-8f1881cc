@@ -533,6 +533,10 @@ ${rawScript}`;
                         <Copy className="w-3 h-3 mr-1" />
                         Salin URL
                       </Button>
+                      <Button variant="outline" size="sm" onClick={() => copyText(`loadstring(game:HttpGet("${SUPABASE_API_BASE}/get-script?name=${script.name}"))()`, 'Loadstring')}>
+                        <FileCode className="w-3 h-3 mr-1" />
+                        Salin Loadstring
+                      </Button>
                     </div>
                   </div>
                 ))}
