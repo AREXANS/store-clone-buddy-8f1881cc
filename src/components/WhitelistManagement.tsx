@@ -105,8 +105,8 @@ ${rawScript}`;
         name: s.name,
         display_name: s.display_name,
         content: s.content,
-        rawContent: s.description || s.content, // store raw in description field
-        useWhitelist: s.is_active, // repurpose is_active as whitelist toggle
+        rawContent: s.description || s.content,
+        useWhitelist: s.content.startsWith('-- Whitelist Protected Script'),
         is_active: true,
         created_at: s.created_at
       })));
