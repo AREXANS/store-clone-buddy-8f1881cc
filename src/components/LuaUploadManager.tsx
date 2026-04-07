@@ -225,7 +225,7 @@ const LuaUploadManager: FC = () => {
   const getLoaderUrlForExecutor = (scriptName: string) => `${getLoaderUrl(scriptName)}`;
 
   const copyLoadstring = (scriptName: string) => {
-    const url = getLoaderUrlForExecutor(scriptName);
+    const url = getScriptUrl(scriptName);
     const code = `loadstring(game:HttpGet("${url}"))()`;
 
     navigator.clipboard.writeText(code);
