@@ -151,7 +151,6 @@ ${rawScript}`;
     const newContent = newVal ? generateWhitelistWrapper(script.rawContent) : script.rawContent;
     
     await supabase.from('lua_scripts').update({
-      is_active: newVal,
       content: newContent,
       updated_at: new Date().toISOString()
     }).eq('id', script.id);
