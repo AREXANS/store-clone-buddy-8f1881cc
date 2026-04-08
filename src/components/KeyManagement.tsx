@@ -187,11 +187,21 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   const handleUpdateKey = async () => {
     if (!editingKey) return;
     
-    // Validate expired date
-    const expDate = new Date(editingKey.expired);
-    if (isNaN(expDate.getTime())) {
-      toast({ title: 'Error', description: 'Format tanggal expired tidak valid', variant: 'destructive' });
-      return;
+    // Build update payload - only validate expired if it was changed
+    const updatePayload: Record<string, any> = {
+      key: editingKey.key,
+      role: editingKey.role,
+      maxHwid: editingKey.maxHwid,
+      hwids: editingKey.hwids,
+      robloxUsers: editingKey.robloxUsers,
+      frozenUntil: editingKey.frozenUntil,
+      frozenRemainingMs: editingKey.frozenRemainingMs,
+    };
+
+    // Try to parse expired - if valid send ISO, otherwise keep original string
+    if (editingKey.expired) {
+      const expDate = new Date(editingKey.expired);
+      updatePayload.expired = isNaN(expDate.getTime()) ? editingKey.expired : expDate.toISOString();
     }
     
     setLoading(true);
@@ -199,16 +209,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
       const response = await fetch(`${API_BASE}/update-key`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          key: editingKey.key,
-          role: editingKey.role,
-          expired: expDate.toISOString(),
-          maxHwid: editingKey.maxHwid,
-          hwids: editingKey.hwids,
-          robloxUsers: editingKey.robloxUsers,
-          frozenUntil: editingKey.frozenUntil,
-          frozenRemainingMs: editingKey.frozenRemainingMs
-        })
+        body: JSON.stringify(updatePayload)
       });
       
       const result = await response.json();
