@@ -187,6 +187,13 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   const handleUpdateKey = async () => {
     if (!editingKey) return;
     
+    // Validate expired date
+    const expDate = new Date(editingKey.expired);
+    if (isNaN(expDate.getTime())) {
+      toast({ title: 'Error', description: 'Format tanggal expired tidak valid', variant: 'destructive' });
+      return;
+    }
+    
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE}/update-key`, {
@@ -195,8 +202,10 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
         body: JSON.stringify({
           key: editingKey.key,
           role: editingKey.role,
-          expired: new Date(editingKey.expired).toISOString(),
-          max_hwid: editingKey.maxHwid,
+          expired: expDate.toISOString(),
+          maxHwid: editingKey.maxHwid,
+          hwids: editingKey.hwids,
+          robloxUsers: editingKey.robloxUsers,
           frozenUntil: editingKey.frozenUntil,
           frozenRemainingMs: editingKey.frozenRemainingMs
         })
@@ -999,21 +1008,37 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
               <p className="text-xs text-muted-foreground">m=menit, j=jam, h=hari, b=bulan, t=tahun</p>
             </div>
             
-            {!isNewKey && editingKey.robloxUsers.length > 0 && (
+            {!isNewKey && (
               <div>
                 <Label className="flex items-center gap-2">
                   <Users className="w-4 h-4" />
-                  Registered Users ({editingKey.robloxUsers.length}/{editingKey.maxHwid})
+                  HWIDs ({editingKey.hwids.length}/{editingKey.maxHwid})
                 </Label>
                 <div className="mt-2 space-y-2">
-                  {editingKey.robloxUsers.map((user, idx) => (
-                    <div key={idx} className="flex items-center justify-between bg-muted/30 p-2 rounded">
-                      <span className="font-mono text-sm">{user.username}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDate(user.registeredAt)}
-                      </span>
-                    </div>
-                  ))}
+                  {editingKey.hwids.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Belum ada HWID terdaftar</p>
+                  ) : editingKey.hwids.map((hwid, idx) => {
+                    const rUser = editingKey.robloxUsers.find(u => u.hwid === hwid);
+                    return (
+                      <div key={idx} className="flex items-center justify-between bg-muted/30 p-2 rounded">
+                        <div>
+                          <span className="font-mono text-sm">{hwid}</span>
+                          {rUser && <span className="text-xs text-muted-foreground ml-2">({rUser.username})</span>}
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            const newHwids = editingKey.hwids.filter((_, i) => i !== idx);
+                            const newRobloxUsers = editingKey.robloxUsers.filter(u => u.hwid !== hwid);
+                            setEditingKey({ ...editingKey, hwids: newHwids, robloxUsers: newRobloxUsers });
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
