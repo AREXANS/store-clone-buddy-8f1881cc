@@ -535,11 +535,11 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   };
 
   const startNewKey = () => {
-    const now = new Date();
+    const defaultExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // default +1 hari
     
     setEditingKey({
       key: '',
-      expired: toLocalDatetimeString(now),
+      expired: toLocalDatetimeString(defaultExpiry),
       role: 'VIP',
       maxHwid: 1,
       frozenUntil: null,
