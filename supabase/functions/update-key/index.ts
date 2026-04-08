@@ -58,11 +58,15 @@ serve(async (req) => {
 
     const currentKey = keys[keyIndex];
     keys[keyIndex] = {
-      ...currentKey,
-      ...updateData,
-      maxHwid: updateData.max_hwid ?? updateData.maxHwid ?? currentKey.maxHwid,
-      frozenUntil: updateData.frozenUntil,
-      frozenRemainingMs: updateData.frozenRemainingMs
+      key: currentKey.key,
+      created: currentKey.created,
+      expired: updateData.expired ?? currentKey.expired,
+      role: updateData.role ?? currentKey.role,
+      maxHwid: updateData.maxHwid ?? updateData.max_hwid ?? currentKey.maxHwid,
+      frozenUntil: updateData.frozenUntil !== undefined ? updateData.frozenUntil : currentKey.frozenUntil,
+      frozenRemainingMs: updateData.frozenRemainingMs !== undefined ? updateData.frozenRemainingMs : currentKey.frozenRemainingMs,
+      hwids: updateData.hwids ?? currentKey.hwids ?? [],
+      robloxUsers: updateData.robloxUsers ?? currentKey.robloxUsers ?? [],
     };
 
     const { error: updateError } = await supabase

@@ -187,6 +187,13 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
   const handleUpdateKey = async () => {
     if (!editingKey) return;
     
+    // Validate expired date
+    const expDate = new Date(editingKey.expired);
+    if (isNaN(expDate.getTime())) {
+      toast({ title: 'Error', description: 'Format tanggal expired tidak valid', variant: 'destructive' });
+      return;
+    }
+    
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE}/update-key`, {
@@ -195,8 +202,10 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
         body: JSON.stringify({
           key: editingKey.key,
           role: editingKey.role,
-          expired: new Date(editingKey.expired).toISOString(),
-          max_hwid: editingKey.maxHwid,
+          expired: expDate.toISOString(),
+          maxHwid: editingKey.maxHwid,
+          hwids: editingKey.hwids,
+          robloxUsers: editingKey.robloxUsers,
           frozenUntil: editingKey.frozenUntil,
           frozenRemainingMs: editingKey.frozenRemainingMs
         })
