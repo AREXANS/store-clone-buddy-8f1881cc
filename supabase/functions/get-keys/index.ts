@@ -19,9 +19,8 @@ serve(async (req) => {
 
     const { data, error } = await supabase
       .from("app_settings")
-      .select("value")
-      .eq("key", "license_keys")
-      .maybeSingle();
+      .select("value, key")
+      .in("key", ["license_keys", "auto_delete_keys_enabled", "auto_delete_keys_days"]);
 
     if (error) {
       return new Response(
@@ -30,30 +29,39 @@ serve(async (req) => {
       );
     }
 
+    const licenseRow = data?.find((r: any) => r.key === "license_keys");
+    const autoDeleteEnabled = data?.find((r: any) => r.key === "auto_delete_keys_enabled")?.value === "on";
+    const autoDeleteDays = parseInt(data?.find((r: any) => r.key === "auto_delete_keys_days")?.value || "7", 10);
+
     let keys = [];
     try {
-      keys = JSON.parse(data.value || "[]");
+      keys = JSON.parse(licenseRow?.value || "[]");
     } catch {
       keys = [];
     }
 
-    // Auto-delete expired keys (not frozen)
-    const now = new Date();
-    const activeKeys = keys.filter((k: any) => {
-      if (k.frozenUntil) return true;
-      const expiredDate = new Date(k.expired);
-      return expiredDate > now;
-    });
+    // Only auto-delete if the setting is enabled, and only keys expired beyond the threshold
+    if (autoDeleteEnabled && autoDeleteDays > 0) {
+      const now = new Date();
+      const thresholdMs = autoDeleteDays * 24 * 60 * 60 * 1000;
+      const activeKeys = keys.filter((k: any) => {
+        if (k.frozenUntil) return true;
+        const expiredDate = new Date(k.expired);
+        const expiredAgoMs = now.getTime() - expiredDate.getTime();
+        // Only remove if expired longer than threshold
+        return expiredAgoMs < thresholdMs;
+      });
 
-    if (activeKeys.length < keys.length) {
-      const deletedCount = keys.length - activeKeys.length;
-      await supabase
-        .from("app_settings")
-        .update({ value: JSON.stringify(activeKeys), updated_at: new Date().toISOString() })
-        .eq("key", "license_keys");
-      
-      console.log(`Auto-deleted ${deletedCount} expired keys`);
-      keys = activeKeys;
+      if (activeKeys.length < keys.length) {
+        const deletedCount = keys.length - activeKeys.length;
+        await supabase
+          .from("app_settings")
+          .update({ value: JSON.stringify(activeKeys), updated_at: now.toISOString() })
+          .eq("key", "license_keys");
+        
+        console.log(`Auto-deleted ${deletedCount} expired keys (older than ${autoDeleteDays} days)`);
+        keys = activeKeys;
+      }
     }
 
     return new Response(
