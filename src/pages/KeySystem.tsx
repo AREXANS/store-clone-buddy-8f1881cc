@@ -237,6 +237,34 @@ const KeySystem = () => {
     toast({ title: 'Disalin!', description: `${label} berhasil disalin ke clipboard` });
   };
 
+  const handleClaimDurationCode = async () => {
+    if (!claimCode.trim() || !keyData) return;
+    setClaimLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/claim-duration-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: claimCode.trim(), licenseKey: keyData.key }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast({ title: '🎉 Berhasil!', description: result.message });
+        setClaimCode('');
+        setShowClaimInput(false);
+        // Refresh key data
+        const refreshed = await fetchKeyData(keyData.key);
+        if (refreshed) setKeyData(refreshed);
+      } else {
+        toast({ title: 'Gagal', description: result.error || 'Gagal mengklaim kode', variant: 'destructive' });
+      }
+    } catch (error) {
+      console.error('Claim code error:', error);
+      toast({ title: 'Error', description: 'Gagal mengklaim kode', variant: 'destructive' });
+    } finally {
+      setClaimLoading(false);
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('id-ID', {
       day: 'numeric', month: 'long', year: 'numeric',
