@@ -530,6 +530,44 @@ const KeySystem = () => {
                 </Card>
               )}
 
+              {/* Klaim Kode Durasi */}
+              <Card className="glass-card border-emerald-500/30">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium flex items-center gap-2 text-emerald-400">
+                      <Gift className="w-4 h-4" />
+                      Kode Bonus Durasi
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowClaimInput(!showClaimInput)}
+                      className="border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10"
+                    >
+                      {showClaimInput ? 'Tutup' : 'Masukkan Kode'}
+                    </Button>
+                  </div>
+                  {showClaimInput && (
+                    <div className="flex gap-2">
+                      <Input
+                        value={claimCode}
+                        onChange={(e) => setClaimCode(e.target.value.toUpperCase())}
+                        placeholder="Masukkan kode bonus..."
+                        className="bg-background/50 font-mono flex-1"
+                        onKeyDown={(e) => e.key === 'Enter' && handleClaimDurationCode()}
+                      />
+                      <Button
+                        onClick={handleClaimDurationCode}
+                        disabled={claimLoading || !claimCode.trim()}
+                        className="bg-emerald-600 hover:bg-emerald-700"
+                      >
+                        {claimLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Klaim'}
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               {/* Quick Actions */}
               <Card className="glass-card border-primary/30">
                 <CardContent className="p-4 space-y-2">
