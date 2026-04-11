@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import GlobalBackground from '@/components/GlobalBackground';
-import { Key, RefreshCw, Copy, ArrowLeft, Shield, Calendar, Clock, User, Plus, LogOut, ChevronRight, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Key, RefreshCw, Copy, ArrowLeft, Shield, Calendar, Clock, User, Plus, LogOut, ChevronRight, Trash2, Eye, EyeOff, Gift } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { ScrollArea } from '@/components/ui/scroll-area';
