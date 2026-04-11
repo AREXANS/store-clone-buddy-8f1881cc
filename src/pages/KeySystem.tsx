@@ -323,6 +323,14 @@ const KeySystem = () => {
                 </div>
               </CardHeader>
               <CardContent>
+                {claimCode && (
+                  <div className="mb-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                    <p className="text-sm text-emerald-400 flex items-center gap-2">
+                      <Gift className="w-4 h-4" />
+                      Kode bonus <code className="font-mono font-bold">{claimCode}</code> terdeteksi. Pilih key yang ingin ditambahkan durasinya:
+                    </p>
+                  </div>
+                )}
                 <ScrollArea className={savedKeys.length > 5 ? 'h-[350px]' : ''}>
                   <div className="space-y-2">
                     {savedKeys.map((saved) => (
