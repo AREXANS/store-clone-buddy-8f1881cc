@@ -60,10 +60,19 @@ const KeySystem = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [keyVisible, setKeyVisible] = useState(false);
   const [loadstringVisible, setLoadstringVisible] = useState(false);
+  const [claimCode, setClaimCode] = useState('');
+  const [claimLoading, setClaimLoading] = useState(false);
+  const [showClaimInput, setShowClaimInput] = useState(false);
 
   // Auto-validate if redirected from claim with ?key=xxx
+  // Also handle ?claim_code=xxx for auto-claim via link
   useEffect(() => {
     const autoKey = searchParams.get('key');
+    const autoClaimCode = searchParams.get('claim_code');
+    if (autoClaimCode) {
+      setClaimCode(autoClaimCode);
+      setShowClaimInput(true);
+    }
     if (autoKey) {
       setKeyInput(autoKey);
       validateAndLogin(autoKey);
