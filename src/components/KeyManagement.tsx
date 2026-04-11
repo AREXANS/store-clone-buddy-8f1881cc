@@ -1063,6 +1063,9 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
         </Card>
       )}
 
+      {/* Duration Codes Management */}
+      <DurationCodeManager />
+
       {/* Keys List */}
       <div className="grid gap-3">
         {loading && keys.length === 0 ? (
