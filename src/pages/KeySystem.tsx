@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import GlobalBackground from '@/components/GlobalBackground';
-import { Key, RefreshCw, Copy, ArrowLeft, Shield, Calendar, Clock, User, Plus, LogOut, ChevronRight, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Key, RefreshCw, Copy, ArrowLeft, Shield, Calendar, Clock, User, Plus, LogOut, ChevronRight, Trash2, Eye, EyeOff, Gift } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -60,10 +60,19 @@ const KeySystem = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [keyVisible, setKeyVisible] = useState(false);
   const [loadstringVisible, setLoadstringVisible] = useState(false);
+  const [claimCode, setClaimCode] = useState('');
+  const [claimLoading, setClaimLoading] = useState(false);
+  const [showClaimInput, setShowClaimInput] = useState(false);
 
   // Auto-validate if redirected from claim with ?key=xxx
+  // Also handle ?claim_code=xxx for auto-claim via link
   useEffect(() => {
     const autoKey = searchParams.get('key');
+    const autoClaimCode = searchParams.get('claim_code');
+    if (autoClaimCode) {
+      setClaimCode(autoClaimCode);
+      setShowClaimInput(true);
+    }
     if (autoKey) {
       setKeyInput(autoKey);
       validateAndLogin(autoKey);
@@ -228,6 +237,34 @@ const KeySystem = () => {
     toast({ title: 'Disalin!', description: `${label} berhasil disalin ke clipboard` });
   };
 
+  const handleClaimDurationCode = async () => {
+    if (!claimCode.trim() || !keyData) return;
+    setClaimLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/claim-duration-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: claimCode.trim(), licenseKey: keyData.key }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast({ title: '🎉 Berhasil!', description: result.message });
+        setClaimCode('');
+        setShowClaimInput(false);
+        // Refresh key data
+        const refreshed = await fetchKeyData(keyData.key);
+        if (refreshed) setKeyData(refreshed);
+      } else {
+        toast({ title: 'Gagal', description: result.error || 'Gagal mengklaim kode', variant: 'destructive' });
+      }
+    } catch (error) {
+      console.error('Claim code error:', error);
+      toast({ title: 'Error', description: 'Gagal mengklaim kode', variant: 'destructive' });
+    } finally {
+      setClaimLoading(false);
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('id-ID', {
       day: 'numeric', month: 'long', year: 'numeric',
@@ -286,6 +323,14 @@ const KeySystem = () => {
                 </div>
               </CardHeader>
               <CardContent>
+                {claimCode && (
+                  <div className="mb-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                    <p className="text-sm text-emerald-400 flex items-center gap-2">
+                      <Gift className="w-4 h-4" />
+                      Kode bonus <code className="font-mono font-bold">{claimCode}</code> terdeteksi. Pilih key yang ingin ditambahkan durasinya:
+                    </p>
+                  </div>
+                )}
                 <ScrollArea className={savedKeys.length > 5 ? 'h-[350px]' : ''}>
                   <div className="space-y-2">
                     {savedKeys.map((saved) => (
@@ -492,6 +537,44 @@ const KeySystem = () => {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Klaim Kode Durasi */}
+              <Card className="glass-card border-emerald-500/30">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium flex items-center gap-2 text-emerald-400">
+                      <Gift className="w-4 h-4" />
+                      Kode Bonus Durasi
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowClaimInput(!showClaimInput)}
+                      className="border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10"
+                    >
+                      {showClaimInput ? 'Tutup' : 'Masukkan Kode'}
+                    </Button>
+                  </div>
+                  {showClaimInput && (
+                    <div className="flex gap-2">
+                      <Input
+                        value={claimCode}
+                        onChange={(e) => setClaimCode(e.target.value.toUpperCase())}
+                        placeholder="Masukkan kode bonus..."
+                        className="bg-background/50 font-mono flex-1"
+                        onKeyDown={(e) => e.key === 'Enter' && handleClaimDurationCode()}
+                      />
+                      <Button
+                        onClick={handleClaimDurationCode}
+                        disabled={claimLoading || !claimCode.trim()}
+                        className="bg-emerald-600 hover:bg-emerald-700"
+                      >
+                        {claimLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Klaim'}
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
               {/* Quick Actions */}
               <Card className="glass-card border-primary/30">

@@ -12,6 +12,7 @@ import {
   Users, Calendar, Shield, Copy, AlertTriangle,
   Download, Upload, Pause, Play, Clock, CheckSquare, Square
 } from 'lucide-react';
+import DurationCodeManager from '@/components/DurationCodeManager';
 
 const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
@@ -1062,6 +1063,9 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
           </CardContent>
         </Card>
       )}
+
+      {/* Duration Codes Management */}
+      <DurationCodeManager />
 
       {/* Keys List */}
       <div className="grid gap-3">

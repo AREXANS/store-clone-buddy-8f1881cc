@@ -164,6 +164,42 @@ export type Database = {
         }
         Relationships: []
       }
+      duration_codes: {
+        Row: {
+          code: string
+          created_at: string
+          duration_days: number
+          expires_at: string
+          id: string
+          is_active: boolean
+          max_uses_per_key: number
+          updated_at: string
+          used_by: Json
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          duration_days?: number
+          expires_at: string
+          id?: string
+          is_active?: boolean
+          max_uses_per_key?: number
+          updated_at?: string
+          used_by?: Json
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          duration_days?: number
+          expires_at?: string
+          id?: string
+          is_active?: boolean
+          max_uses_per_key?: number
+          updated_at?: string
+          used_by?: Json
+        }
+        Relationships: []
+      }
       lua_scripts: {
         Row: {
           content: string
