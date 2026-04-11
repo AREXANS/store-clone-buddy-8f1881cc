@@ -55,14 +55,14 @@ const DurationCodeManager: FC = () => {
   useEffect(() => { fetchCodes(); }, []);
 
   const generateCode = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let result = 'BONUS-';
     for (let i = 0; i < 6; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
     return result;
   };
 
   const handleCreate = async () => {
-    const code = newCode.trim().toUpperCase() || generateCode();
+    const code = newCode.trim() || generateCode();
     try {
       const { error } = await supabase.from('duration_codes').insert({
         code,
@@ -142,8 +142,8 @@ const DurationCodeManager: FC = () => {
                 <Label>Kode (kosongkan = auto)</Label>
                 <Input
                   value={newCode}
-                  onChange={(e) => setNewCode(e.target.value.toUpperCase())}
-                  placeholder="BONUS-XXXXXX"
+                  onChange={(e) => setNewCode(e.target.value)}
+                  placeholder="kode-bebas-123"
                   className="bg-background/50 font-mono"
                 />
               </div>

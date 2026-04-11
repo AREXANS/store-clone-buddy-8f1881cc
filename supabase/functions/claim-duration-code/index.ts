@@ -29,7 +29,7 @@ serve(async (req) => {
     const { data: codeData, error: codeError } = await supabase
       .from("duration_codes")
       .select("*")
-      .eq("code", code.trim().toUpperCase())
+      .eq("code", code.trim())
       .eq("is_active", true)
       .maybeSingle();
 
