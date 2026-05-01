@@ -95,8 +95,14 @@ const OrderForm: FC<OrderFormProps> = ({
       }
     };
 
+    const loadLifetimePrice = async () => {
+      const { data } = await supabase.from('packages').select('price_per_day').eq('name', 'LIFETIME').eq('is_active', true).maybeSingle();
+      if (data) setLifetimePrice(data.price_per_day);
+    };
+
     loadDiscounts();
     loadXcoinsSettings();
+    loadLifetimePrice();
   }, []);
 
   useEffect(() => {
