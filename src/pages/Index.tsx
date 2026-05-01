@@ -28,7 +28,7 @@ interface Package {
   is_active: boolean;
 }
 
-interface PaymentData {
+interface PackageSelection { pkg: 'NORMAL' | 'VIP' | 'LIFETIME' }
   transactionId: string;
   qr_string: string;
   qris_url: string;
