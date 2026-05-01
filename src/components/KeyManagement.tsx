@@ -934,6 +934,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
                   onChange={(e) => setEditingKey({ ...editingKey, role: e.target.value })}
                   className="w-full p-2 rounded-md bg-background/50 border border-border"
                 >
+                  <option value="ADMIN">ADMIN</option>
                   <option value="Developer">Developer</option>
                   <option value="VIP">VIP</option>
                   <option value="NORMAL">NORMAL</option>
