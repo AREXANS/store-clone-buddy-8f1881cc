@@ -123,9 +123,10 @@ const OrderForm: FC<OrderFormProps> = ({
     setFormData({ ...formData, key: generateRandomKey() });
   };
 
-  const durationData = parseDuration(formData.duration);
+  const isLifetime = selectedPkg === 'LIFETIME';
+  const durationData = isLifetime ? { days: 999999, text: 'LIFETIME (Permanen)' } : parseDuration(formData.duration);
   const pricePerDay = selectedPkg === 'VIP' ? prices.VIP : prices.NORMAL;
-  const estimatedTotal = durationData ? pricePerDay * durationData.days : 0;
+  const estimatedTotal = isLifetime ? (lifetimePrice || 700000) : (durationData ? pricePerDay * durationData.days : 0);
 
   // Find duration-based discount
   const findDurationDiscount = (): Discount | null => {
