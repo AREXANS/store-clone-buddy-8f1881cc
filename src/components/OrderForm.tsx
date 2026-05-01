@@ -291,8 +291,8 @@ const OrderForm: FC<OrderFormProps> = ({
         </button>
 
         <div className="text-center mb-8 pt-8">
-          <div className={`inline-block px-4 py-2 rounded-full text-sm font-bold mb-4 ${selectedPkg === 'VIP' ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'}`}>
-            Paket {selectedPkg}
+          <div className={`inline-block px-4 py-2 rounded-full text-sm font-bold mb-4 ${selectedPkg === 'LIFETIME' ? 'bg-cyan-500/10 text-cyan-400' : selectedPkg === 'VIP' ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'}`}>
+            Paket {selectedPkg === 'LIFETIME' ? 'LIFETIME ADMIN' : selectedPkg}
           </div>
           <h2 className="text-2xl font-display font-bold text-foreground">Isi Data Pembelian</h2>
         </div>
