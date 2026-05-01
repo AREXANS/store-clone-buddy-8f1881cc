@@ -250,8 +250,8 @@ const OrderForm: FC<OrderFormProps> = ({
       toast({ title: '🎉 Pembayaran XCoins Berhasil!', description: `Key: ${formData.key}` });
       
       // Trigger payment success flow
-      const expiredDate = new Date();
-      expiredDate.setDate(expiredDate.getDate() + durationData.days);
+      const expiredDate = isLifetime ? new Date("2099-12-31T23:59:59.000Z") : new Date();
+      if (!isLifetime) expiredDate.setDate(expiredDate.getDate() + durationData.days);
       
       // Store final data and go to success
       const state = {
@@ -263,7 +263,7 @@ const OrderForm: FC<OrderFormProps> = ({
           key: formData.key,
           package: selectedPkg || 'NORMAL',
           expired: expiredDate.toISOString(),
-          expiredDisplay: expiredDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+          expiredDisplay: isLifetime ? 'Selamanya' : expiredDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
           days: durationData.days,
           transactionId: res.data.transactionId
         },
