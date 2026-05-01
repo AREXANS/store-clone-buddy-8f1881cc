@@ -28,7 +28,7 @@ interface Package {
   is_active: boolean;
 }
 
-
+interface PaymentData {
   transactionId: string;
   qr_string: string;
   qris_url: string;
