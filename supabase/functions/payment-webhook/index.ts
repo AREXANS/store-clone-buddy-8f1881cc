@@ -196,31 +196,56 @@ async function createLicenseKey(supabase: any, transaction: any) {
     }
 
     const existingIdx = keys.findIndex((k: any) => k.key === key);
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + (Number(transaction.package_duration) || 30));
-
-    if (existingIdx >= 0) {
-      const existing = keys[existingIdx];
-      const currentExpiry = new Date(existing.expired);
-      const now = new Date();
-      const baseDate = currentExpiry > now ? currentExpiry : now;
-      baseDate.setDate(baseDate.getDate() + (Number(transaction.package_duration) || 30));
-      keys[existingIdx].expired = baseDate.toISOString();
-      keys[existingIdx].role = transaction.package_name || existing.role;
-      console.log(`Webhook: Extended key ${key} to ${baseDate.toISOString()}`);
+    const isLifetime = transaction.package_name === "LIFETIME";
+    
+    if (isLifetime) {
+      // LIFETIME: set expiry to year 2099, role = ADMIN
+      const permanentExpiry = new Date("2099-12-31T23:59:59.000Z");
+      if (existingIdx >= 0) {
+        keys[existingIdx].expired = permanentExpiry.toISOString();
+        keys[existingIdx].role = "ADMIN";
+        console.log(`Webhook: Upgraded key ${key} to LIFETIME ADMIN`);
+      } else {
+        keys.push({
+          key,
+          expired: permanentExpiry.toISOString(),
+          created: new Date().toISOString(),
+          role: "ADMIN",
+          maxHwid: 1,
+          frozenUntil: null,
+          frozenRemainingMs: null,
+          hwids: [],
+          robloxUsers: []
+        });
+        console.log(`Webhook: Created LIFETIME ADMIN key ${key}`);
+      }
     } else {
-      keys.push({
-        key,
-        expired: expiryDate.toISOString(),
-        created: new Date().toISOString(),
-        role: transaction.package_name || "NORMAL",
-        maxHwid: 1,
-        frozenUntil: null,
-        frozenRemainingMs: null,
-        hwids: [],
-        robloxUsers: []
-      });
-      console.log(`Webhook: Created new key ${key}, expires ${expiryDate.toISOString()}`);
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + (Number(transaction.package_duration) || 30));
+
+      if (existingIdx >= 0) {
+        const existing = keys[existingIdx];
+        const currentExpiry = new Date(existing.expired);
+        const now = new Date();
+        const baseDate = currentExpiry > now ? currentExpiry : now;
+        baseDate.setDate(baseDate.getDate() + (Number(transaction.package_duration) || 30));
+        keys[existingIdx].expired = baseDate.toISOString();
+        keys[existingIdx].role = transaction.package_name || existing.role;
+        console.log(`Webhook: Extended key ${key} to ${baseDate.toISOString()}`);
+      } else {
+        keys.push({
+          key,
+          expired: expiryDate.toISOString(),
+          created: new Date().toISOString(),
+          role: transaction.package_name || "NORMAL",
+          maxHwid: 1,
+          frozenUntil: null,
+          frozenRemainingMs: null,
+          hwids: [],
+          robloxUsers: []
+        });
+        console.log(`Webhook: Created new key ${key}, expires ${expiryDate.toISOString()}`);
+      }
     }
 
     await supabase
