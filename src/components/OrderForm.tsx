@@ -23,7 +23,7 @@ interface Discount {
 }
 
 interface OrderFormProps {
-  selectedPkg: 'NORMAL' | 'VIP' | null;
+  selectedPkg: 'NORMAL' | 'VIP' | 'LIFETIME' | null;
   formData: { key: string; duration: string };
   setFormData: (data: { key: string; duration: string }) => void;
   onSubmit: (e: React.FormEvent, promoCode?: string, discountedAmount?: number) => void;
