@@ -130,8 +130,8 @@ const PaymentSuccess: FC<PaymentSuccessProps> = ({ finalData, onCopy }) => {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Paket:</span>
-              <span className={`font-bold ${finalData.package === 'VIP' ? 'text-secondary' : 'text-primary'}`}>
-                {finalData.package}
+              <span className={`font-bold ${finalData.package === 'LIFETIME' ? 'text-cyan-400' : finalData.package === 'VIP' ? 'text-secondary' : 'text-primary'}`}>
+                {finalData.package === 'LIFETIME' ? 'ADMIN (LIFETIME)' : finalData.package}
               </span>
             </div>
             <div className="flex justify-between items-center">

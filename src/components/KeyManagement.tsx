@@ -436,6 +436,8 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
 
   const getRoleColor = (role: string) => {
     switch (role.toLowerCase()) {
+      case 'admin':
+        return 'bg-cyan-500/20 text-cyan-400';
       case 'developer':
         return 'bg-purple-500/20 text-purple-400';
       case 'vip':

@@ -274,6 +274,7 @@ const KeySystem = () => {
 
   const getRoleColor = (role: string) => {
     switch (role.toLowerCase()) {
+      case 'admin': return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50';
       case 'developer': return 'bg-purple-500/20 text-purple-400 border-purple-500/50';
       case 'vip': return 'bg-secondary/20 text-secondary border-secondary/50';
       case 'normal': return 'bg-primary/20 text-primary border-primary/50';
