@@ -487,7 +487,7 @@ const OrderForm: FC<OrderFormProps> = ({
             </div>
           )}
 
-          <Button type="submit" disabled={loading || xcoinsPayLoading || ((paymentMethod === 'xcoins' || xcoinsOnly) && !xcoinsUser)} className={`w-full py-6 font-display font-bold text-lg ${selectedPkg === 'VIP' ? 'btn-secondary' : 'btn-primary'}`}>
+          <Button type="submit" disabled={loading || xcoinsPayLoading || ((paymentMethod === 'xcoins' || xcoinsOnly) && !xcoinsUser)} className={`w-full py-6 font-display font-bold text-lg ${selectedPkg === 'LIFETIME' ? 'bg-cyan-500 hover:bg-cyan-400 text-black' : selectedPkg === 'VIP' ? 'btn-secondary' : 'btn-primary'}`}>
             {loading || xcoinsPayLoading ? (
               <span className="flex items-center gap-2"><span className="animate-spin">⟳</span> Memproses...</span>
             ) : paymentMethod === 'xcoins' || xcoinsOnly ? (
