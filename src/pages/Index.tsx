@@ -49,7 +49,7 @@ const STORAGE_KEY = 'arexans_payment_state';
 
 interface StoredState {
   step: number;
-  selectedPkg: 'NORMAL' | 'VIP' | null;
+  selectedPkg: 'NORMAL' | 'VIP' | 'LIFETIME' | null;
   formData: { key: string; duration: string };
   paymentData: PaymentData | null;
   finalData: FinalData | null;
