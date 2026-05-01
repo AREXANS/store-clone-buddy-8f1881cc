@@ -74,7 +74,7 @@ const getDeviceId = (): string => {
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [step, setStep] = useState(1);
-  const [selectedPkg, setSelectedPkg] = useState<'NORMAL' | 'VIP' | null>(null);
+  const [selectedPkg, setSelectedPkg] = useState<'NORMAL' | 'VIP' | 'LIFETIME' | null>(null);
   const [formData, setFormData] = useState({ key: '', duration: '' });
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -272,7 +272,7 @@ const Index = () => {
     };
   }, [step, paymentData, daysToAdd, checkPaymentStatus]);
 
-  const handlePackageSelect = (pkg: 'NORMAL' | 'VIP') => {
+  const handlePackageSelect = (pkg: 'NORMAL' | 'VIP' | 'LIFETIME') => {
     setSelectedPkg(pkg);
     setStep(2);
     setErrorMsg('');
