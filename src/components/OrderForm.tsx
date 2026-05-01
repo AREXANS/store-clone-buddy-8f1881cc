@@ -69,6 +69,7 @@ const OrderForm: FC<OrderFormProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<'qris' | 'xcoins'>('qris');
   const [xcoinsPin, setXcoinsPin] = useState('');
   const [xcoinsPayLoading, setXcoinsPayLoading] = useState(false);
+  const [lifetimePrice, setLifetimePrice] = useState(700000);
 
   useEffect(() => {
     const loadDiscounts = async () => {
