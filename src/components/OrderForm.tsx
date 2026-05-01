@@ -365,7 +365,7 @@ const OrderForm: FC<OrderFormProps> = ({
           )}
 
           {/* Promo Code Toggle */}
-          {!showPromoInput && !appliedPromo && (
+          {!isLifetime && !showPromoInput && !appliedPromo && (
             <button type="button" onClick={() => setShowPromoInput(true)} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors">
               <Tag className="w-4 h-4" />
               Punya kode promo?
