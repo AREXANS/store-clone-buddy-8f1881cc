@@ -130,17 +130,17 @@ const PaymentSuccess: FC<PaymentSuccessProps> = ({ finalData, onCopy }) => {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Paket:</span>
-              <span className={`font-bold ${finalData.package === 'VIP' ? 'text-secondary' : 'text-primary'}`}>
-                {finalData.package}
+              <span className={`font-bold ${finalData.package === 'LIFETIME' ? 'text-cyan-400' : finalData.package === 'VIP' ? 'text-secondary' : 'text-primary'}`}>
+                {finalData.package === 'LIFETIME' ? 'ADMIN (LIFETIME)' : finalData.package}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Durasi:</span>
-              <span className="text-foreground font-medium">{finalData.days} Hari</span>
+              <span className="text-foreground font-medium">{finalData.package === 'LIFETIME' ? 'Permanen (Selamanya)' : `${finalData.days} Hari`}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Berlaku hingga:</span>
-              <span className="text-foreground font-medium">{finalData.expiredDisplay}</span>
+              <span className="text-foreground font-medium">{finalData.package === 'LIFETIME' ? 'Selamanya' : finalData.expiredDisplay}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Waktu Pembayaran:</span>

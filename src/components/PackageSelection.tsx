@@ -37,7 +37,7 @@ interface SocialLink {
 }
 
 interface PackageSelectionProps {
-  onSelect: (pkg: 'NORMAL' | 'VIP') => void;
+  onSelect: (pkg: 'NORMAL' | 'VIP' | 'LIFETIME') => void;
   formatRupiah: (n: number) => string;
   prices: { NORMAL: number; VIP: number };
   ads: Ad[];
@@ -127,11 +127,14 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
 
   const normalPkg = packages?.find(p => p.name === 'NORMAL');
   const vipPkg = packages?.find(p => p.name === 'VIP');
+  const lifetimePkg = packages?.find(p => p.name === 'LIFETIME');
 
   const normalPrice = normalPkg?.price_per_day ?? prices.NORMAL;
   const vipPrice = vipPkg?.price_per_day ?? prices.VIP;
+  const lifetimePrice = lifetimePkg?.price_per_day ?? 700000;
   const normalFeatures = normalPkg?.features ?? ['Semua fitur dasar', 'Update berkala', 'Support all executor'];
   const vipFeatures = vipPkg?.features ?? ['Semua fitur Normal', 'Premium scripts', 'Priority support', 'Early access features'];
+  const lifetimeFeatures = lifetimePkg?.features ?? ['Akses script PERMANEN tanpa jangka waktu', 'Akses langsung loadstring script', 'Tanpa loading screen saat execute', 'Semua fitur unlocked / bebas pakai', 'Role ADMIN eksklusif (Cyan)'];
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-3 md:p-4 bg-background relative overflow-hidden">
@@ -288,6 +291,66 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
             </div>
           </div>
         </div>
+
+        {/* LIFETIME ADMIN Package */}
+        {lifetimePkg?.is_active !== false && (
+          <div className="mt-6 md:mt-8">
+            <div
+              onClick={() => onSelect('LIFETIME')}
+              className="glass-card p-5 md:p-8 rounded-2xl cursor-pointer group hover:scale-[1.01] transition-all duration-300 border-2 border-cyan-500/30 hover:border-cyan-400/60 relative overflow-hidden"
+              style={{ boxShadow: '0 0 30px rgba(0, 255, 255, 0.08)' }}
+            >
+              {/* Glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-cyan-400/5 pointer-events-none" />
+              
+              <div className="absolute -top-2 md:-top-3 -right-2 md:-right-3 bg-cyan-500 text-black text-[10px] md:text-xs font-bold px-2 md:px-3 py-1 md:py-1.5 rounded-full font-display shadow-lg shadow-cyan-500/30 animate-pulse z-10">
+                LIFETIME
+              </div>
+
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-4 md:mb-6">
+                  <span className="text-cyan-400 font-display text-base md:text-lg font-bold">
+                    {lifetimePkg?.display_name ?? 'LIFETIME ADMIN'}
+                  </span>
+                  <span className="bg-cyan-500/10 text-cyan-400 text-[10px] md:text-xs font-bold px-2 md:px-3 py-1 rounded-full border border-cyan-500/30">
+                    ADMIN
+                  </span>
+                </div>
+                
+                <div className="mb-4 md:mb-6">
+                  <span className="text-3xl md:text-4xl font-display font-black text-cyan-400">
+                    {formatRupiah(lifetimePrice)}
+                  </span>
+                  <span className="text-muted-foreground text-sm md:text-lg ml-1">/sekali bayar</span>
+                </div>
+
+                <ul className="space-y-2 md:space-y-3 text-muted-foreground text-sm md:text-base mb-4">
+                  {lifetimeFeatures.map((feature, idx) => (
+                    <li key={idx} className="flex items-center gap-2 md:gap-3">
+                      <span className="text-cyan-400">✓</span>
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Notes */}
+                <div className="mt-4 p-3 rounded-lg bg-cyan-500/5 border border-cyan-500/20 text-xs text-muted-foreground space-y-1">
+                  <p className="text-cyan-400 font-semibold text-xs mb-1">⚠️ Ketentuan:</p>
+                  <p>• Jangan sharing loadstring & keysistem</p>
+                  <p>• Jangan memperjual belikan script</p>
+                  <p>• No refund</p>
+                  <p className="text-destructive font-semibold mt-1">Melanggar = blacklist seumur hidup</p>
+                </div>
+
+                <div className="mt-6 md:mt-8">
+                  <button className="w-full py-2.5 md:py-3 rounded-lg font-display font-bold text-sm md:text-base bg-cyan-500 text-black hover:bg-cyan-400 transition-colors shadow-lg shadow-cyan-500/20">
+                    Beli LIFETIME ADMIN
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Social Links */}
         {socialLinks.length > 0 && (

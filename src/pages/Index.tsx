@@ -49,7 +49,7 @@ const STORAGE_KEY = 'arexans_payment_state';
 
 interface StoredState {
   step: number;
-  selectedPkg: 'NORMAL' | 'VIP' | null;
+  selectedPkg: 'NORMAL' | 'VIP' | 'LIFETIME' | null;
   formData: { key: string; duration: string };
   paymentData: PaymentData | null;
   finalData: FinalData | null;
@@ -74,7 +74,7 @@ const getDeviceId = (): string => {
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [step, setStep] = useState(1);
-  const [selectedPkg, setSelectedPkg] = useState<'NORMAL' | 'VIP' | null>(null);
+  const [selectedPkg, setSelectedPkg] = useState<'NORMAL' | 'VIP' | 'LIFETIME' | null>(null);
   const [formData, setFormData] = useState({ key: '', duration: '' });
   const [paymentData, setPaymentData] = useState<PaymentData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -272,7 +272,7 @@ const Index = () => {
     };
   }, [step, paymentData, daysToAdd, checkPaymentStatus]);
 
-  const handlePackageSelect = (pkg: 'NORMAL' | 'VIP') => {
+  const handlePackageSelect = (pkg: 'NORMAL' | 'VIP' | 'LIFETIME') => {
     setSelectedPkg(pkg);
     setStep(2);
     setErrorMsg('');
@@ -291,22 +291,28 @@ const Index = () => {
   const handleFormSubmit = async (e: React.FormEvent, submittedPromoCode?: string, discountedAmount?: number) => {
     e.preventDefault();
     setErrorMsg('');
-    const durationData = parseDuration(formData.duration);
+    const isLifetime = selectedPkg === 'LIFETIME';
+    const durationData = isLifetime ? { days: 999999, text: 'LIFETIME (Permanen)' } : parseDuration(formData.duration);
 
     if (!formData.key || formData.key.length < 4) {
       setErrorMsg(formData.key ? "Key minimal 4 karakter." : "Mohon isi key.");
       return;
     }
-    if (!durationData) {
+    if (!isLifetime && !durationData) {
       setErrorMsg("Format durasi salah! Gunakan: '1h' = 1 hari, '1b' = 1 bulan, '1t' = 1 tahun");
       return;
     }
 
     setLoading(true);
-    const pricePerDay = selectedPkg === 'VIP' ? PRICES.VIP : PRICES.NORMAL;
-    const fullAmount = pricePerDay * durationData.days;
-    // Use discounted amount if provided, otherwise use full amount
-    const calculatedAmount = discountedAmount && discountedAmount > 0 ? discountedAmount : fullAmount;
+    let calculatedAmount: number;
+    if (isLifetime) {
+      // Use discounted or full lifetime price
+      calculatedAmount = discountedAmount && discountedAmount > 0 ? discountedAmount : 700000;
+    } else {
+      const pricePerDay = selectedPkg === 'VIP' ? PRICES.VIP : PRICES.NORMAL;
+      const fullAmount = pricePerDay * durationData!.days;
+      calculatedAmount = discountedAmount && discountedAmount > 0 ? discountedAmount : fullAmount;
+    }
 
     if (calculatedAmount < 1000) {
       setErrorMsg("Nominal terlalu kecil untuk QRIS (minimal Rp 1.000)");

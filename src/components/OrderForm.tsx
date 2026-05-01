@@ -23,7 +23,7 @@ interface Discount {
 }
 
 interface OrderFormProps {
-  selectedPkg: 'NORMAL' | 'VIP' | null;
+  selectedPkg: 'NORMAL' | 'VIP' | 'LIFETIME' | null;
   formData: { key: string; duration: string };
   setFormData: (data: { key: string; duration: string }) => void;
   onSubmit: (e: React.FormEvent, promoCode?: string, discountedAmount?: number) => void;
@@ -69,6 +69,7 @@ const OrderForm: FC<OrderFormProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<'qris' | 'xcoins'>('qris');
   const [xcoinsPin, setXcoinsPin] = useState('');
   const [xcoinsPayLoading, setXcoinsPayLoading] = useState(false);
+  const [lifetimePrice, setLifetimePrice] = useState(700000);
 
   useEffect(() => {
     const loadDiscounts = async () => {
@@ -94,8 +95,14 @@ const OrderForm: FC<OrderFormProps> = ({
       }
     };
 
+    const loadLifetimePrice = async () => {
+      const { data } = await supabase.from('packages').select('price_per_day').eq('name', 'LIFETIME').eq('is_active', true).maybeSingle();
+      if (data) setLifetimePrice(data.price_per_day);
+    };
+
     loadDiscounts();
     loadXcoinsSettings();
+    loadLifetimePrice();
   }, []);
 
   useEffect(() => {
@@ -123,9 +130,10 @@ const OrderForm: FC<OrderFormProps> = ({
     setFormData({ ...formData, key: generateRandomKey() });
   };
 
-  const durationData = parseDuration(formData.duration);
+  const isLifetime = selectedPkg === 'LIFETIME';
+  const durationData = isLifetime ? { days: 999999, text: 'LIFETIME (Permanen)' } : parseDuration(formData.duration);
   const pricePerDay = selectedPkg === 'VIP' ? prices.VIP : prices.NORMAL;
-  const estimatedTotal = durationData ? pricePerDay * durationData.days : 0;
+  const estimatedTotal = isLifetime ? (lifetimePrice || 700000) : (durationData ? pricePerDay * durationData.days : 0);
 
   // Find duration-based discount
   const findDurationDiscount = (): Discount | null => {
@@ -242,8 +250,8 @@ const OrderForm: FC<OrderFormProps> = ({
       toast({ title: '🎉 Pembayaran XCoins Berhasil!', description: `Key: ${formData.key}` });
       
       // Trigger payment success flow
-      const expiredDate = new Date();
-      expiredDate.setDate(expiredDate.getDate() + durationData.days);
+      const expiredDate = isLifetime ? new Date("2099-12-31T23:59:59.000Z") : new Date();
+      if (!isLifetime) expiredDate.setDate(expiredDate.getDate() + durationData.days);
       
       // Store final data and go to success
       const state = {
@@ -255,7 +263,7 @@ const OrderForm: FC<OrderFormProps> = ({
           key: formData.key,
           package: selectedPkg || 'NORMAL',
           expired: expiredDate.toISOString(),
-          expiredDisplay: expiredDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+          expiredDisplay: isLifetime ? 'Selamanya' : expiredDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
           days: durationData.days,
           transactionId: res.data.transactionId
         },
@@ -283,8 +291,8 @@ const OrderForm: FC<OrderFormProps> = ({
         </button>
 
         <div className="text-center mb-8 pt-8">
-          <div className={`inline-block px-4 py-2 rounded-full text-sm font-bold mb-4 ${selectedPkg === 'VIP' ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'}`}>
-            Paket {selectedPkg}
+          <div className={`inline-block px-4 py-2 rounded-full text-sm font-bold mb-4 ${selectedPkg === 'LIFETIME' ? 'bg-cyan-500/10 text-cyan-400' : selectedPkg === 'VIP' ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'}`}>
+            Paket {selectedPkg === 'LIFETIME' ? 'LIFETIME ADMIN' : selectedPkg}
           </div>
           <h2 className="text-2xl font-display font-bold text-foreground">Isi Data Pembelian</h2>
         </div>
@@ -316,6 +324,8 @@ const OrderForm: FC<OrderFormProps> = ({
             </Tabs>
           </div>
 
+          {/* Duration - hide for LIFETIME */}
+          {!isLifetime && (
           <div>
             <label className="block text-sm font-medium mb-2 text-foreground">Durasi</label>
             <div className="flex gap-2 mb-2 flex-wrap">
@@ -328,9 +338,34 @@ const OrderForm: FC<OrderFormProps> = ({
             <Input type="text" value={formData.duration} onChange={(e) => setFormData({ ...formData, duration: e.target.value })} placeholder="Atau ketik manual: 7h, 1b, 1t" className="bg-muted/50 border-border focus:border-primary" />
             <p className="text-xs text-muted-foreground mt-2">Format: angka + h (hari), b (bulan), t (tahun). Contoh: 30h, 1b, 1t</p>
           </div>
+          )}
+
+          {/* LIFETIME info */}
+          {isLifetime && (
+            <div className="bg-cyan-500/5 p-4 rounded-xl border border-cyan-500/20 animate-slide-in">
+              <div className="flex justify-between mb-2">
+                <span className="text-muted-foreground">Paket:</span>
+                <span className="font-bold text-cyan-400">LIFETIME ADMIN</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-muted-foreground">Durasi:</span>
+                <span className="font-medium text-foreground">Permanen (Selamanya)</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-muted-foreground">Role:</span>
+                <span className="font-bold text-cyan-400">ADMIN</span>
+              </div>
+              <div className="border-t border-cyan-500/20 pt-2 mt-2">
+                <div className="flex justify-between">
+                  <span className="font-semibold text-foreground">Total:</span>
+                  <span className="font-bold text-cyan-400">{formatRupiah(lifetimePrice)}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Promo Code Toggle */}
-          {!showPromoInput && !appliedPromo && (
+          {!isLifetime && !showPromoInput && !appliedPromo && (
             <button type="button" onClick={() => setShowPromoInput(true)} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors">
               <Tag className="w-4 h-4" />
               Punya kode promo?
@@ -452,7 +487,7 @@ const OrderForm: FC<OrderFormProps> = ({
             </div>
           )}
 
-          <Button type="submit" disabled={loading || xcoinsPayLoading || ((paymentMethod === 'xcoins' || xcoinsOnly) && !xcoinsUser)} className={`w-full py-6 font-display font-bold text-lg ${selectedPkg === 'VIP' ? 'btn-secondary' : 'btn-primary'}`}>
+          <Button type="submit" disabled={loading || xcoinsPayLoading || ((paymentMethod === 'xcoins' || xcoinsOnly) && !xcoinsUser)} className={`w-full py-6 font-display font-bold text-lg ${selectedPkg === 'LIFETIME' ? 'bg-cyan-500 hover:bg-cyan-400 text-black' : selectedPkg === 'VIP' ? 'btn-secondary' : 'btn-primary'}`}>
             {loading || xcoinsPayLoading ? (
               <span className="flex items-center gap-2"><span className="animate-spin">⟳</span> Memproses...</span>
             ) : paymentMethod === 'xcoins' || xcoinsOnly ? (

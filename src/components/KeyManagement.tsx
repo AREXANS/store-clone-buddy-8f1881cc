@@ -436,6 +436,8 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
 
   const getRoleColor = (role: string) => {
     switch (role.toLowerCase()) {
+      case 'admin':
+        return 'bg-cyan-500/20 text-cyan-400';
       case 'developer':
         return 'bg-purple-500/20 text-purple-400';
       case 'vip':
@@ -932,6 +934,7 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
                   onChange={(e) => setEditingKey({ ...editingKey, role: e.target.value })}
                   className="w-full p-2 rounded-md bg-background/50 border border-border"
                 >
+                  <option value="ADMIN">ADMIN</option>
                   <option value="Developer">Developer</option>
                   <option value="VIP">VIP</option>
                   <option value="NORMAL">NORMAL</option>
