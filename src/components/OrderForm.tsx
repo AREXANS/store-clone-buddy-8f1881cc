@@ -324,6 +324,8 @@ const OrderForm: FC<OrderFormProps> = ({
             </Tabs>
           </div>
 
+          {/* Duration - hide for LIFETIME */}
+          {!isLifetime && (
           <div>
             <label className="block text-sm font-medium mb-2 text-foreground">Durasi</label>
             <div className="flex gap-2 mb-2 flex-wrap">
@@ -336,6 +338,31 @@ const OrderForm: FC<OrderFormProps> = ({
             <Input type="text" value={formData.duration} onChange={(e) => setFormData({ ...formData, duration: e.target.value })} placeholder="Atau ketik manual: 7h, 1b, 1t" className="bg-muted/50 border-border focus:border-primary" />
             <p className="text-xs text-muted-foreground mt-2">Format: angka + h (hari), b (bulan), t (tahun). Contoh: 30h, 1b, 1t</p>
           </div>
+          )}
+
+          {/* LIFETIME info */}
+          {isLifetime && (
+            <div className="bg-cyan-500/5 p-4 rounded-xl border border-cyan-500/20 animate-slide-in">
+              <div className="flex justify-between mb-2">
+                <span className="text-muted-foreground">Paket:</span>
+                <span className="font-bold text-cyan-400">LIFETIME ADMIN</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-muted-foreground">Durasi:</span>
+                <span className="font-medium text-foreground">Permanen (Selamanya)</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-muted-foreground">Role:</span>
+                <span className="font-bold text-cyan-400">ADMIN</span>
+              </div>
+              <div className="border-t border-cyan-500/20 pt-2 mt-2">
+                <div className="flex justify-between">
+                  <span className="font-semibold text-foreground">Total:</span>
+                  <span className="font-bold text-cyan-400">{formatRupiah(lifetimePrice)}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Promo Code Toggle */}
           {!showPromoInput && !appliedPromo && (
