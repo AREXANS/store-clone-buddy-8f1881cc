@@ -48,11 +48,19 @@ serve(async (req) => {
     if (keysData) { try { keys = JSON.parse(keysData.value || "[]"); } catch { keys = []; } }
 
     const existingKeyIndex = keys.findIndex((k: any) => k.key === licenseKey);
+    const isLifetime = transaction.package_name === "LIFETIME";
     let newExpiry: Date;
 
-    // If status is "paid", the key was already created/extended by check-payment or payment-webhook.
-    // Just mark as claimed without modifying the key again.
-    if (transaction.status === "paid" && existingKeyIndex >= 0 && !forceRecreate) {
+    if (isLifetime) {
+      // LIFETIME: permanent expiry, role = ADMIN
+      newExpiry = new Date("2099-12-31T23:59:59.000Z");
+      if (existingKeyIndex >= 0) {
+        keys[existingKeyIndex] = { ...keys[existingKeyIndex], expired: newExpiry.toISOString(), role: "ADMIN" };
+      } else {
+        keys.push({ key: licenseKey, expired: newExpiry.toISOString(), created: now.toISOString(), role: "ADMIN", maxHwid: 1, frozenUntil: null, frozenRemainingMs: null, hwids: [], robloxUsers: [] });
+      }
+      await supabase.from("app_settings").update({ value: JSON.stringify(keys), updated_at: now.toISOString() }).eq("key", "license_keys");
+    } else if (transaction.status === "paid" && existingKeyIndex >= 0 && !forceRecreate) {
       // Key already exists and was already extended by payment flow - don't extend again
       newExpiry = new Date(keys[existingKeyIndex].expired);
       console.log(`Key ${licenseKey} already extended by payment flow, skipping double extension`);
