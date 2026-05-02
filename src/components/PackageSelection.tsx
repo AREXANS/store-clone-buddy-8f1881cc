@@ -221,15 +221,17 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
         {/* Package Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
           {/* Normal Package */}
+          {normalPkg?.is_active !== false && (
           <div
             onClick={() => onSelect('NORMAL')}
-            className="glass-card p-5 md:p-8 rounded-2xl cursor-pointer group hover:scale-[1.02] transition-all duration-300 border-2 border-transparent hover:border-primary/50 hover:glow-cyan"
+            className="glass-card p-5 md:p-8 rounded-2xl cursor-pointer group hover:scale-[1.02] transition-all duration-300 border-2 border-transparent hover:border-green-500/50"
+            style={{ boxShadow: '0 0 20px rgba(34, 197, 94, 0.05)' }}
           >
             <div className="flex items-center justify-between mb-4 md:mb-6">
-              <span className="text-primary font-display text-base md:text-lg font-bold">
+              <span className="text-green-400 font-display text-base md:text-lg font-bold">
                 {normalPkg?.display_name ?? 'NORMAL'}
               </span>
-              <span className="bg-primary/10 text-primary text-[10px] md:text-xs font-bold px-2 md:px-3 py-1 rounded-full">
+              <span className="bg-green-500/10 text-green-400 text-[10px] md:text-xs font-bold px-2 md:px-3 py-1 rounded-full">
                 BASIC
               </span>
             </div>
@@ -242,19 +244,21 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
             <ul className="space-y-2 md:space-y-3 text-muted-foreground text-sm md:text-base">
               {normalFeatures.map((feature, idx) => (
                 <li key={idx} className="flex items-center gap-2 md:gap-3">
-                  <span className="text-primary">✓</span>
+                  <span className="text-green-400">✓</span>
                   {feature}
                 </li>
               ))}
             </ul>
             <div className="mt-6 md:mt-8">
-              <button className="btn-primary w-full text-primary-foreground font-display font-bold text-sm md:text-base py-2.5 md:py-3">
+              <button className="w-full py-2.5 md:py-3 rounded-lg font-display font-bold text-sm md:text-base bg-green-500 text-black hover:bg-green-400 transition-colors">
                 Pilih Normal
               </button>
             </div>
           </div>
+          )}
 
           {/* VIP Package */}
+          {vipPkg?.is_active !== false && (
           <div
             onClick={() => onSelect('VIP')}
             className="glass-card p-5 md:p-8 rounded-2xl cursor-pointer group hover:scale-[1.02] transition-all duration-300 border-2 border-transparent hover:border-secondary/50 hover:glow-purple relative"
@@ -290,6 +294,7 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
               </button>
             </div>
           </div>
+          )}
         </div>
 
         {/* LIFETIME ADMIN Package */}
