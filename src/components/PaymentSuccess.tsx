@@ -159,9 +159,11 @@ const PaymentSuccess: FC<PaymentSuccessProps> = ({ finalData, onCopy }) => {
         </div>
 
         {/* Script Section */}
-        <div className="bg-muted/50 p-5 rounded-xl border border-border mb-6">
+        <div className={`p-5 rounded-xl border mb-6 ${isAdmin ? 'bg-cyan-500/5 border-cyan-500/20' : 'bg-muted/50 border-border'}`}>
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium text-foreground">Copy script ini ke executor:</p>
+            <p className={`text-sm font-medium ${isAdmin ? 'text-cyan-400' : 'text-foreground'}`}>
+              {isAdmin ? '🔑 Admin Loadstring (Eksklusif):' : 'Copy script ini ke executor:'}
+            </p>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setShowScript(!showScript)}
@@ -172,11 +174,11 @@ const PaymentSuccess: FC<PaymentSuccessProps> = ({ finalData, onCopy }) => {
             </div>
           </div>
           <div className="bg-background p-3 rounded-lg border border-border flex items-center gap-2">
-            <code className="text-xs text-primary flex-1 font-mono break-all">
-              {showScript ? scriptText : censorText(scriptText)}
+            <code className={`text-xs flex-1 font-mono break-all ${isAdmin ? 'text-cyan-400' : 'text-primary'}`}>
+              {showScript ? displayScript : censorText(displayScript)}
             </code>
             <button
-              onClick={() => onCopy(scriptText)}
+              onClick={() => onCopy(displayScript)}
               className="text-primary hover:text-primary/80 transition-colors shrink-0 p-1 rounded hover:bg-primary/10"
             >
               <Copy className="w-4 h-4" />
