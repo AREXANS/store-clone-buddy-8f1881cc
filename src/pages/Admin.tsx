@@ -819,12 +819,16 @@ const Admin = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label>Name (ID)</Label>
-                        <Input
+                        <select
                           value={editingPackage.name}
-                          onChange={e => setEditingPackage({ ...editingPackage, name: e.target.value.toUpperCase() })}
-                          placeholder="NORMAL"
-                          className="bg-background/50"
-                        />
+                          onChange={e => setEditingPackage({ ...editingPackage, name: e.target.value })}
+                          className="w-full rounded-md border border-input bg-background/50 px-3 py-2 text-sm"
+                        >
+                          <option value="">-- Pilih Paket --</option>
+                          <option value="NORMAL">NORMAL</option>
+                          <option value="VIP">VIP</option>
+                          <option value="LIFETIME">LIFETIME</option>
+                        </select>
                       </div>
                       <div>
                         <Label>Display Name</Label>
@@ -897,15 +901,23 @@ const Admin = () => {
                 {packages.map(pkg => (
                   <Card key={pkg.id} className="glass-card">
                     <CardContent className="p-4 flex items-center justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold">{pkg.display_name}</span>
-                          <span className="text-xs text-muted-foreground">({pkg.name})</span>
-                          {!pkg.is_active && <span className="text-xs text-destructive">[Inactive]</span>}
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          checked={pkg.is_active}
+                          onCheckedChange={async (checked) => {
+                            await savePackage({ ...pkg, is_active: checked });
+                          }}
+                        />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-semibold ${pkg.name === 'LIFETIME' ? 'text-cyan-400' : pkg.name === 'VIP' ? 'text-secondary' : 'text-green-400'}`}>{pkg.display_name}</span>
+                            <span className="text-xs text-muted-foreground">({pkg.name})</span>
+                            {!pkg.is_active && <span className="text-xs text-destructive">[Hidden]</span>}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {pkg.name === 'LIFETIME' ? formatRupiah(pkg.price_per_day) + ' (sekali bayar)' : formatRupiah(pkg.price_per_day) + '/hari'}
+                          </p>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {formatRupiah(pkg.price_per_day)}/hari
-                        </p>
                       </div>
                       <div className="flex gap-2">
                         <Button variant="ghost" size="sm" onClick={() => setEditingPackage(pkg)}>
