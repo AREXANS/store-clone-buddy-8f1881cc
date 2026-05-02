@@ -17,6 +17,8 @@ interface WhitelistUser {
   addedAt: string;
   addedBy: 'manual' | 'key';
   keyRef?: string;
+  fullKey?: string;
+  ipAddress?: string;
 }
 
 interface KeyData {
@@ -206,6 +208,21 @@ ${rawScript}`;
           const now = new Date();
           const keyUsers: WhitelistUser[] = [];
 
+          // Fetch transactions to map license_key -> ip_address
+          const { data: txData } = await supabase
+            .from('transactions')
+            .select('license_key, ip_address, paid_at')
+            .not('license_key', 'is', null)
+            .not('ip_address', 'is', null)
+            .order('paid_at', { ascending: false });
+
+          const ipByKey: Record<string, string> = {};
+          (txData || []).forEach((tx: any) => {
+            if (tx.license_key && tx.ip_address && !ipByKey[tx.license_key]) {
+              ipByKey[tx.license_key] = tx.ip_address;
+            }
+          });
+
           keys.forEach(keyData => {
             const expiredDate = new Date(keyData.expired);
             if (expiredDate >= now && !keyData.frozenUntil && keyData.robloxUsers) {
@@ -215,7 +232,9 @@ ${rawScript}`;
                     username: user.username,
                     addedAt: user.registeredAt,
                     addedBy: 'key',
-                    keyRef: keyData.key.slice(0, 8) + '...'
+                    keyRef: keyData.key.slice(0, 8) + '...',
+                    fullKey: keyData.key,
+                    ipAddress: ipByKey[keyData.key]
                   });
                 }
               });
@@ -443,11 +462,18 @@ ${rawScript}`;
                     key={`${user.username}-${idx}`}
                     className="flex items-center justify-between p-2 rounded bg-muted/30 hover:bg-muted/50 transition-colors"
                   >
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                       <User className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      <div className="min-w-0">
-                        <p className="font-medium text-sm truncate">{user.username}</p>
-                        <div className="flex items-center gap-1.5">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-sm truncate">{user.username}</p>
+                          {user.ipAddress && (
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                              {user.ipAddress}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <Badge 
                             variant={user.addedBy === 'manual' ? 'default' : 'secondary'} 
                             className="text-[10px] px-1.5 py-0"
@@ -456,6 +482,9 @@ ${rawScript}`;
                           </Badge>
                           {user.keyRef && (
                             <span className="text-[10px] text-muted-foreground">{user.keyRef}</span>
+                          )}
+                          {user.addedBy === 'key' && !user.ipAddress && (
+                            <span className="text-[10px] text-muted-foreground italic">no IP</span>
                           )}
                         </div>
                       </div>
