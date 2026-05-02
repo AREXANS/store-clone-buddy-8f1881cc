@@ -17,6 +17,8 @@ interface WhitelistUser {
   addedAt: string;
   addedBy: 'manual' | 'key';
   keyRef?: string;
+  fullKey?: string;
+  ipAddress?: string;
 }
 
 interface KeyData {
