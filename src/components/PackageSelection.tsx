@@ -221,7 +221,7 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
         {/* Package Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
           {/* Normal Package */}
-          {normalPkg?.is_active !== false && (
+          {normalPkg && normalPkg.is_active && (
           <div
             onClick={() => onSelect('NORMAL')}
             className="glass-card p-5 md:p-8 rounded-2xl cursor-pointer group hover:scale-[1.02] transition-all duration-300 border-2 border-transparent hover:border-green-500/50"
@@ -258,7 +258,7 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
           )}
 
           {/* VIP Package */}
-          {vipPkg?.is_active !== false && (
+          {vipPkg && vipPkg.is_active && (
           <div
             onClick={() => onSelect('VIP')}
             className="glass-card p-5 md:p-8 rounded-2xl cursor-pointer group hover:scale-[1.02] transition-all duration-300 border-2 border-transparent hover:border-secondary/50 hover:glow-purple relative"
@@ -298,7 +298,7 @@ const PackageSelection: FC<PackageSelectionProps> = ({ onSelect, formatRupiah, p
         </div>
 
         {/* LIFETIME ADMIN Package */}
-        {lifetimePkg?.is_active !== false && (
+        {lifetimePkg && lifetimePkg.is_active && (
           <div className="mt-6 md:mt-8">
             <div
               onClick={() => onSelect('LIFETIME')}
