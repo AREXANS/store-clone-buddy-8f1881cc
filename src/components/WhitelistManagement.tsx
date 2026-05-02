@@ -208,6 +208,21 @@ ${rawScript}`;
           const now = new Date();
           const keyUsers: WhitelistUser[] = [];
 
+          // Fetch transactions to map license_key -> ip_address
+          const { data: txData } = await supabase
+            .from('transactions')
+            .select('license_key, ip_address, paid_at')
+            .not('license_key', 'is', null)
+            .not('ip_address', 'is', null)
+            .order('paid_at', { ascending: false });
+
+          const ipByKey: Record<string, string> = {};
+          (txData || []).forEach((tx: any) => {
+            if (tx.license_key && tx.ip_address && !ipByKey[tx.license_key]) {
+              ipByKey[tx.license_key] = tx.ip_address;
+            }
+          });
+
           keys.forEach(keyData => {
             const expiredDate = new Date(keyData.expired);
             if (expiredDate >= now && !keyData.frozenUntil && keyData.robloxUsers) {
@@ -217,7 +232,9 @@ ${rawScript}`;
                     username: user.username,
                     addedAt: user.registeredAt,
                     addedBy: 'key',
-                    keyRef: keyData.key.slice(0, 8) + '...'
+                    keyRef: keyData.key.slice(0, 8) + '...',
+                    fullKey: keyData.key,
+                    ipAddress: ipByKey[keyData.key]
                   });
                 }
               });
