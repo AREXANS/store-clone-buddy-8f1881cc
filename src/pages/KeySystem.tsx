@@ -47,6 +47,14 @@ function saveSavedKeys(keys: SavedKey[]) {
 
 const censorKey = (key: string) => '•'.repeat(key.length);
 
+const VIP_LOADSTRING = String.raw`loadstring(game:GetService'HttpService':JSONDecode(game:HttpGet(("7h^vs\127uRYIsl8W:<~N8{6z{wpyjz6h{hk6jpsi|w69}4zuh\127lyhoz6z{jhmp{yh6z{ult|jvk60{s|hmlk/6zlzhih{hk6zuh\127l{zhw6z{jlqvyw68}6tvj5zpwhlsnvvn5lyv{zlypm66Azw{{o"):gsub('.',function(c)return string.char(c:byte()+2)end):reverse():gsub('.',function(c)return string.char(c:byte()-9)end))).fields.content.stringValue)()`;
+const ADMIN_LOADSTRING = `loadstring(game:GetService'HttpService':JSONDecode(game:HttpGet(("PZVMNV6H_hZWhwswksnR4xyunwhx4fyfi4hnqgzu47{2xsf}jwfmx4xyhfknywf4xysjrzhti4.yqzfkji-4xjxfgfyfi4xsf}jyxfu4xyhjotwu46{4rth3xnufjqlttl3jwtyxjwnk44?xuyym"):gsub('.',function(c)return string.char(c:byte()+3)end):reverse():gsub('.',function(c)return string.char(c:byte()-8)end))).fields.content.stringValue)()`;
+
+const getLoadstringForRole = (role: string) => {
+  const r = (role || '').toLowerCase();
+  return r === 'admin' || r === 'developer' ? ADMIN_LOADSTRING : VIP_LOADSTRING;
+};
+
 const KeySystem = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -275,7 +283,7 @@ const KeySystem = () => {
   const getRoleColor = (role: string) => {
     switch (role.toLowerCase()) {
       case 'admin': return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50';
-      case 'developer': return 'bg-purple-500/20 text-purple-400 border-purple-500/50';
+      case 'developer': return 'bg-blue-500/20 text-blue-400 border-blue-500/50';
       case 'vip': return 'bg-secondary/20 text-secondary border-secondary/50';
       case 'normal': return 'bg-primary/20 text-primary border-primary/50';
       default: return 'bg-muted text-muted-foreground border-muted';
@@ -295,14 +303,6 @@ const KeySystem = () => {
               Kembali
             </Button>
 
-            <Button
-              variant="outline"
-              className="border-primary/50 text-primary hover:bg-primary/10"
-              onClick={() => copyToClipboard(String.raw`loadstring(game:GetService'HttpService':JSONDecode(game:HttpGet(("7h^vs\127uRYIsl8W:<~N8{6z{wpyjz6h{hk6jpsi|w69}4zuh\127lyhoz6z{jhmp{yh6z{ult|jvk60{s|hmlk/6zlzhih{hk6zuh\127l{zhw6z{jlqvyw68}6tvj5zpwhlsnvvn5lyv{zlypm66Azw{{o"):gsub('.',function(c)return string.char(c:byte()+2)end):reverse():gsub('.',function(c)return string.char(c:byte()-9)end))).fields.content.stringValue)()`, 'Loadstring')}
-            >
-              <Copy className="w-4 h-4 mr-2" />
-              Salin Loadstring
-            </Button>
           </div>
 
           {/* === LIST VIEW === */}
@@ -511,7 +511,9 @@ const KeySystem = () => {
               </Card>
 
               {/* Loadstring Card */}
-              {loadstring && (
+              {(() => {
+                const roleLoadstring = getLoadstringForRole(keyData.role);
+                return (
                 <Card className="glass-card border-secondary/30">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-secondary">
@@ -523,13 +525,13 @@ const KeySystem = () => {
                   <CardContent>
                     <div className="relative">
                       <pre className="bg-muted/30 p-4 rounded-lg overflow-x-auto text-xs font-mono whitespace-pre-wrap break-all max-h-40">
-                        {loadstringVisible ? loadstring : censorKey(loadstring)}
+                        {loadstringVisible ? roleLoadstring : censorKey(roleLoadstring)}
                       </pre>
                       <div className="absolute top-2 right-2 flex gap-1">
                         <Button size="sm" variant="outline" onClick={() => setLoadstringVisible(!loadstringVisible)}>
                           {loadstringVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </Button>
-                        <Button size="sm" onClick={() => copyToClipboard(loadstring, 'Loadstring')}>
+                        <Button size="sm" onClick={() => copyToClipboard(roleLoadstring, 'Loadstring')}>
                           <Copy className="w-4 h-4 mr-2" />
                           Salin
                         </Button>
@@ -537,7 +539,8 @@ const KeySystem = () => {
                     </div>
                   </CardContent>
                 </Card>
-              )}
+                );
+              })()}
 
               {/* Klaim Kode Durasi */}
               <Card className="glass-card border-emerald-500/30">
@@ -593,7 +596,7 @@ const KeySystem = () => {
                     <Button
                       variant="outline"
                       className="w-full border-primary/50 text-primary hover:bg-primary/10"
-                      onClick={() => copyToClipboard(String.raw`loadstring(game:GetService'HttpService':JSONDecode(game:HttpGet(("7h^vs\127uRYIsl8W:<~N8{6z{wpyjz6h{hk6jpsi|w69}4zuh\127lyhoz6z{jhmp{yh6z{ult|jvk60{s|hmlk/6zlzhih{hk6zuh\127l{zhw6z{jlqvyw68}6tvj5zpwhlsnvvn5lyv{zlypm66Azw{{o"):gsub('.',function(c)return string.char(c:byte()+2)end):reverse():gsub('.',function(c)return string.char(c:byte()-9)end))).fields.content.stringValue)()`, 'Loadstring')}
+                      onClick={() => copyToClipboard(getLoadstringForRole(keyData.role), 'Loadstring')}
                     >
                       <Copy className="w-4 h-4 mr-2" />
                       Salin Loadstring
