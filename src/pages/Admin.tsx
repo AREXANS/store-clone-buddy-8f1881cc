@@ -147,6 +147,74 @@ const Admin = () => {
 
   // XCoins users state
   const [xcoinsUsers, setXcoinsUsers] = useState<{id: string; phone: string; display_name: string | null; balance: number; is_active: boolean; created_at: string}[]>([]);
+  const [keysSubTab, setKeysSubTab] = useState<'keysystem' | 'xcoins'>('keysystem');
+  const [xcoinsSearch, setXcoinsSearch] = useState('');
+  const [editingXcoinsUser, setEditingXcoinsUser] = useState<{id: string; phone: string; display_name: string | null; balance: number; is_active: boolean} | null>(null);
+  const [adjustAmount, setAdjustAmount] = useState<string>('');
+
+  const adjustXcoinsBalance = async (user: {id: string; balance: number; display_name: string | null}, delta: number) => {
+    const newBalance = Math.max(0, user.balance + delta);
+    const { error } = await supabase.from('xcoins_balances').update({ balance: newBalance, updated_at: new Date().toISOString() }).eq('id', user.id);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      return;
+    }
+    await supabase.from('xcoins_transactions').insert({
+      user_id: user.id,
+      type: delta >= 0 ? 'admin_credit' : 'admin_debit',
+      amount: delta,
+      balance_after: newBalance,
+      description: `Admin ${delta >= 0 ? 'menambah' : 'mengurangi'} saldo (${Math.abs(delta)} XCoins)`,
+    });
+    toast({ title: 'Berhasil', description: `Saldo ${user.display_name || 'user'} sekarang ${newBalance}` });
+    loadAllData();
+  };
+
+  const saveXcoinsUser = async () => {
+    if (!editingXcoinsUser) return;
+    const { error } = await supabase.from('xcoins_balances').update({
+      display_name: editingXcoinsUser.display_name,
+      phone: editingXcoinsUser.phone,
+      balance: editingXcoinsUser.balance,
+      is_active: editingXcoinsUser.is_active,
+      updated_at: new Date().toISOString(),
+    }).eq('id', editingXcoinsUser.id);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Berhasil', description: 'Data pengguna diupdate' });
+    setEditingXcoinsUser(null);
+    loadAllData();
+  };
+
+  const toggleBlockXcoinsUser = async (user: {id: string; phone: string; is_active: boolean}) => {
+    const { error } = await supabase.from('xcoins_balances').update({ is_active: !user.is_active, updated_at: new Date().toISOString() }).eq('id', user.id);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Berhasil', description: `Pengguna ${user.phone} ${!user.is_active ? 'diaktifkan' : 'diblokir'}` });
+    loadAllData();
+  };
+
+  const deleteXcoinsUser = async (id: string, phone: string) => {
+    if (!confirm(`Yakin hapus pengguna XCoins ${phone}? Aksi ini tidak bisa dibatalkan.`)) return;
+    await supabase.from('xcoins_transactions').delete().eq('user_id', id);
+    const { error } = await supabase.from('xcoins_balances').delete().eq('id', id);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Berhasil', description: `Pengguna ${phone} dihapus` });
+    loadAllData();
+  };
+
+  const filteredXcoinsUsers = xcoinsUsers.filter(u => {
+    if (!xcoinsSearch.trim()) return true;
+    const q = xcoinsSearch.toLowerCase();
+    return u.phone.toLowerCase().includes(q) || (u.display_name || '').toLowerCase().includes(q);
+  });
 
   // IP Geolocation state
   const [geoIp, setGeoIp] = useState<string | null>(null);
