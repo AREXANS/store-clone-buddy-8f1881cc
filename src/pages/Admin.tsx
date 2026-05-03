@@ -1008,75 +1008,142 @@ const Admin = () => {
 
             {/* Keys Tab */}
             <TabsContent value="keys" className="space-y-6">
-              <KeyManagement />
-              
-              {/* XCoins Registered Users */}
-              <Card className="glass-card">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Coins className="w-5 h-5 text-primary" />
-                    Pengguna XCoins Terdaftar
-                    <span className="text-sm font-normal text-muted-foreground">({xcoinsUsers.length})</span>
-                  </CardTitle>
-                  <CardDescription>Daftar semua pengguna XCoins yang terdaftar di sistem</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {xcoinsUsers.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-6">Belum ada pengguna XCoins terdaftar</p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-border">
-                            <th className="text-left p-3">Nama</th>
-                            <th className="text-left p-3">No. WhatsApp</th>
-                            <th className="text-left p-3">Saldo</th>
-                            <th className="text-left p-3">Status</th>
-                            <th className="text-left p-3">IP Terakhir</th>
-                            <th className="text-left p-3">Terdaftar</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {xcoinsUsers.map(user => {
-                            // Find last transaction IP for this user's phone
-                            const userTx = transactions.find(tx => tx.customer_whatsapp === user.phone || tx.customer_whatsapp === user.phone.replace(/^62/, '0'));
-                            const lastIp = userTx?.ip_address;
-                            return (
-                              <tr key={user.id} className="border-b border-border/50 hover:bg-muted/20">
-                                <td className="p-3 font-medium">{user.display_name || '-'}</td>
-                                <td className="p-3">
-                                  <button onClick={() => { navigator.clipboard.writeText(user.phone); toast({ title: 'Copied!', description: 'Nomor disalin' }); }} className="font-mono text-xs hover:text-primary cursor-pointer underline decoration-dotted">
-                                    {user.phone}
-                                  </button>
-                                </td>
-                                <td className="p-3 font-mono">{new Intl.NumberFormat('id-ID').format(user.balance)}</td>
-                                <td className="p-3">
-                                  <span className={`px-2 py-1 rounded text-xs ${user.is_active ? 'bg-primary/20 text-primary' : 'bg-destructive/20 text-destructive'}`}>
-                                    {user.is_active ? 'Aktif' : 'Nonaktif'}
-                                  </span>
-                                </td>
-                                <td className="p-3">
-                                  {lastIp ? (
-                                    <div className="flex items-center gap-1">
-                                      <span className="font-mono text-xs">{lastIp}</span>
-                                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Lacak lokasi" onClick={() => lookupIpGeolocation(lastIp)}>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={keysSubTab === 'keysystem' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setKeysSubTab('keysystem')}
+                  className="gap-1.5"
+                >
+                  <Key className="w-4 h-4" />
+                  Key System
+                </Button>
+                <Button
+                  variant={keysSubTab === 'xcoins' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setKeysSubTab('xcoins')}
+                  className="gap-1.5"
+                >
+                  <Coins className="w-4 h-4" />
+                  XCoins ({xcoinsUsers.length})
+                </Button>
+              </div>
+
+              {keysSubTab === 'keysystem' && <KeyManagement />}
+
+              {keysSubTab === 'xcoins' && (
+                <Card className="glass-card">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Coins className="w-5 h-5 text-primary" />
+                      Manajemen Pengguna XCoins
+                      <span className="text-sm font-normal text-muted-foreground">({filteredXcoinsUsers.length}/{xcoinsUsers.length})</span>
+                    </CardTitle>
+                    <CardDescription>Tambah/kurangi/edit saldo, blokir & hapus pengguna XCoins</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Input
+                      placeholder="Cari nomor / nama..."
+                      value={xcoinsSearch}
+                      onChange={(e) => setXcoinsSearch(e.target.value)}
+                    />
+
+                    {filteredXcoinsUsers.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">Belum ada pengguna XCoins</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {filteredXcoinsUsers.map(user => {
+                          const userTx = transactions.find(tx => tx.customer_whatsapp === user.phone || tx.customer_whatsapp === user.phone.replace(/^62/, '0'));
+                          const lastIp = userTx?.ip_address;
+                          return (
+                            <div key={user.id} className="p-3 rounded-lg border border-border bg-muted/10 space-y-2">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="min-w-0">
+                                  <div className="font-medium flex items-center gap-2 flex-wrap">
+                                    {user.display_name || '-'}
+                                    <span className={`px-2 py-0.5 rounded text-[10px] ${user.is_active ? 'bg-primary/20 text-primary' : 'bg-destructive/20 text-destructive'}`}>
+                                      {user.is_active ? 'Aktif' : 'Diblokir'}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground font-mono">{user.phone}</div>
+                                  {lastIp && (
+                                    <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                                      IP: <span className="font-mono">{lastIp}</span>
+                                      <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => lookupIpGeolocation(lastIp)}>
                                         <MapPin className="w-3 h-3" />
                                       </Button>
                                     </div>
-                                  ) : (
-                                    <span className="text-xs text-muted-foreground">-</span>
                                   )}
-                                </td>
-                                <td className="p-3 text-xs text-muted-foreground">{new Date(user.created_at).toLocaleDateString('id-ID')}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-xs text-muted-foreground">Saldo</div>
+                                  <div className="font-mono font-bold text-primary">{new Intl.NumberFormat('id-ID').format(user.balance)}</div>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap gap-1.5">
+                                <Button size="sm" variant="outline" onClick={() => adjustXcoinsBalance(user, 1000)}>+1k</Button>
+                                <Button size="sm" variant="outline" onClick={() => adjustXcoinsBalance(user, 5000)}>+5k</Button>
+                                <Button size="sm" variant="outline" onClick={() => adjustXcoinsBalance(user, 10000)}>+10k</Button>
+                                <Button size="sm" variant="outline" onClick={() => {
+                                  const v = prompt('Jumlah penambahan (XCoins):', '0');
+                                  const n = Number(v);
+                                  if (Number.isFinite(n) && n > 0) adjustXcoinsBalance(user, n);
+                                }}>+ Custom</Button>
+                                <Button size="sm" variant="outline" onClick={() => {
+                                  const v = prompt('Jumlah pengurangan (XCoins):', '0');
+                                  const n = Number(v);
+                                  if (Number.isFinite(n) && n > 0) adjustXcoinsBalance(user, -n);
+                                }}>- Kurang</Button>
+                                <Button size="sm" variant="secondary" onClick={() => setEditingXcoinsUser({ id: user.id, phone: user.phone, display_name: user.display_name, balance: user.balance, is_active: user.is_active })}>
+                                  <Edit2 className="w-3 h-3 mr-1" /> Edit
+                                </Button>
+                                <Button size="sm" variant={user.is_active ? 'destructive' : 'default'} onClick={() => toggleBlockXcoinsUser(user)}>
+                                  {user.is_active ? <><ShieldX className="w-3 h-3 mr-1" />Blokir</> : <><Shield className="w-3 h-3 mr-1" />Unblok</>}
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={() => deleteXcoinsUser(user.id, user.phone)}>
+                                  <Trash2 className="w-3 h-3 mr-1" /> Hapus
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Edit XCoins user modal */}
+              {editingXcoinsUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setEditingXcoinsUser(null)}>
+                  <div className="bg-card border border-border rounded-2xl w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+                    <div className="p-6 space-y-4">
+                      <h3 className="text-lg font-display font-bold">Edit Pengguna XCoins</h3>
+                      <div className="space-y-2">
+                        <Label>Nama Tampilan</Label>
+                        <Input value={editingXcoinsUser.display_name || ''} onChange={(e) => setEditingXcoinsUser({ ...editingXcoinsUser, display_name: e.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>No. WhatsApp</Label>
+                        <Input value={editingXcoinsUser.phone} onChange={(e) => setEditingXcoinsUser({ ...editingXcoinsUser, phone: e.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Saldo (XCoins)</Label>
+                        <Input type="number" value={editingXcoinsUser.balance} onChange={(e) => setEditingXcoinsUser({ ...editingXcoinsUser, balance: Number(e.target.value) || 0 })} />
+                      </div>
+                      <div className="flex items-center justify-between p-2 border border-border rounded-lg">
+                        <Label>Aktif</Label>
+                        <Switch checked={editingXcoinsUser.is_active} onCheckedChange={(c) => setEditingXcoinsUser({ ...editingXcoinsUser, is_active: c })} />
+                      </div>
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="outline" onClick={() => setEditingXcoinsUser(null)}>Batal</Button>
+                        <Button onClick={saveXcoinsUser}><Save className="w-4 h-4 mr-1" />Simpan</Button>
+                      </div>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </div>
+                </div>
+              )}
             </TabsContent>
 
             {/* API Documentation Tab */}
