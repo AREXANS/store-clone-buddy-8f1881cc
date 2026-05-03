@@ -511,7 +511,9 @@ const KeySystem = () => {
               </Card>
 
               {/* Loadstring Card */}
-              {loadstring && (
+              {(() => {
+                const roleLoadstring = getLoadstringForRole(keyData.role);
+                return (
                 <Card className="glass-card border-secondary/30">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-secondary">
@@ -523,13 +525,13 @@ const KeySystem = () => {
                   <CardContent>
                     <div className="relative">
                       <pre className="bg-muted/30 p-4 rounded-lg overflow-x-auto text-xs font-mono whitespace-pre-wrap break-all max-h-40">
-                        {loadstringVisible ? loadstring : censorKey(loadstring)}
+                        {loadstringVisible ? roleLoadstring : censorKey(roleLoadstring)}
                       </pre>
                       <div className="absolute top-2 right-2 flex gap-1">
                         <Button size="sm" variant="outline" onClick={() => setLoadstringVisible(!loadstringVisible)}>
                           {loadstringVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </Button>
-                        <Button size="sm" onClick={() => copyToClipboard(loadstring, 'Loadstring')}>
+                        <Button size="sm" onClick={() => copyToClipboard(roleLoadstring, 'Loadstring')}>
                           <Copy className="w-4 h-4 mr-2" />
                           Salin
                         </Button>
@@ -537,7 +539,8 @@ const KeySystem = () => {
                     </div>
                   </CardContent>
                 </Card>
-              )}
+                );
+              })()}
 
               {/* Klaim Kode Durasi */}
               <Card className="glass-card border-emerald-500/30">
