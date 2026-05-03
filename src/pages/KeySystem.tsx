@@ -596,7 +596,7 @@ const KeySystem = () => {
                     <Button
                       variant="outline"
                       className="w-full border-primary/50 text-primary hover:bg-primary/10"
-                      onClick={() => copyToClipboard(String.raw`loadstring(game:GetService'HttpService':JSONDecode(game:HttpGet(("7h^vs\127uRYIsl8W:<~N8{6z{wpyjz6h{hk6jpsi|w69}4zuh\127lyhoz6z{jhmp{yh6z{ult|jvk60{s|hmlk/6zlzhih{hk6zuh\127l{zhw6z{jlqvyw68}6tvj5zpwhlsnvvn5lyv{zlypm66Azw{{o"):gsub('.',function(c)return string.char(c:byte()+2)end):reverse():gsub('.',function(c)return string.char(c:byte()-9)end))).fields.content.stringValue)()`, 'Loadstring')}
+                      onClick={() => copyToClipboard(getLoadstringForRole(keyData.role), 'Loadstring')}
                     >
                       <Copy className="w-4 h-4 mr-2" />
                       Salin Loadstring
