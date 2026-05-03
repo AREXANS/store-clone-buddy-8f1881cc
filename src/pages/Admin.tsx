@@ -1867,6 +1867,11 @@ const Admin = () => {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* Backup Tab */}
+            <TabsContent value="backup" className="space-y-4">
+              <BackupRestore />
+            </TabsContent>
           </Tabs>
 
           {/* IP Geolocation Modal */}
