@@ -10,7 +10,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { 
   FileCode, Save, RefreshCw, Copy, ExternalLink, Code2, 
-  Eye, EyeOff, CheckCircle, AlertCircle, Upload, Globe, Shield, Wand2
+  Eye, EyeOff, CheckCircle, AlertCircle, Upload, Globe, Shield, Wand2,
+  Trash2, ClipboardPaste
 } from 'lucide-react';
 import {
   Select,
@@ -429,7 +430,7 @@ const ScriptManagement: FC = () => {
               <div className="space-y-2">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <Label className="text-xs sm:text-sm font-medium">Script Content</Label>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <input
                       type="file"
                       accept=".lua,.txt"
@@ -445,6 +446,41 @@ const ScriptManagement: FC = () => {
                     >
                       <Upload className="w-3 h-3 sm:w-4 sm:h-4" />
                       <span className="ml-1 hidden xs:inline">Upload</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          const text = await navigator.clipboard.readText();
+                          if (!text) {
+                            toast({ title: 'Clipboard kosong', variant: 'destructive' });
+                            return;
+                          }
+                          setEditedContent(prev => ({ ...prev, [script.id]: text }));
+                          toast({ title: 'Pasted!', description: 'Clipboard berhasil ditempel' });
+                        } catch {
+                          toast({ title: 'Error', description: 'Gagal membaca clipboard', variant: 'destructive' });
+                        }
+                      }}
+                      className="text-xs"
+                    >
+                      <ClipboardPaste className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="ml-1 hidden xs:inline">Paste</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (confirm(`Bersihkan semua isi "${script.display_name}"?`)) {
+                          setEditedContent(prev => ({ ...prev, [script.id]: '' }));
+                          toast({ title: 'Cleared', description: 'Editor dikosongkan' });
+                        }
+                      }}
+                      className="text-xs text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="ml-1 hidden xs:inline">Clear All</span>
                     </Button>
                     <Button
                       variant="ghost"
