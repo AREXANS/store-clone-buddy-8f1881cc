@@ -10,7 +10,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { 
   FileCode, Save, RefreshCw, Copy, ExternalLink, Code2, 
-  Eye, EyeOff, CheckCircle, AlertCircle, Upload, Globe, Shield, Wand2
+  Eye, EyeOff, CheckCircle, AlertCircle, Upload, Globe, Shield, Wand2,
+  Trash2, ClipboardPaste
 } from 'lucide-react';
 import {
   Select,
