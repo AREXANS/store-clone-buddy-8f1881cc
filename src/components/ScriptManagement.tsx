@@ -583,24 +583,21 @@ const ScriptManagement: FC = () => {
         <CardContent className="space-y-4 text-sm px-3 sm:px-6">
           <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-3">
             <div className="p-2 sm:p-3 rounded bg-muted/30">
-              <h4 className="font-semibold text-primary mb-1 sm:mb-2 text-xs sm:text-sm">1. Key System Loader</h4>
+              <h4 className="font-semibold text-primary mb-1 sm:mb-2 text-xs sm:text-sm">1. Keysystem Loader</h4>
               <p className="text-muted-foreground text-xs">
-                Script ini adalah entry point. Berisi UI untuk input key dan validasi ke API. 
-                Setelah key valid, script ini akan memuat Main Script dari server.
+                Endpoint: <code className="font-mono">/get-script?name=keysystem</code>. UI input key & validasi sebelum memuat Main Script.
               </p>
             </div>
             <div className="p-2 sm:p-3 rounded bg-muted/30">
               <h4 className="font-semibold text-secondary mb-1 sm:mb-2 text-xs sm:text-sm">2. Main Script</h4>
               <p className="text-muted-foreground text-xs">
-                Script utama yang berisi fitur-fitur tool Anda. Script ini hanya bisa diakses 
-                setelah validasi key berhasil, melindungi kode Anda dari pencurian.
+                Endpoint: <code className="font-mono">/get-script?name=main</code>. Script utama berisi semua fitur tool.
               </p>
             </div>
             <div className="p-2 sm:p-3 rounded bg-muted/30">
-              <h4 className="font-semibold text-yellow-500 mb-1 sm:mb-2 text-xs sm:text-sm">3. Whitelist Checker</h4>
+              <h4 className="font-semibold text-cyan-400 mb-1 sm:mb-2 text-xs sm:text-sm">3. UI Library</h4>
               <p className="text-muted-foreground text-xs">
-                Script untuk mengecek apakah username Roblox terdaftar di whitelist.
-                Jika tidak terdaftar, player akan di-kick otomatis.
+                Endpoint: <code className="font-mono">/get-script?name=library</code>. Library komponen UI yang dipakai bersama.
               </p>
             </div>
           </div>
