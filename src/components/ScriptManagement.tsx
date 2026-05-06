@@ -396,8 +396,8 @@ const ScriptManagement: FC = () => {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <CardTitle className="text-base sm:text-lg">{script.display_name}</CardTitle>
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${getScriptTypeColor(script.script_type)}`}>
-                        {getScriptTypeLabel(script.script_type)}
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${getScriptTypeColor(script.name)}`}>
+                        {getScriptTypeLabel(script.name)}
                       </span>
                     </div>
                     <CardDescription className="text-xs sm:text-sm mt-0.5">
