@@ -407,12 +407,22 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
       };
     }
     
+    const role = (keyItem.role || '').toLowerCase();
+    const isPermanent = role === 'admin' || role === 'developer';
+    if (isPermanent) {
+      return { text: '∞ PERMANEN', className: 'text-cyan-400', frozen: false };
+    }
+    
     const now = currentTime;
     const expired = new Date(keyItem.expired);
     const diff = expired.getTime() - now.getTime();
     
     if (diff <= 0) {
       return { text: 'EXPIRED', className: 'text-destructive', frozen: false };
+    }
+    
+    if (diff > 50 * 365 * 24 * 60 * 60 * 1000) {
+      return { text: '∞ PERMANEN', className: 'text-cyan-400', frozen: false };
     }
     
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -431,6 +441,8 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
 
   const isExpired = (keyItem: KeyItem) => {
     if (keyItem.frozenUntil) return false;
+    const role = (keyItem.role || '').toLowerCase();
+    if (role === 'admin' || role === 'developer') return false;
     return new Date(keyItem.expired) < new Date();
   };
 
