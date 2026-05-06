@@ -441,6 +441,8 @@ const KeyManagement: FC<KeyManagementProps> = ({ onRefresh }) => {
 
   const isExpired = (keyItem: KeyItem) => {
     if (keyItem.frozenUntil) return false;
+    const role = (keyItem.role || '').toLowerCase();
+    if (role === 'admin' || role === 'developer') return false;
     return new Date(keyItem.expired) < new Date();
   };
 
