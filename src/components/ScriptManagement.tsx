@@ -149,16 +149,20 @@ const ScriptManagement: FC = () => {
   const fetchScripts = async () => {
     setLoading(true);
     try {
+      const ALLOWED = ['keysystem', 'main', 'library'];
       const { data, error } = await supabase
         .from('lua_scripts')
         .select('*')
-        .order('script_type');
+        .in('name', ALLOWED);
 
       if (error) throw error;
       if (data) {
-        setScripts(data);
+        const sorted = [...data].sort(
+          (a, b) => ALLOWED.indexOf(a.name) - ALLOWED.indexOf(b.name)
+        );
+        setScripts(sorted);
         const content: Record<string, string> = {};
-        data.forEach(s => { content[s.id] = s.content; });
+        sorted.forEach(s => { content[s.id] = s.content; });
         setEditedContent(content);
       }
     } catch (error) {
@@ -267,21 +271,21 @@ const ScriptManagement: FC = () => {
     toast({ title: 'Copied!', description: 'Loadstring code berhasil disalin' });
   };
 
-  const getScriptTypeColor = (type: string) => {
-    switch (type) {
-      case 'loader': return 'bg-primary/20 text-primary';
+  const getScriptTypeColor = (name: string) => {
+    switch (name) {
+      case 'keysystem': return 'bg-primary/20 text-primary';
       case 'main': return 'bg-secondary/20 text-secondary';
-      case 'whitelist': return 'bg-yellow-500/20 text-yellow-500';
+      case 'library': return 'bg-cyan-500/20 text-cyan-400';
       default: return 'bg-muted text-muted-foreground';
     }
   };
 
-  const getScriptTypeLabel = (type: string) => {
-    switch (type) {
-      case 'loader': return 'Key System';
+  const getScriptTypeLabel = (name: string) => {
+    switch (name) {
+      case 'keysystem': return 'Keysystem Loader';
       case 'main': return 'Main Script';
-      case 'whitelist': return 'Whitelist Checker';
-      default: return type;
+      case 'library': return 'UI Library';
+      default: return name;
     }
   };
 
