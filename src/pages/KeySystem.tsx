@@ -98,11 +98,22 @@ const KeySystem = () => {
         setTimeRemaining({ text: '⏸️ FROZEN', className: 'text-blue-400' });
         return;
       }
+      const role = (keyData.role || '').toLowerCase();
+      const isPermanent = role === 'admin' || role === 'developer';
+      if (isPermanent) {
+        setTimeRemaining({ text: '∞ PERMANEN', className: 'text-cyan-400' });
+        return;
+      }
       const now = new Date();
       const expired = new Date(keyData.expired);
       const diff = expired.getTime() - now.getTime();
       if (diff <= 0) {
         setTimeRemaining({ text: 'EXPIRED', className: 'text-destructive' });
+        return;
+      }
+      // Treat very-far future (>50 years) as permanent
+      if (diff > 50 * 365 * 24 * 60 * 60 * 1000) {
+        setTimeRemaining({ text: '∞ PERMANEN', className: 'text-cyan-400' });
         return;
       }
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
