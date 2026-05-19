@@ -426,15 +426,19 @@ const OrderForm: FC<OrderFormProps> = ({
                 <span className={`font-medium ${discountPercent > 0 ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{formatRupiah(estimatedTotal)}</span>
               </div>
 
-              {activeDiscount && discountPercent > 0 && (
+              {activeDiscount && discountAmount > 0 && (
                 <div className="flex justify-between mb-2 text-green-500">
                   <span className="flex items-center gap-1">
                     <Gift className="w-4 h-4" />
                     {activeDiscount.discount_type === 'duration_based' ? `Diskon (${getDiscountRangeText(activeDiscount)})` : activeDiscount.discount_type === 'promo_code' ? `Promo ${activeDiscount.promo_code}` : 'Diskon'}
                   </span>
-                  <span className="font-medium">-{formatRupiah(discountAmount)} ({discountPercent}%)</span>
+                  <span className="font-medium">
+                    -{formatRupiah(discountAmount)}
+                    {fixedAmount === 0 && discountPercent > 0 ? ` (${discountPercent}%)` : ''}
+                  </span>
                 </div>
               )}
+
 
               {!appliedPromo && durationData && !durationDiscount && (
                 (() => {
