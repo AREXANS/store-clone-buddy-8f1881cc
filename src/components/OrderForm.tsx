@@ -423,7 +423,7 @@ const OrderForm: FC<OrderFormProps> = ({
               </div>
               <div className="flex justify-between mb-2">
                 <span className="text-muted-foreground">Subtotal:</span>
-                <span className={`font-medium ${discountPercent > 0 ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{formatRupiah(estimatedTotal)}</span>
+                <span className={`font-medium ${discountAmount > 0 ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{formatRupiah(estimatedTotal)}</span>
               </div>
 
               {activeDiscount && discountAmount > 0 && (
