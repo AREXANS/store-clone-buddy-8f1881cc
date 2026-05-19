@@ -14,6 +14,8 @@ interface Discount {
   min_days: number | null;
   max_days: number | null;
   discount_percent: number;
+  discount_amount: number;
+  duration_exact: boolean;
   promo_code: string | null;
   package_name: string | null;
   is_active: boolean;
@@ -21,6 +23,7 @@ interface Discount {
   end_date: string | null;
   description: string | null;
 }
+
 
 interface OrderFormProps {
   selectedPkg: 'NORMAL' | 'VIP' | 'LIFETIME' | null;
@@ -135,7 +138,7 @@ const OrderForm: FC<OrderFormProps> = ({
   const pricePerDay = selectedPkg === 'VIP' ? prices.VIP : prices.NORMAL;
   const estimatedTotal = isLifetime ? (lifetimePrice || 700000) : (durationData ? pricePerDay * durationData.days : 0);
 
-  // Find duration-based discount
+  // Find duration-based discount (supports duration_exact)
   const findDurationDiscount = (): Discount | null => {
     if (!durationData) return null;
     const now = new Date();
@@ -143,8 +146,12 @@ const OrderForm: FC<OrderFormProps> = ({
       .filter(d => {
         if (d.discount_type !== 'duration_based') return false;
         if (d.min_days === null) return false;
-        if (durationData.days < d.min_days) return false;
-        if (d.max_days !== null && durationData.days > d.max_days) return false;
+        if (d.duration_exact) {
+          if (durationData.days !== d.min_days) return false;
+        } else {
+          if (durationData.days < d.min_days) return false;
+          if (d.max_days !== null && durationData.days > d.max_days) return false;
+        }
         if (d.package_name && d.package_name !== selectedPkg) return false;
         if (d.start_date && new Date(d.start_date) > now) return false;
         if (d.end_date && new Date(d.end_date) < now) return false;
@@ -171,13 +178,16 @@ const OrderForm: FC<OrderFormProps> = ({
       return;
     }
 
-    if (promo.min_days !== null || promo.max_days !== null) {
-      if (!durationData) {
-        setPromoError('Masukkan durasi terlebih dahulu');
+    if (promo.duration_exact && promo.min_days !== null) {
+      if (!durationData) { setPromoError('Masukkan durasi terlebih dahulu'); return; }
+      if (durationData.days !== promo.min_days) {
+        setPromoError(`Promo ini hanya berlaku untuk durasi persis ${promo.min_days} hari`);
         return;
       }
+    } else if (promo.min_days !== null || promo.max_days !== null) {
+      if (!durationData) { setPromoError('Masukkan durasi terlebih dahulu'); return; }
       if (promo.min_days !== null && durationData.days < promo.min_days) {
-        setPromoError(`Promo ini berlaku untuk pembelian ${promo.min_days}${promo.max_days ? `-${promo.max_days}` : '+'}  hari`);
+        setPromoError(`Promo ini berlaku untuk pembelian ${promo.min_days}${promo.max_days ? `-${promo.max_days}` : '+'} hari`);
         return;
       }
       if (promo.max_days !== null && durationData.days > promo.max_days) {
@@ -200,8 +210,12 @@ const OrderForm: FC<OrderFormProps> = ({
   const durationDiscount = findDurationDiscount();
   const activeDiscount = appliedPromo || durationDiscount;
   const discountPercent = activeDiscount?.discount_percent || 0;
-  const discountAmount = Math.floor(estimatedTotal * (discountPercent / 100));
-  const finalTotal = estimatedTotal - discountAmount;
+  const fixedAmount = activeDiscount?.discount_amount || 0;
+  const discountAmount = fixedAmount > 0
+    ? Math.min(fixedAmount, estimatedTotal)
+    : Math.floor(estimatedTotal * (discountPercent / 100));
+  const finalTotal = Math.max(0, estimatedTotal - discountAmount);
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -278,9 +292,11 @@ const OrderForm: FC<OrderFormProps> = ({
   };
 
   const getDiscountRangeText = (d: Discount) => {
+    if (d.duration_exact && d.min_days) return `${d.min_days}h only`;
     if (d.max_days !== null && d.min_days !== null) return `${d.min_days}-${d.max_days}h`;
     return `${d.min_days}h+`;
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background relative overflow-hidden">
@@ -407,18 +423,22 @@ const OrderForm: FC<OrderFormProps> = ({
               </div>
               <div className="flex justify-between mb-2">
                 <span className="text-muted-foreground">Subtotal:</span>
-                <span className={`font-medium ${discountPercent > 0 ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{formatRupiah(estimatedTotal)}</span>
+                <span className={`font-medium ${discountAmount > 0 ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{formatRupiah(estimatedTotal)}</span>
               </div>
 
-              {activeDiscount && discountPercent > 0 && (
+              {activeDiscount && discountAmount > 0 && (
                 <div className="flex justify-between mb-2 text-green-500">
                   <span className="flex items-center gap-1">
                     <Gift className="w-4 h-4" />
                     {activeDiscount.discount_type === 'duration_based' ? `Diskon (${getDiscountRangeText(activeDiscount)})` : activeDiscount.discount_type === 'promo_code' ? `Promo ${activeDiscount.promo_code}` : 'Diskon'}
                   </span>
-                  <span className="font-medium">-{formatRupiah(discountAmount)} ({discountPercent}%)</span>
+                  <span className="font-medium">
+                    -{formatRupiah(discountAmount)}
+                    {fixedAmount === 0 && discountPercent > 0 ? ` (${discountPercent}%)` : ''}
+                  </span>
                 </div>
               )}
+
 
               {!appliedPromo && durationData && !durationDiscount && (
                 (() => {
