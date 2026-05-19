@@ -138,7 +138,7 @@ const OrderForm: FC<OrderFormProps> = ({
   const pricePerDay = selectedPkg === 'VIP' ? prices.VIP : prices.NORMAL;
   const estimatedTotal = isLifetime ? (lifetimePrice || 700000) : (durationData ? pricePerDay * durationData.days : 0);
 
-  // Find duration-based discount
+  // Find duration-based discount (supports duration_exact)
   const findDurationDiscount = (): Discount | null => {
     if (!durationData) return null;
     const now = new Date();
@@ -146,8 +146,12 @@ const OrderForm: FC<OrderFormProps> = ({
       .filter(d => {
         if (d.discount_type !== 'duration_based') return false;
         if (d.min_days === null) return false;
-        if (durationData.days < d.min_days) return false;
-        if (d.max_days !== null && durationData.days > d.max_days) return false;
+        if (d.duration_exact) {
+          if (durationData.days !== d.min_days) return false;
+        } else {
+          if (durationData.days < d.min_days) return false;
+          if (d.max_days !== null && durationData.days > d.max_days) return false;
+        }
         if (d.package_name && d.package_name !== selectedPkg) return false;
         if (d.start_date && new Date(d.start_date) > now) return false;
         if (d.end_date && new Date(d.end_date) < now) return false;
@@ -174,13 +178,16 @@ const OrderForm: FC<OrderFormProps> = ({
       return;
     }
 
-    if (promo.min_days !== null || promo.max_days !== null) {
-      if (!durationData) {
-        setPromoError('Masukkan durasi terlebih dahulu');
+    if (promo.duration_exact && promo.min_days !== null) {
+      if (!durationData) { setPromoError('Masukkan durasi terlebih dahulu'); return; }
+      if (durationData.days !== promo.min_days) {
+        setPromoError(`Promo ini hanya berlaku untuk durasi persis ${promo.min_days} hari`);
         return;
       }
+    } else if (promo.min_days !== null || promo.max_days !== null) {
+      if (!durationData) { setPromoError('Masukkan durasi terlebih dahulu'); return; }
       if (promo.min_days !== null && durationData.days < promo.min_days) {
-        setPromoError(`Promo ini berlaku untuk pembelian ${promo.min_days}${promo.max_days ? `-${promo.max_days}` : '+'}  hari`);
+        setPromoError(`Promo ini berlaku untuk pembelian ${promo.min_days}${promo.max_days ? `-${promo.max_days}` : '+'} hari`);
         return;
       }
       if (promo.max_days !== null && durationData.days > promo.max_days) {
@@ -203,8 +210,12 @@ const OrderForm: FC<OrderFormProps> = ({
   const durationDiscount = findDurationDiscount();
   const activeDiscount = appliedPromo || durationDiscount;
   const discountPercent = activeDiscount?.discount_percent || 0;
-  const discountAmount = Math.floor(estimatedTotal * (discountPercent / 100));
-  const finalTotal = estimatedTotal - discountAmount;
+  const fixedAmount = activeDiscount?.discount_amount || 0;
+  const discountAmount = fixedAmount > 0
+    ? Math.min(fixedAmount, estimatedTotal)
+    : Math.floor(estimatedTotal * (discountPercent / 100));
+  const finalTotal = Math.max(0, estimatedTotal - discountAmount);
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
