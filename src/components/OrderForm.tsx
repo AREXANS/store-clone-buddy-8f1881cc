@@ -14,6 +14,8 @@ interface Discount {
   min_days: number | null;
   max_days: number | null;
   discount_percent: number;
+  discount_amount: number;
+  duration_exact: boolean;
   promo_code: string | null;
   package_name: string | null;
   is_active: boolean;
@@ -21,6 +23,7 @@ interface Discount {
   end_date: string | null;
   description: string | null;
 }
+
 
 interface OrderFormProps {
   selectedPkg: 'NORMAL' | 'VIP' | 'LIFETIME' | null;
