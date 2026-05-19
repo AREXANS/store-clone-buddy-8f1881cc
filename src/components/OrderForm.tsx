@@ -292,9 +292,11 @@ const OrderForm: FC<OrderFormProps> = ({
   };
 
   const getDiscountRangeText = (d: Discount) => {
+    if (d.duration_exact && d.min_days) return `${d.min_days}h only`;
     if (d.max_days !== null && d.min_days !== null) return `${d.min_days}-${d.max_days}h`;
     return `${d.min_days}h+`;
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background relative overflow-hidden">
