@@ -25,6 +25,7 @@ interface PaymentQRProps {
   errorMsg: string;
   onCancel: () => void;
   onCopy: (text: string) => void;
+  onRecheck?: () => void;
   formatRupiah: (n: number) => string;
 }
 
