@@ -1,6 +1,6 @@
 import { FC, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Copy, MessageCircle, AlertCircle } from 'lucide-react';
+import { Copy, MessageCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import GlobalBackground from './GlobalBackground';
 import { supabase } from '@/integrations/supabase/client';
 
