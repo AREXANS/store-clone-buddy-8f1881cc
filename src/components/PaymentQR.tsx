@@ -35,8 +35,26 @@ const PaymentQR: FC<PaymentQRProps> = ({
   errorMsg,
   onCancel,
   onCopy,
+  onRecheck,
   formatRupiah
 }) => {
+  const [showContactHint, setShowContactHint] = useState(false);
+  const [contactLink, setContactLink] = useState<SocialLink | null>(null);
+  const [rechecking, setRechecking] = useState(false);
+  const [recheckMsg, setRecheckMsg] = useState('');
+
+  const handleRecheck = async () => {
+    if (!onRecheck || rechecking) return;
+    setRechecking(true);
+    setRecheckMsg('');
+    try {
+      await onRecheck();
+      setRecheckMsg('Status diperbarui. Jika sudah bayar, halaman akan otomatis berpindah.');
+    } finally {
+      setTimeout(() => setRechecking(false), 1500);
+      setTimeout(() => setRecheckMsg(''), 5000);
+    }
+  };
   const [showContactHint, setShowContactHint] = useState(false);
   const [contactLink, setContactLink] = useState<SocialLink | null>(null);
 
