@@ -87,7 +87,9 @@ serve(async (req) => {
       // Docs: GET https://app.pakasir.com/api/transactiondetail?project={slug}&amount={amount}&order_id={order_id}&api_key={api_key}
       // Response: { transaction: { amount, order_id, project, status: "completed", payment_method, completed_at } }
       try {
-        const url = `https://app.pakasir.com/api/transactiondetail?project=${encodeURIComponent(s.pakasir_slug)}&amount=${transaction.total_amount}&order_id=${encodeURIComponent(transactionId)}&api_key=${encodeURIComponent(s.pakasir_api_key)}`;
+        // Pakasir expects the ORIGINAL amount (before fee), not total_payment
+        const pakasirAmount = transaction.original_amount || transaction.total_amount;
+        const url = `https://app.pakasir.com/api/transactiondetail?project=${encodeURIComponent(s.pakasir_slug)}&amount=${pakasirAmount}&order_id=${encodeURIComponent(transactionId)}&api_key=${encodeURIComponent(s.pakasir_api_key)}`;
         const res = await fetch(url);
         const data = await res.json();
         console.log("Pakasir transactiondetail response:", JSON.stringify(data));
