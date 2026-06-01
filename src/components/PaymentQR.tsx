@@ -123,11 +123,31 @@ const PaymentQR: FC<PaymentQRProps> = ({
 
         {/* Status */}
         {statusMsg && (
-          <div className="flex items-center justify-center gap-3 mb-6 text-warning">
+          <div className="flex items-center justify-center gap-3 mb-4 text-warning">
             <div className="w-3 h-3 bg-warning rounded-full animate-pulse" />
             <span className="font-medium">{statusMsg}</span>
           </div>
         )}
+
+        {/* Manual recheck button */}
+        {onRecheck && (
+          <div className="mb-6">
+            <Button
+              type="button"
+              onClick={handleRecheck}
+              disabled={rechecking}
+              className="w-full bg-primary/15 hover:bg-primary/25 text-primary border border-primary/40"
+              variant="outline"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${rechecking ? 'animate-spin' : ''}`} />
+              {rechecking ? 'Mengecek pembayaran...' : 'Saya Sudah Bayar, Cek Sekarang'}
+            </Button>
+            {recheckMsg && (
+              <p className="text-xs text-success mt-2">{recheckMsg}</p>
+            )}
+          </div>
+        )}
+
 
         {/* Contact Hint */}
         {showContactHint && contactLink && (
