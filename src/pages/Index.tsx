@@ -252,16 +252,34 @@ const Index = () => {
     }
   }, [formData.key, selectedPkg]);
 
-  // Start payment status polling
+  // Start payment status polling + recheck on tab focus
   useEffect(() => {
     if (step === 3 && paymentData) {
       // Initial check
       checkPaymentStatus(paymentData.transactionId, daysToAdd);
-      
+
       // Poll every 3 seconds
       checkInterval.current = window.setInterval(() => {
         checkPaymentStatus(paymentData.transactionId, daysToAdd);
       }, 3000);
+
+      // Recheck immediately when tab regains focus (mobile throttles intervals in background)
+      const onVisible = () => {
+        if (document.visibilityState === 'visible') {
+          checkPaymentStatus(paymentData.transactionId, daysToAdd);
+        }
+      };
+      document.addEventListener('visibilitychange', onVisible);
+      window.addEventListener('focus', onVisible);
+
+      return () => {
+        if (checkInterval.current) {
+          clearInterval(checkInterval.current);
+          checkInterval.current = null;
+        }
+        document.removeEventListener('visibilitychange', onVisible);
+        window.removeEventListener('focus', onVisible);
+      };
     }
 
     return () => {
