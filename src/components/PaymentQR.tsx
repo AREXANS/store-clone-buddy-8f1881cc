@@ -55,8 +55,8 @@ const PaymentQR: FC<PaymentQRProps> = ({
       setTimeout(() => setRecheckMsg(''), 5000);
     }
   };
-  const [showContactHint, setShowContactHint] = useState(false);
-  const [contactLink, setContactLink] = useState<SocialLink | null>(null);
+
+
 
   useEffect(() => {
     const timer = setTimeout(() => {
