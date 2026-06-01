@@ -71,7 +71,17 @@ serve(async (req) => {
         const cashifyData = await cashifyRes.json();
         console.log("Cashify response:", JSON.stringify(cashifyData));
 
-        if (cashifyData.status === 200 && cashifyData.data) {
+        if (cashifyData.status !== 200 || !cashifyData.data) {
+          const msg = cashifyData.message || "Gagal generate QRIS Cashify";
+          const isSubIssue = /langganan|subscription|pricing|unauthor|forbidden/i.test(msg);
+          return new Response(JSON.stringify({
+            success: false,
+            error: isSubIssue
+              ? "Layanan pembayaran Cashify sedang tidak aktif (langganan kedaluwarsa). Silakan hubungi admin atau coba gateway lain."
+              : msg,
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        {
           qrString = cashifyData.data.qr_string || "";
           totalAmount = cashifyData.data.totalAmount || amount;
           qrisUrl = `https://larabert-qrgen.hf.space/v1/create-qr-code?size=500x500&style=2&color=0D8BA5&data=${encodeURIComponent(qrString)}`;
