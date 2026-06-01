@@ -95,9 +95,6 @@ serve(async (req) => {
               description: "Cashify transaction mapping"
             }, { onConflict: "key" });
           }
-        } else {
-          return new Response(JSON.stringify({ error: cashifyData.message || "Gagal generate QRIS Cashify" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
       } catch (err) {
         console.error("Cashify API error:", err);
