@@ -1,6 +1,6 @@
 import { FC, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Copy, MessageCircle, AlertCircle } from 'lucide-react';
+import { Copy, MessageCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import GlobalBackground from './GlobalBackground';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -25,6 +25,7 @@ interface PaymentQRProps {
   errorMsg: string;
   onCancel: () => void;
   onCopy: (text: string) => void;
+  onRecheck?: () => void;
   formatRupiah: (n: number) => string;
 }
 
@@ -34,10 +35,28 @@ const PaymentQR: FC<PaymentQRProps> = ({
   errorMsg,
   onCancel,
   onCopy,
+  onRecheck,
   formatRupiah
 }) => {
   const [showContactHint, setShowContactHint] = useState(false);
   const [contactLink, setContactLink] = useState<SocialLink | null>(null);
+  const [rechecking, setRechecking] = useState(false);
+  const [recheckMsg, setRecheckMsg] = useState('');
+
+  const handleRecheck = async () => {
+    if (!onRecheck || rechecking) return;
+    setRechecking(true);
+    setRecheckMsg('');
+    try {
+      await onRecheck();
+      setRecheckMsg('Status diperbarui. Jika sudah bayar, halaman akan otomatis berpindah.');
+    } finally {
+      setTimeout(() => setRechecking(false), 1500);
+      setTimeout(() => setRecheckMsg(''), 5000);
+    }
+  };
+
+
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -104,11 +123,31 @@ const PaymentQR: FC<PaymentQRProps> = ({
 
         {/* Status */}
         {statusMsg && (
-          <div className="flex items-center justify-center gap-3 mb-6 text-warning">
+          <div className="flex items-center justify-center gap-3 mb-4 text-warning">
             <div className="w-3 h-3 bg-warning rounded-full animate-pulse" />
             <span className="font-medium">{statusMsg}</span>
           </div>
         )}
+
+        {/* Manual recheck button */}
+        {onRecheck && (
+          <div className="mb-6">
+            <Button
+              type="button"
+              onClick={handleRecheck}
+              disabled={rechecking}
+              className="w-full bg-primary/15 hover:bg-primary/25 text-primary border border-primary/40"
+              variant="outline"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${rechecking ? 'animate-spin' : ''}`} />
+              {rechecking ? 'Mengecek pembayaran...' : 'Saya Sudah Bayar, Cek Sekarang'}
+            </Button>
+            {recheckMsg && (
+              <p className="text-xs text-success mt-2">{recheckMsg}</p>
+            )}
+          </div>
+        )}
+
 
         {/* Contact Hint */}
         {showContactHint && contactLink && (

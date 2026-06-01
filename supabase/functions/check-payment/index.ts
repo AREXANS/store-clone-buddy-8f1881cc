@@ -91,7 +91,8 @@ serve(async (req) => {
         const res = await fetch(url);
         const data = await res.json();
         console.log("Pakasir transactiondetail response:", JSON.stringify(data));
-        if (data.transaction?.status === "completed") {
+        const pkStatus = String(data.transaction?.status || "").toLowerCase();
+        if (["completed", "paid", "success", "settled"].includes(pkStatus)) {
           isPaid = true;
         }
       } catch (err) {

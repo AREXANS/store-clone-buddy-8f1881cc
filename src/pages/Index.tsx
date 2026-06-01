@@ -252,16 +252,34 @@ const Index = () => {
     }
   }, [formData.key, selectedPkg]);
 
-  // Start payment status polling
+  // Start payment status polling + recheck on tab focus
   useEffect(() => {
     if (step === 3 && paymentData) {
       // Initial check
       checkPaymentStatus(paymentData.transactionId, daysToAdd);
-      
+
       // Poll every 3 seconds
       checkInterval.current = window.setInterval(() => {
         checkPaymentStatus(paymentData.transactionId, daysToAdd);
       }, 3000);
+
+      // Recheck immediately when tab regains focus (mobile throttles intervals in background)
+      const onVisible = () => {
+        if (document.visibilityState === 'visible') {
+          checkPaymentStatus(paymentData.transactionId, daysToAdd);
+        }
+      };
+      document.addEventListener('visibilitychange', onVisible);
+      window.addEventListener('focus', onVisible);
+
+      return () => {
+        if (checkInterval.current) {
+          clearInterval(checkInterval.current);
+          checkInterval.current = null;
+        }
+        document.removeEventListener('visibilitychange', onVisible);
+        window.removeEventListener('focus', onVisible);
+      };
     }
 
     return () => {
@@ -400,7 +418,7 @@ const Index = () => {
   if (isMaintenance) return <MaintenancePage />;
   if (step === 1) return <PackageSelection onSelect={handlePackageSelect} formatRupiah={formatRupiah} prices={PRICES} ads={ads} packages={packages} />;
   if (step === 2) return <OrderForm selectedPkg={selectedPkg} formData={formData} setFormData={setFormData} onSubmit={handleFormSubmit} onBack={() => { setStep(1); setErrorMsg(''); }} onGenerate={generateRandomKey} loading={loading} errorMsg={errorMsg} formatRupiah={formatRupiah} parseDuration={parseDuration} prices={PRICES} />;
-  if (step === 3 && paymentData) return <PaymentQR paymentData={paymentData} statusMsg={statusMsg} errorMsg={errorMsg} onCancel={handleCancelOrder} onCopy={copyToClipboard} formatRupiah={formatRupiah} />;
+  if (step === 3 && paymentData) return <PaymentQR paymentData={paymentData} statusMsg={statusMsg} errorMsg={errorMsg} onCancel={handleCancelOrder} onCopy={copyToClipboard} onRecheck={() => checkPaymentStatus(paymentData.transactionId, daysToAdd)} formatRupiah={formatRupiah} />;
   if (step === 4 && finalData) return <PaymentSuccess finalData={finalData} onCopy={copyToClipboard} />;
   return null;
 };

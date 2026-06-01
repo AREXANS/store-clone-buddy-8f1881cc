@@ -26,10 +26,11 @@ serve(async (req) => {
     if (isPakasir) {
       // === PAKASIR WEBHOOK ===
       const transactionId = body.order_id;
-      const status = body.status;
+      const status = String(body.status || "").toLowerCase();
+      const okStatuses = ["completed", "paid", "success", "settled"];
 
-      if (status !== "completed") {
-        return new Response(JSON.stringify({ success: true, message: "Status not completed" }),
+      if (!okStatuses.includes(status)) {
+        return new Response(JSON.stringify({ success: true, message: "Status not paid" }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
