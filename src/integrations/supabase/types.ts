@@ -200,6 +200,41 @@ export type Database = {
         }
         Relationships: []
       }
+      lua_script_versions: {
+        Row: {
+          content: string
+          created_at: string
+          display_name: string | null
+          id: string
+          script_id: string
+          version_number: number
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          script_id: string
+          version_number: number
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          script_id?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lua_script_versions_script_id_fkey"
+            columns: ["script_id"]
+            isOneToOne: false
+            referencedRelation: "lua_scripts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lua_scripts: {
         Row: {
           content: string
