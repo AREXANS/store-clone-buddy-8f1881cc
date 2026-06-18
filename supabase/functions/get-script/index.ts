@@ -16,6 +16,52 @@ const noCacheHeaders = {
   Vary: "Accept, User-Agent, Sec-Fetch-Mode, Sec-Fetch-Dest, Sec-CH-UA, Upgrade-Insecure-Requests, X-Requested-With",
 };
 
+const USER_SCRIPT_MARKER = "-- USER SCRIPT (PROTECTED)";
+
+function extractProtectedRaw(content: string): string | null {
+  const b64Match = content.match(/-- AREXANS_RAW_B64:([^\r\n]+)/);
+  if (b64Match?.[1]) {
+    try {
+      const binary = atob(b64Match[1]);
+      const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+      return new TextDecoder().decode(bytes);
+    } catch (_error) {
+      // Fall back to legacy marker parsing.
+    }
+  }
+
+  const markerIndex = content.indexOf(USER_SCRIPT_MARKER);
+  if (markerIndex === -1) return null;
+  return content
+    .slice(markerIndex + USER_SCRIPT_MARKER.length)
+    .replace(/^\r?\n-- ={10,}\r?\n/, "")
+    .replace(/^\r?\n/, "")
+    .replace(/\n$/, "");
+}
+
+function buildLegacyRemoteWrapper(scriptName: string, content: string): string | null {
+  const markerIndex = content.indexOf(USER_SCRIPT_MARKER);
+  if (markerIndex === -1 || content.includes("-- AREXANS_RAW_B64:")) return null;
+
+  const gate = content.slice(0, markerIndex);
+  const rawUrlSuffix = `/get-script?name=${encodeURIComponent(scriptName)}&raw=1&unwrap=1`;
+  return `${gate}
+-- ============================================================
+-- USER SCRIPT (PROTECTED, REMOTE RAW)
+-- ============================================================
+local __arexans_raw_url = API_BASE .. "${rawUrlSuffix}"
+local __arexans_res = httpRequest({ Url = __arexans_raw_url, Method = "GET" })
+if not __arexans_res or not __arexans_res.Body or __arexans_res.Body == "" then
+    error("[ArexansTools] Gagal mengambil script asli")
+end
+local __arexans_load = loadstring or load
+if not __arexans_load then error("[ArexansTools] Executor tidak support loadstring/load") end
+local __arexans_fn, __arexans_err = __arexans_load(__arexans_res.Body)
+if not __arexans_fn then error(__arexans_err) end
+return __arexans_fn()
+`;
+}
+
 function isExecutorRequest(req: Request): boolean {
   const userAgent = (req.headers.get("user-agent") || "").toLowerCase();
   const accept = (req.headers.get("accept") || "").toLowerCase();
@@ -55,6 +101,8 @@ serve(async (req) => {
     const scriptName = url.searchParams.get("name");
     const rawParam = (url.searchParams.get("raw") || "").toLowerCase();
     const forceRaw = rawParam === "1" || rawParam === "true";
+    const unwrapParam = (url.searchParams.get("unwrap") || "").toLowerCase();
+    const forceUnwrap = unwrapParam === "1" || unwrapParam === "true";
 
     if (!scriptName) {
       return new Response("-- Access Denied: Invalid request", {
@@ -97,7 +145,11 @@ serve(async (req) => {
       });
     }
 
-    return new Response(script.content, {
+    const responseContent = forceUnwrap
+      ? (extractProtectedRaw(script.content) || script.content)
+      : (buildLegacyRemoteWrapper(scriptName, script.content) || script.content);
+
+    return new Response(responseContent, {
       status: 200,
       headers: {
         ...corsHeaders,

@@ -16,17 +16,42 @@ const noCacheHeaders = {
   Vary: "Accept, User-Agent, Sec-Fetch-Mode, Sec-Fetch-Dest, Sec-CH-UA, Upgrade-Insecure-Requests, X-Requested-With",
 };
 
+const USER_SCRIPT_MARKER = "-- USER SCRIPT (PROTECTED)";
+
+function buildLegacyRemoteWrapper(scriptName: string, content: string): string | null {
+  const markerIndex = content.indexOf(USER_SCRIPT_MARKER);
+  if (markerIndex === -1 || content.includes("-- AREXANS_RAW_B64:")) return null;
+
+  const gate = content.slice(0, markerIndex);
+  const rawUrlSuffix = `/get-script?name=${encodeURIComponent(scriptName)}&raw=1&unwrap=1`;
+  return `${gate}
+-- ============================================================
+-- USER SCRIPT (PROTECTED, REMOTE RAW)
+-- ============================================================
+local __arexans_raw_url = API_BASE .. "${rawUrlSuffix}"
+local __arexans_res = httpRequest({ Url = __arexans_raw_url, Method = "GET" })
+if not __arexans_res or not __arexans_res.Body or __arexans_res.Body == "" then
+    error("[ArexansTools] Gagal mengambil script asli")
+end
+local __arexans_load = loadstring or load
+if not __arexans_load then error("[ArexansTools] Executor tidak support loadstring/load") end
+local __arexans_fn, __arexans_err = __arexans_load(__arexans_res.Body)
+if not __arexans_fn then error(__arexans_err) end
+return __arexans_fn()
+`;
+}
+
 function obfuscateString(str: string): string {
-  // Chunked base64-style: split bytes into chunks; assemble with table.concat (O(n)).
-  // Using string.char with multiple args + table.concat avoids the O(n^2) blow-up
-  // that breaks large scripts (loadstring returns nil → "attempt to call a nil value").
+  // Split bytes into statements instead of one huge table literal. Some Roblox executors
+  // fail to compile very large expressions and loadstring() returns nil on line 1.
   const bytes = Array.from(new TextEncoder().encode(str));
-  const CHUNK = 200; // each string.char call gets ≤200 bytes (Lua arg limit safe)
-  const parts: string[] = [];
+  const CHUNK = 180; // safely below Lua argument limits
+  const lines = [`(function() local t={} local n=0`];
   for (let i = 0; i < bytes.length; i += CHUNK) {
-    parts.push(`string.char(${bytes.slice(i, i + CHUNK).join(",")})`);
+    lines.push(`n=n+1 t[n]=string.char(${bytes.slice(i, i + CHUNK).join(",")})`);
   }
-  return `table.concat({${parts.join(",")}})`;
+  lines.push(`return table.concat(t) end)()`);
+  return lines.join(" ");
 }
 
 function randVar(): string {
@@ -115,7 +140,8 @@ serve(async (req) => {
       });
     }
 
-    const obfuscatedContent = obfuscateString(script.content);
+    const scriptContent = buildLegacyRemoteWrapper(script.name, script.content) || script.content;
+    const obfuscatedContent = obfuscateString(scriptContent);
     const vS = randVar();
     const vExec = randVar();
     const vErr = randVar();
@@ -132,7 +158,7 @@ serve(async (req) => {
       `    if not fn then error(err) end\n` +
       `    return fn()\n` +
       `  end)\n` +
-      `  if not ${vExec} then warn("[Arexans] Runtime error") end\n` +
+      `  if not ${vExec} then error(${vErr}) end\n` +
       `end\n`;
 
     return new Response(loaderScript, {
