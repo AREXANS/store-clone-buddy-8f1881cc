@@ -17,16 +17,16 @@ const noCacheHeaders = {
 };
 
 function obfuscateString(str: string): string {
-  // Chunked base64-style: split bytes into chunks; assemble with table.concat (O(n)).
-  // Using string.char with multiple args + table.concat avoids the O(n^2) blow-up
-  // that breaks large scripts (loadstring returns nil → "attempt to call a nil value").
+  // Split bytes into statements instead of one huge table literal. Some Roblox executors
+  // fail to compile very large expressions and loadstring() returns nil on line 1.
   const bytes = Array.from(new TextEncoder().encode(str));
-  const CHUNK = 200; // each string.char call gets ≤200 bytes (Lua arg limit safe)
-  const parts: string[] = [];
+  const CHUNK = 180; // safely below Lua argument limits
+  const lines = [`(function() local t={} local n=0`];
   for (let i = 0; i < bytes.length; i += CHUNK) {
-    parts.push(`string.char(${bytes.slice(i, i + CHUNK).join(",")})`);
+    lines.push(`n=n+1 t[n]=string.char(${bytes.slice(i, i + CHUNK).join(",")})`);
   }
-  return `table.concat({${parts.join(",")}})`;
+  lines.push(`return table.concat(t) end)()`);
+  return lines.join(" ");
 }
 
 function randVar(): string {
@@ -132,7 +132,7 @@ serve(async (req) => {
       `    if not fn then error(err) end\n` +
       `    return fn()\n` +
       `  end)\n` +
-      `  if not ${vExec} then warn("[Arexans] Runtime error") end\n` +
+      `  if not ${vExec} then error(${vErr}) end\n` +
       `end\n`;
 
     return new Response(loaderScript, {
