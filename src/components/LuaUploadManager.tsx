@@ -435,6 +435,10 @@ const LuaUploadManager: FC = () => {
   const wrap = (raw: string) => PROTECTION_WRAPPER(SUPABASE_API_BASE, raw);
 
   const unwrap = (wrapped: string): string => {
+    const rawB64 = wrapped.match(/-- AREXANS_RAW_B64:([^\r\n]+)/)?.[1];
+    if (rawB64) {
+      try { return base64ToText(rawB64); } catch { /* fallback to marker parsing */ }
+    }
     const marker = '-- USER SCRIPT (PROTECTED)';
     const idx = wrapped.indexOf(marker);
     if (idx === -1) return wrapped;
