@@ -101,6 +101,8 @@ serve(async (req) => {
     const scriptName = url.searchParams.get("name");
     const rawParam = (url.searchParams.get("raw") || "").toLowerCase();
     const forceRaw = rawParam === "1" || rawParam === "true";
+    const unwrapParam = (url.searchParams.get("unwrap") || "").toLowerCase();
+    const forceUnwrap = unwrapParam === "1" || unwrapParam === "true";
 
     if (!scriptName) {
       return new Response("-- Access Denied: Invalid request", {
@@ -143,7 +145,11 @@ serve(async (req) => {
       });
     }
 
-    return new Response(script.content, {
+    const responseContent = forceUnwrap
+      ? (extractProtectedRaw(script.content) || script.content)
+      : (buildLegacyRemoteWrapper(scriptName, script.content) || script.content);
+
+    return new Response(responseContent, {
       status: 200,
       headers: {
         ...corsHeaders,
