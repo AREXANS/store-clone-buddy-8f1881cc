@@ -55,6 +55,8 @@ serve(async (req) => {
     const scriptName = url.searchParams.get("name");
     const rawParam = (url.searchParams.get("raw") || "").toLowerCase();
     const forceRaw = rawParam === "1" || rawParam === "true";
+    const payloadParam = (url.searchParams.get("payload") || "").toLowerCase();
+    const wantPayload = payloadParam === "1" || payloadParam === "true";
 
     if (!scriptName) {
       return new Response("-- Access Denied: Invalid request", {
@@ -63,7 +65,7 @@ serve(async (req) => {
       });
     }
 
-    if (!forceRaw && isBrowser(req)) {
+    if (!forceRaw && !wantPayload && isBrowser(req)) {
       const deniedUrl = `https://tools.arexans.my.id/access-denied?name=${encodeURIComponent(scriptName)}`;
       return new Response(null, {
         status: 302,
@@ -81,7 +83,7 @@ serve(async (req) => {
 
     const { data: script, error } = await supabase
       .from("lua_scripts")
-      .select("content, is_active")
+      .select("content, raw_content, is_active")
       .eq("name", scriptName)
       .eq("is_active", true)
       .maybeSingle();
@@ -89,21 +91,34 @@ serve(async (req) => {
     if (error || !script) {
       return new Response('warn("[Arexans] Script not available")', {
         status: 200,
-        headers: {
-          ...corsHeaders,
-          ...noCacheHeaders,
-          "Content-Type": "text/plain; charset=utf-8",
-        },
+        headers: { ...corsHeaders, ...noCacheHeaders, "Content-Type": "text/plain; charset=utf-8" },
+      });
+    }
+
+    // ===== Payload mode: return ONLY the raw user script (post-auth fetch).
+    // Falls back to unwrapping legacy `content` if raw_content is missing.
+    if (wantPayload) {
+      let payload: string | null = (script as any).raw_content ?? null;
+      if (!payload) {
+        const marker = "-- USER SCRIPT (PROTECTED)";
+        const idx = (script.content || "").indexOf(marker);
+        if (idx !== -1) {
+          const after = script.content.substring(idx + marker.length);
+          const nl = after.indexOf("\n");
+          payload = nl !== -1 ? after.substring(nl + 1) : after;
+        } else {
+          payload = script.content || "";
+        }
+      }
+      return new Response(payload, {
+        status: 200,
+        headers: { ...corsHeaders, ...noCacheHeaders, "Content-Type": "text/plain; charset=utf-8" },
       });
     }
 
     return new Response(script.content, {
       status: 200,
-      headers: {
-        ...corsHeaders,
-        ...noCacheHeaders,
-        "Content-Type": "text/plain; charset=utf-8",
-      },
+      headers: { ...corsHeaders, ...noCacheHeaders, "Content-Type": "text/plain; charset=utf-8" },
     });
   } catch (error: unknown) {
     console.error("Error:", error);
