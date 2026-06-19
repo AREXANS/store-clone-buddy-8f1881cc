@@ -244,6 +244,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          raw_content: string | null
           script_type: string
           updated_at: string
         }
@@ -255,6 +256,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          raw_content?: string | null
           script_type?: string
           updated_at?: string
         }
@@ -266,6 +268,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          raw_content?: string | null
           script_type?: string
           updated_at?: string
         }
