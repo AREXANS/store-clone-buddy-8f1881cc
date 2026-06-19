@@ -146,31 +146,175 @@ local function checkWhitelist()
     return false
 end
 
--- 3) Prompt key (basic) and save
-local function promptAndSaveKey()
-    -- Minta key via input prompt sederhana (UI library akan menggantikan jika ada)
-    local key = nil
-    if _G.ArexansKeyPrompt then
-        key = _G.ArexansKeyPrompt() -- bisa di-override oleh UI library Anda
-    else
-        warn("[ArexansTools] Key system: silakan jalankan keysystem loader terlebih dahulu.")
-        return false
-    end
-    if not key or key == "" then return false end
+-- 3) Prompt key — UI floating window (mengikuti style keysystem loader)
+local function showKeyPromptUI()
+    local CoreGui = game:GetService("CoreGui")
+    local UserInputService = game:GetService("UserInputService")
+    local TweenService = game:GetService("TweenService")
+    local parentGui = CoreGui
+    local okp, pg = pcall(function() return Players.LocalPlayer:WaitForChild("PlayerGui") end)
+    if not okp or not pg then pg = CoreGui end
 
-    local res = httpRequest({
-        Url = VALIDATE_KEY_API,
-        Method = "POST",
-        Headers = { ["Content-Type"] = "application/json" },
-        Body = HttpService:JSONEncode({ key = key, hwid = HWID, robloxUsername = username }),
-    })
-    if not res or not res.Body then return false end
-    local ok, parsed = pcall(function() return HttpService:JSONDecode(res.Body) end)
-    if ok and parsed and parsed.success and parsed.valid then
-        safeWrite({ key = key, savedAt = os.time(), role = parsed.role })
-        return true
+    -- Cleanup duplicate
+    pcall(function() if parentGui:FindFirstChild("ArexansKeyPromptGui") then parentGui.ArexansKeyPromptGui:Destroy() end end)
+    pcall(function() if pg:FindFirstChild("ArexansKeyPromptGui") then pg.ArexansKeyPromptGui:Destroy() end end)
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "ArexansKeyPromptGui"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.DisplayOrder = 999
+    local parentOk = pcall(function() ScreenGui.Parent = CoreGui end)
+    if not parentOk then ScreenGui.Parent = pg end
+
+    local Main = Instance.new("Frame", ScreenGui)
+    Main.Size = UDim2.new(0, 320, 0, 230)
+    Main.Position = UDim2.new(0.5, -160, 0.5, -115)
+    Main.BackgroundColor3 = Color3.fromRGB(18, 20, 32)
+    Main.BorderSizePixel = 0
+    Main.Active = true
+    Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
+    local stroke = Instance.new("UIStroke", Main)
+    stroke.Color = Color3.fromRGB(0, 220, 255); stroke.Thickness = 1.4; stroke.Transparency = 0.2
+
+    local Header = Instance.new("Frame", Main)
+    Header.Size = UDim2.new(1, 0, 0, 38)
+    Header.BackgroundColor3 = Color3.fromRGB(10, 12, 22)
+    Header.BorderSizePixel = 0
+    Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 12)
+
+    local Title = Instance.new("TextLabel", Header)
+    Title.Size = UDim2.new(1, -16, 1, 0); Title.Position = UDim2.new(0, 12, 0, 0)
+    Title.BackgroundTransparency = 1
+    Title.Text = "ArexansTools — Key System"
+    Title.Font = Enum.Font.GothamBold; Title.TextSize = 14
+    Title.TextColor3 = Color3.fromRGB(0, 220, 255)
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+
+    local Subtitle = Instance.new("TextLabel", Main)
+    Subtitle.Size = UDim2.new(1, -24, 0, 16)
+    Subtitle.Position = UDim2.new(0, 12, 0, 44)
+    Subtitle.BackgroundTransparency = 1
+    Subtitle.Text = "Masukkan AXS Key Anda untuk melanjutkan"
+    Subtitle.Font = Enum.Font.Gotham; Subtitle.TextSize = 11
+    Subtitle.TextColor3 = Color3.fromRGB(180, 190, 210)
+    Subtitle.TextXAlignment = Enum.TextXAlignment.Left
+
+    local InputBox = Instance.new("TextBox", Main)
+    InputBox.Size = UDim2.new(1, -24, 0, 38)
+    InputBox.Position = UDim2.new(0, 12, 0, 70)
+    InputBox.BackgroundColor3 = Color3.fromRGB(28, 32, 48)
+    InputBox.BorderSizePixel = 0
+    InputBox.PlaceholderText = "AXS-XXXXXXXX"
+    InputBox.PlaceholderColor3 = Color3.fromRGB(120, 130, 150)
+    InputBox.Text = ""
+    InputBox.Font = Enum.Font.Code; InputBox.TextSize = 14
+    InputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    InputBox.ClearTextOnFocus = false
+    Instance.new("UICorner", InputBox).CornerRadius = UDim.new(0, 8)
+    local ibs = Instance.new("UIStroke", InputBox)
+    ibs.Color = Color3.fromRGB(0, 220, 255); ibs.Transparency = 0.6
+
+    local SubmitBtn = Instance.new("TextButton", Main)
+    SubmitBtn.Size = UDim2.new(1, -24, 0, 38)
+    SubmitBtn.Position = UDim2.new(0, 12, 0, 118)
+    SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 220)
+    SubmitBtn.BorderSizePixel = 0
+    SubmitBtn.Text = "VALIDASI KEY"
+    SubmitBtn.Font = Enum.Font.GothamBold; SubmitBtn.TextSize = 13
+    SubmitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SubmitBtn.AutoButtonColor = true
+    Instance.new("UICorner", SubmitBtn).CornerRadius = UDim.new(0, 8)
+
+    local CancelBtn = Instance.new("TextButton", Main)
+    CancelBtn.Size = UDim2.new(1, -24, 0, 26)
+    CancelBtn.Position = UDim2.new(0, 12, 0, 164)
+    CancelBtn.BackgroundColor3 = Color3.fromRGB(40, 44, 60)
+    CancelBtn.BorderSizePixel = 0
+    CancelBtn.Text = "Batal"
+    CancelBtn.Font = Enum.Font.Gotham; CancelBtn.TextSize = 11
+    CancelBtn.TextColor3 = Color3.fromRGB(200, 200, 210)
+    Instance.new("UICorner", CancelBtn).CornerRadius = UDim.new(0, 6)
+
+    local Status = Instance.new("TextLabel", Main)
+    Status.Size = UDim2.new(1, -24, 0, 24)
+    Status.Position = UDim2.new(0, 12, 0, 196)
+    Status.BackgroundTransparency = 1
+    Status.Text = ""
+    Status.Font = Enum.Font.Gotham; Status.TextSize = 11
+    Status.TextColor3 = Color3.fromRGB(255, 180, 0)
+    Status.TextWrapped = true
+
+    -- Draggable
+    local dragging, dragStart, startPos
+    Header.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true; dragStart = input.Position; startPos = Main.Position
+            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local d = input.Position - dragStart
+            Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
+        end
+    end)
+
+    -- Result via event-like flag
+    local result = { done = false, key = nil, cancelled = false }
+    local busy = false
+
+    local function setStatus(msg, color)
+        Status.Text = msg or ""
+        Status.TextColor3 = color or Color3.fromRGB(255, 180, 0)
     end
-    return false
+
+    SubmitBtn.MouseButton1Click:Connect(function()
+        if busy then return end
+        local key = InputBox.Text
+        if not key or key == "" then setStatus("Key tidak boleh kosong", Color3.fromRGB(255, 100, 100)); return end
+        busy = true
+        SubmitBtn.Text = "MEMVALIDASI..."
+        setStatus("Menghubungi server...", Color3.fromRGB(0, 220, 255))
+        task.spawn(function()
+            local res = httpRequest({
+                Url = VALIDATE_KEY_API, Method = "POST",
+                Headers = { ["Content-Type"] = "application/json" },
+                Body = HttpService:JSONEncode({ key = key, hwid = HWID, robloxUsername = username }),
+            })
+            busy = false; SubmitBtn.Text = "VALIDASI KEY"
+            if not res or not res.Body then setStatus("Gagal terhubung ke server", Color3.fromRGB(255, 100, 100)); return end
+            local ok, parsed = pcall(function() return HttpService:JSONDecode(res.Body) end)
+            if ok and parsed and parsed.success and parsed.valid then
+                safeWrite({ key = key, savedAt = os.time(), role = parsed.role })
+                setStatus("Berhasil! Memuat script...", Color3.fromRGB(0, 255, 150))
+                task.wait(0.6)
+                result.key = key; result.done = true
+                pcall(function() ScreenGui:Destroy() end)
+            else
+                local err = (parsed and (parsed.error or parsed.message)) or "Key tidak valid"
+                setStatus(tostring(err), Color3.fromRGB(255, 100, 100))
+            end
+        end)
+    end)
+
+    CancelBtn.MouseButton1Click:Connect(function()
+        result.cancelled = true; result.done = true
+        pcall(function() ScreenGui:Destroy() end)
+    end)
+
+    -- Block until done
+    local timeout = tick() + 600
+    while not result.done and tick() < timeout do task.wait(0.2) end
+    if not result.done then pcall(function() ScreenGui:Destroy() end) end
+    return result.key
+end
+
+local function promptAndSaveKey()
+    local key = showKeyPromptUI()
+    if not key or key == "" then return false end
+    -- Already validated + saved in UI handler; double-check session
+    return tryCachedKey()
 end
 
 -- 4) Fake fallback
