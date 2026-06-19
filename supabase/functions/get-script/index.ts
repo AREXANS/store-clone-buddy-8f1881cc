@@ -55,6 +55,8 @@ serve(async (req) => {
     const scriptName = url.searchParams.get("name");
     const rawParam = (url.searchParams.get("raw") || "").toLowerCase();
     const forceRaw = rawParam === "1" || rawParam === "true";
+    const payloadParam = (url.searchParams.get("payload") || "").toLowerCase();
+    const wantPayload = payloadParam === "1" || payloadParam === "true";
 
     if (!scriptName) {
       return new Response("-- Access Denied: Invalid request", {
@@ -63,7 +65,7 @@ serve(async (req) => {
       });
     }
 
-    if (!forceRaw && isBrowser(req)) {
+    if (!forceRaw && !wantPayload && isBrowser(req)) {
       const deniedUrl = `https://tools.arexans.my.id/access-denied?name=${encodeURIComponent(scriptName)}`;
       return new Response(null, {
         status: 302,
