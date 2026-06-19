@@ -399,13 +399,12 @@ const LuaUploadManager: FC = () => {
 
   useEffect(() => { fetchScripts(); }, []);
 
-  const wrap = (raw: string) => PROTECTION_WRAPPER(SUPABASE_API_BASE, raw);
+  const wrap = (name: string, raw: string) => PROTECTION_WRAPPER(SUPABASE_API_BASE, name, raw);
 
   const unwrap = (wrapped: string): string => {
     const marker = '-- USER SCRIPT (PROTECTED)';
     const idx = wrapped.indexOf(marker);
     if (idx === -1) return wrapped;
-    // Skip marker line + trailing comment line + newline
     const afterMarker = wrapped.substring(idx + marker.length);
     const nl = afterMarker.indexOf('\n');
     return afterMarker.substring(nl + 1).replace(/\n$/, '');
@@ -423,21 +422,21 @@ const LuaUploadManager: FC = () => {
     try {
       const raw = await file.text();
       const scriptName = file.name.replace(/\.(lua|txt)$/i, '').replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
-      const wrapped = wrap(raw);
       const dbName = `uploaded_${scriptName}`;
+      const wrapped = wrap(dbName, raw);
 
       const { data: existing } = await supabase.from('lua_scripts').select('id').eq('name', dbName).maybeSingle();
       if (existing) {
         const { error } = await supabase.from('lua_scripts')
-          .update({ content: wrapped, updated_at: new Date().toISOString() }).eq('id', existing.id);
+          .update({ content: wrapped, raw_content: raw, updated_at: new Date().toISOString() } as any).eq('id', existing.id);
         if (error) throw error;
         toast({ title: 'Berhasil', description: `"${file.name}" diupdate (key + whitelist auto-terintegrasi)` });
       } else {
         const { error } = await supabase.from('lua_scripts').insert({
           name: dbName, display_name: file.name,
           description: 'Auto-integrated: key system + whitelist',
-          content: wrapped, script_type: 'uploaded', is_active: true,
-        });
+          content: wrapped, raw_content: raw, script_type: 'uploaded', is_active: true,
+        } as any);
         if (error) throw error;
         toast({ title: 'Berhasil', description: `"${file.name}" diupload (key + whitelist auto-terintegrasi)` });
       }
@@ -455,11 +454,11 @@ const LuaUploadManager: FC = () => {
     setRewrapping(true);
     try {
       for (const s of scripts) {
-        const raw = unwrap(s.content);
-        const newWrapped = wrap(raw);
+        const raw = (s as any).raw_content || unwrap(s.content);
+        const newWrapped = wrap(s.name, raw);
         await supabase.from('lua_scripts').update({
-          content: newWrapped, updated_at: new Date().toISOString(),
-        }).eq('id', s.id);
+          content: newWrapped, raw_content: raw, updated_at: new Date().toISOString(),
+        } as any).eq('id', s.id);
       }
       toast({ title: 'Berhasil', description: `${scripts.length} script di-rewrap` });
       fetchScripts();
