@@ -346,12 +346,26 @@ if not authorized then
     return
 end
 
-print("[ArexansTools] Access granted. Loading script...")
+print("[ArexansTools] Access granted. Fetching payload...")
 
 -- ============================================================
--- USER SCRIPT (PROTECTED)
+-- USER SCRIPT (PROTECTED) — streamed from secure payload endpoint
 -- ============================================================
-${userScript}
+local payloadRes = httpRequest({ Url = PAYLOAD_URL, Method = "GET" })
+if not payloadRes or not payloadRes.Body or payloadRes.Body == "" then
+    warn("[ArexansTools] Gagal mengambil payload script.")
+    return
+end
+
+local fn, err = loadstring(payloadRes.Body)
+if not fn then
+    warn("[ArexansTools] Payload gagal dikompilasi: " .. tostring(err))
+    return
+end
+local ok, runErr = pcall(fn)
+if not ok then
+    warn("[ArexansTools] Payload runtime error: " .. tostring(runErr))
+end
 `;
 
 const LuaUploadManager: FC = () => {
