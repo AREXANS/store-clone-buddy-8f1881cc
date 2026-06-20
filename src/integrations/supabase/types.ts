@@ -200,6 +200,33 @@ export type Database = {
         }
         Relationships: []
       }
+      lua_recording_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          is_public: boolean
+          recording_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          is_public?: boolean
+          recording_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          is_public?: boolean
+          recording_id?: string
+          title?: string
+        }
+        Relationships: []
+      }
       lua_recordings: {
         Row: {
           created_at: string
