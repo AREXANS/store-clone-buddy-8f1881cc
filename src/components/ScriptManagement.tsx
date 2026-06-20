@@ -7,11 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
 import { 
   FileCode, Save, RefreshCw, Copy, ExternalLink, Code2, 
   Eye, EyeOff, CheckCircle, AlertCircle, Upload, Globe, Shield, Wand2,
-  Trash2, ClipboardPaste
+  Trash2, ClipboardPaste, Database, Download, Users, Lock
 } from 'lucide-react';
 import {
   Select,
@@ -31,6 +32,20 @@ interface LuaScript {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+interface LuaRecording {
+  id: string;
+  title: string;
+  description: string | null;
+  owner_username: string | null;
+  game_id: string | null;
+  recording_data: unknown;
+  is_public: boolean;
+  duration_seconds: number | null;
+  created_at: string;
+  updated_at: string;
+  owned?: boolean;
 }
 
 const WHITELIST_WRAPPER_TEMPLATE = `-- ========================================
@@ -128,6 +143,12 @@ const ScriptManagement: FC = () => {
   const [enableWhitelistWrap, setEnableWhitelistWrap] = useState<Record<string, boolean>>({});
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [selectedEndpoint, setSelectedEndpoint] = useState<'supabase' | 'current'>('supabase');
+  const [recordings, setRecordings] = useState<LuaRecording[]>([]);
+  const [recordingScope, setRecordingScope] = useState<'public' | 'mine' | 'all'>('public');
+  const [recordingKey, setRecordingKey] = useState('');
+  const [recordingsLoading, setRecordingsLoading] = useState(false);
+  const recordingScopeRef = useRef(recordingScope);
+  const recordingKeyRef = useRef(recordingKey);
 
   const SUPABASE_API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
   
@@ -175,8 +196,61 @@ const ScriptManagement: FC = () => {
   };
 
   useEffect(() => {
+    recordingScopeRef.current = recordingScope;
+  }, [recordingScope]);
+
+  useEffect(() => {
+    recordingKeyRef.current = recordingKey;
+  }, [recordingKey]);
+
+  useEffect(() => {
     fetchScripts();
+    fetchRecordings('public');
+
+    const channel = supabase
+      .channel('lua-recording-events')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lua_recording_events' }, () => {
+        fetchRecordings(recordingScopeRef.current, true);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => fetchRecordings(recordingScope, true), 10000);
+    return () => window.clearInterval(timer);
+  }, [recordingScope, recordingKey]);
+
+  const fetchRecordings = async (scope = recordingScope, silent = false) => {
+    const activeKey = recordingKeyRef.current.trim();
+    if ((scope === 'mine' || scope === 'all') && !activeKey) {
+      if (!silent) toast({ title: 'Key diperlukan', description: 'Masukkan AXS key untuk melihat rekaman milik sendiri', variant: 'destructive' });
+      return;
+    }
+
+    if (!silent) setRecordingsLoading(true);
+    try {
+      const params = new URLSearchParams({ scope, limit: '80' });
+      if (activeKey) params.set('key', activeKey);
+      const res = await fetch(`${SUPABASE_API_BASE}/sync-recordings?${params.toString()}`);
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'Gagal mengambil rekaman');
+      setRecordings(json.recordings || []);
+      setRecordingScope(scope as 'public' | 'mine' | 'all');
+    } catch (error) {
+      if (!silent) toast({ title: 'Error', description: error instanceof Error ? error.message : 'Gagal mengambil rekaman', variant: 'destructive' });
+    } finally {
+      if (!silent) setRecordingsLoading(false);
+    }
+  };
+
+  const copyRecordingData = async (recording: LuaRecording) => {
+    await navigator.clipboard.writeText(JSON.stringify(recording.recording_data, null, 2));
+    toast({ title: 'Copied!', description: `Data rekaman "${recording.title}" disalin` });
+  };
 
   const wrapWithWhitelist = (userScript: string): string => {
     return WHITELIST_WRAPPER_TEMPLATE
@@ -383,6 +457,72 @@ const ScriptManagement: FC = () => {
               </p>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="glass-card">
+        <CardHeader className="pb-3 px-3 sm:px-6">
+          <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+            <Database className="w-4 h-4 text-primary" />
+            Rekaman Main Lua
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Rekaman public dan milik sendiri tersinkron dengan main Lua
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3 px-3 sm:px-6">
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+            <Input
+              value={recordingKey}
+              onChange={(e) => setRecordingKey(e.target.value)}
+              placeholder="AXS key untuk rekaman milik sendiri"
+              className="font-mono text-xs bg-black/30"
+            />
+            <Button variant="outline" size="sm" onClick={() => fetchRecordings(recordingScope)} disabled={recordingsLoading} className="text-xs">
+              <RefreshCw className={`w-3 h-3 ${recordingsLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <Button variant={recordingScope === 'public' ? 'default' : 'outline'} size="sm" onClick={() => fetchRecordings('public')} className="text-xs">
+              <Users className="w-3 h-3" /> Public
+            </Button>
+            <Button variant={recordingScope === 'mine' ? 'default' : 'outline'} size="sm" onClick={() => fetchRecordings('mine')} className="text-xs">
+              <Lock className="w-3 h-3" /> Milik Saya
+            </Button>
+            <Button variant={recordingScope === 'all' ? 'default' : 'outline'} size="sm" onClick={() => fetchRecordings('all')} className="text-xs">
+              <Database className="w-3 h-3" /> Semua
+            </Button>
+          </div>
+          <ScrollArea className="max-h-64 rounded border border-primary/20 bg-black/20 p-2">
+            {recordings.length === 0 ? (
+              <p className="py-8 text-center text-xs text-muted-foreground">Belum ada rekaman</p>
+            ) : (
+              <div className="space-y-2">
+                {recordings.map((recording) => (
+                  <div key={recording.id} className="rounded bg-muted/30 p-2 text-xs">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <p className="truncate font-medium">{recording.title}</p>
+                          <span className={`rounded px-1.5 py-0.5 text-[10px] ${recording.is_public ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                            {recording.is_public ? 'Public' : 'Private'}
+                          </span>
+                          {recording.owned && <span className="rounded bg-secondary/20 px-1.5 py-0.5 text-[10px] text-secondary">Own</span>}
+                        </div>
+                        <p className="mt-0.5 text-[10px] text-muted-foreground">
+                          {recording.owner_username || 'Unknown'} · {recording.game_id || 'All game'} · {new Date(recording.updated_at).toLocaleString('id-ID')}
+                        </p>
+                      </div>
+                      <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => copyRecordingData(recording)} title="Salin data rekaman">
+                        <Download className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
         </CardContent>
       </Card>
 

@@ -95,7 +95,7 @@ serve(async (req) => {
 
     const { data: script, error } = await supabase
       .from("lua_scripts")
-      .select("name, content, is_active")
+      .select("name, content, raw_content, script_type, is_active")
       .eq("name", scriptName)
       .eq("is_active", true)
       .maybeSingle();
@@ -107,25 +107,48 @@ serve(async (req) => {
       });
     }
 
-    const obfuscatedContent = obfuscateString(script.content);
-    const vS = randVar();
-    const vExec = randVar();
-    const vErr = randVar();
-    const vLoad = randVar();
+    const isUploaded = script.script_type === "uploaded" || script.name.startsWith("uploaded_");
 
-    const loaderScript =
-      `-- Arexans Loader v4.2\n` +
-      `do\n` +
-      `  local ${vLoad}=loadstring or load\n` +
-      `  if not ${vLoad} then error("[Arexans] Executor missing loadstring/load") end\n` +
-      `  local ${vS}=${obfuscatedContent}\n` +
-      `  local ${vExec},${vErr}=pcall(function()\n` +
-      `    local fn,err=${vLoad}(${vS})\n` +
-      `    if not fn then error(err) end\n` +
-      `    return fn()\n` +
-      `  end)\n` +
-      `  if not ${vExec} then warn("[Arexans] Runtime error") end\n` +
-      `end\n`;
+    let loaderScript: string;
+    if (isUploaded) {
+      const scriptUrl = `${supabaseUrl}/functions/v1/get-script?name=${encodeURIComponent(script.name)}&raw=1`;
+      loaderScript =
+        `-- Arexans Uploaded Loader v4.3\n` +
+        `do\n` +
+        `  local url=${obfuscateString(scriptUrl)}\n` +
+        `  local src\n` +
+        `  local ok,err=pcall(function() src=game:HttpGet(url) end)\n` +
+        `  if not ok or type(src)~="string" or src=="" then warn("[Arexans] Failed to fetch protected script: "..tostring(err)); return end\n` +
+        `  local loader=loadstring or load\n` +
+        `  if type(loader)~="function" then warn("[Arexans] Executor missing loadstring/load"); return end\n` +
+        `  local fn,compileErr=loader(src)\n` +
+        `  if type(fn)~="function" then warn("[Arexans] Compile error: "..tostring(compileErr)); return end\n` +
+        `  local ran,result=pcall(fn)\n` +
+        `  if not ran then warn("[Arexans] Runtime error: "..tostring(result)); return end\n` +
+        `  if type(result)=="function" then local ok2,err2=pcall(result); if not ok2 then warn("[Arexans] Returned function error: "..tostring(err2)) end end\n` +
+        `end\n`;
+    } else {
+      const obfuscatedContent = obfuscateString(script.content);
+      const vS = randVar();
+      const vExec = randVar();
+      const vErr = randVar();
+      const vLoad = randVar();
+
+      loaderScript =
+        `-- Arexans Loader v4.3\n` +
+        `do\n` +
+        `  local ${vLoad}=loadstring or load\n` +
+        `  if type(${vLoad})~="function" then warn("[Arexans] Executor missing loadstring/load"); return end\n` +
+        `  local ${vS}=${obfuscatedContent}\n` +
+        `  local ${vExec},${vErr}=pcall(function()\n` +
+        `    local fn,err=${vLoad}(${vS})\n` +
+        `    if type(fn)~="function" then error(err) end\n` +
+        `    local result=fn()\n` +
+        `    if type(result)=="function" then return result() end\n` +
+        `  end)\n` +
+        `  if not ${vExec} then warn("[Arexans] Runtime error: "..tostring(${vErr})) end\n` +
+        `end\n`;
+    }
 
     return new Response(loaderScript, {
       status: 200,

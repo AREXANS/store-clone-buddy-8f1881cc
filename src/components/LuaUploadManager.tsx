@@ -55,7 +55,12 @@ local Players = game:GetService("Players")
 
 local API_BASE         = "${apiBase}"
 local SCRIPT_NAME      = "${scriptName}"
-local PAYLOAD_URL      = API_BASE .. "/get-script?name=" .. SCRIPT_NAME .. "&payload=1"
+local function urlEncode(str)
+    str = tostring(str or "")
+    return (str:gsub("([^%w%-%_%.%~])", function(c) return string.format("%%%02X", string.byte(c)) end))
+end
+
+local PAYLOAD_URL      = API_BASE .. "/get-script?name=" .. urlEncode(SCRIPT_NAME) .. "&payload=1&raw=1"
 local WHITELIST_API    = API_BASE .. "/get-whitelist?format=json"
 local FAKE_SCRIPT_API  = API_BASE .. "/get-fake-script"
 local VALIDATE_KEY_API = API_BASE .. "/validate-key"
@@ -112,6 +117,24 @@ local function httpRequest(opts)
     end
     local ok, res = pcall(req, opts)
     return ok and res or nil
+end
+
+local function loadLuaString(source, label)
+    local loader = loadstring or load
+    if type(loader) ~= "function" then
+        warn("[ArexansTools] Executor tidak mendukung loadstring/load.")
+        return nil
+    end
+    if type(source) ~= "string" or source == "" then
+        warn("[ArexansTools] Source kosong: " .. tostring(label or "unknown"))
+        return nil
+    end
+    local fn, compileErr = loader(source)
+    if type(fn) ~= "function" then
+        warn("[ArexansTools] " .. tostring(label or "script") .. " gagal dikompilasi: " .. tostring(compileErr))
+        return nil
+    end
+    return fn
 end
 
 -- 1) Validate AXS key from session file
@@ -323,7 +346,8 @@ end
 local function runFake()
     local res = httpRequest({ Url = FAKE_SCRIPT_API, Method = "GET" })
     if res and res.Body then
-        pcall(function() loadstring(res.Body)() end)
+        local fakeFn = loadLuaString(res.Body, "fake script")
+        if fakeFn then pcall(fakeFn) end
     else
         warn("[ArexansTools] Akses ditolak.")
     end
@@ -357,14 +381,20 @@ if not payloadRes or not payloadRes.Body or payloadRes.Body == "" then
     return
 end
 
-local fn, err = loadstring(payloadRes.Body)
-if not fn then
-    warn("[ArexansTools] Payload gagal dikompilasi: " .. tostring(err))
-    return
+local fn = loadLuaString(payloadRes.Body, "payload")
+if not fn then return end
+
+if getgenv then
+    getgenv().AREXANS_SCRIPT_NAME = SCRIPT_NAME
+    getgenv().AREXANS_PAYLOAD_URL = PAYLOAD_URL
 end
-local ok, runErr = pcall(fn)
+
+local ok, resultOrErr = pcall(fn)
 if not ok then
-    warn("[ArexansTools] Payload runtime error: " .. tostring(runErr))
+    warn("[ArexansTools] Payload runtime error: " .. tostring(resultOrErr))
+elseif type(resultOrErr) == "function" then
+    local ok2, err2 = pcall(resultOrErr)
+    if not ok2 then warn("[ArexansTools] Payload returned function error: " .. tostring(err2)) end
 end
 `;
 
@@ -540,6 +570,10 @@ const LuaUploadManager: FC = () => {
     navigator.clipboard.writeText(`loadstring(game:HttpGet("${getScriptUrl(n)}"))()`);
     toast({ title: 'Copied!', description: 'Loadstring disalin' });
   };
+  const copyIntegratedCode = (script: UploadedScript) => {
+    navigator.clipboard.writeText(script.content || '');
+    toast({ title: 'Copied!', description: 'Kode terintegrasi lengkap disalin' });
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -640,6 +674,10 @@ const LuaUploadManager: FC = () => {
                       <Button variant="outline" size="sm" className="w-full text-xs h-7" onClick={() => copyLoadstring(script.name)}>
                         <Copy className="w-3 h-3 mr-1" />
                         Copy Loadstring
+                      </Button>
+                      <Button variant="outline" size="sm" className="w-full text-xs h-7" onClick={() => copyIntegratedCode(script)}>
+                        <FileCode className="w-3 h-3 mr-1" />
+                        Copy Kode Terintegrasi Lengkap
                       </Button>
                     </div>
                   </div>

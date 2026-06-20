@@ -200,6 +200,81 @@ export type Database = {
         }
         Relationships: []
       }
+      lua_recording_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          is_public: boolean
+          recording_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          is_public?: boolean
+          recording_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          is_public?: boolean
+          recording_id?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      lua_recordings: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_seconds: number | null
+          game_id: string | null
+          id: string
+          is_public: boolean
+          owner_hwid: string | null
+          owner_key: string | null
+          owner_username: string | null
+          recording_data: Json
+          source: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          game_id?: string | null
+          id?: string
+          is_public?: boolean
+          owner_hwid?: string | null
+          owner_key?: string | null
+          owner_username?: string | null
+          recording_data?: Json
+          source?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          game_id?: string | null
+          id?: string
+          is_public?: boolean
+          owner_hwid?: string | null
+          owner_key?: string | null
+          owner_username?: string | null
+          recording_data?: Json
+          source?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lua_script_versions: {
         Row: {
           content: string
