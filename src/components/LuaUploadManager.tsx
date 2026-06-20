@@ -570,6 +570,10 @@ const LuaUploadManager: FC = () => {
     navigator.clipboard.writeText(`loadstring(game:HttpGet("${getScriptUrl(n)}"))()`);
     toast({ title: 'Copied!', description: 'Loadstring disalin' });
   };
+  const copyIntegratedCode = (script: UploadedScript) => {
+    navigator.clipboard.writeText(script.content || '');
+    toast({ title: 'Copied!', description: 'Kode terintegrasi lengkap disalin' });
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -670,6 +674,10 @@ const LuaUploadManager: FC = () => {
                       <Button variant="outline" size="sm" className="w-full text-xs h-7" onClick={() => copyLoadstring(script.name)}>
                         <Copy className="w-3 h-3 mr-1" />
                         Copy Loadstring
+                      </Button>
+                      <Button variant="outline" size="sm" className="w-full text-xs h-7" onClick={() => copyIntegratedCode(script)}>
+                        <FileCode className="w-3 h-3 mr-1" />
+                        Copy Kode Terintegrasi Lengkap
                       </Button>
                     </div>
                   </div>
