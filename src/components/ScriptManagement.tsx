@@ -11,7 +11,7 @@ import { toast } from '@/hooks/use-toast';
 import { 
   FileCode, Save, RefreshCw, Copy, ExternalLink, Code2, 
   Eye, EyeOff, CheckCircle, AlertCircle, Upload, Globe, Shield, Wand2,
-  Trash2, ClipboardPaste
+  Trash2, ClipboardPaste, Database, Download, Users, Lock
 } from 'lucide-react';
 import {
   Select,
@@ -31,6 +31,20 @@ interface LuaScript {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+interface LuaRecording {
+  id: string;
+  title: string;
+  description: string | null;
+  owner_username: string | null;
+  game_id: string | null;
+  recording_data: unknown;
+  is_public: boolean;
+  duration_seconds: number | null;
+  created_at: string;
+  updated_at: string;
+  owned?: boolean;
 }
 
 const WHITELIST_WRAPPER_TEMPLATE = `-- ========================================
@@ -128,6 +142,10 @@ const ScriptManagement: FC = () => {
   const [enableWhitelistWrap, setEnableWhitelistWrap] = useState<Record<string, boolean>>({});
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [selectedEndpoint, setSelectedEndpoint] = useState<'supabase' | 'current'>('supabase');
+  const [recordings, setRecordings] = useState<LuaRecording[]>([]);
+  const [recordingScope, setRecordingScope] = useState<'public' | 'mine' | 'all'>('public');
+  const [recordingKey, setRecordingKey] = useState('');
+  const [recordingsLoading, setRecordingsLoading] = useState(false);
 
   const SUPABASE_API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
   
@@ -176,7 +194,40 @@ const ScriptManagement: FC = () => {
 
   useEffect(() => {
     fetchScripts();
+    fetchRecordings('public');
   }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => fetchRecordings(recordingScope, true), 10000);
+    return () => window.clearInterval(timer);
+  }, [recordingScope, recordingKey]);
+
+  const fetchRecordings = async (scope = recordingScope, silent = false) => {
+    if ((scope === 'mine' || scope === 'all') && !recordingKey.trim()) {
+      if (!silent) toast({ title: 'Key diperlukan', description: 'Masukkan AXS key untuk melihat rekaman milik sendiri', variant: 'destructive' });
+      return;
+    }
+
+    if (!silent) setRecordingsLoading(true);
+    try {
+      const params = new URLSearchParams({ scope, limit: '80' });
+      if (recordingKey.trim()) params.set('key', recordingKey.trim());
+      const res = await fetch(`${SUPABASE_API_BASE}/sync-recordings?${params.toString()}`);
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'Gagal mengambil rekaman');
+      setRecordings(json.recordings || []);
+      setRecordingScope(scope as 'public' | 'mine' | 'all');
+    } catch (error) {
+      if (!silent) toast({ title: 'Error', description: error instanceof Error ? error.message : 'Gagal mengambil rekaman', variant: 'destructive' });
+    } finally {
+      if (!silent) setRecordingsLoading(false);
+    }
+  };
+
+  const copyRecordingData = async (recording: LuaRecording) => {
+    await navigator.clipboard.writeText(JSON.stringify(recording.recording_data, null, 2));
+    toast({ title: 'Copied!', description: `Data rekaman "${recording.title}" disalin` });
+  };
 
   const wrapWithWhitelist = (userScript: string): string => {
     return WHITELIST_WRAPPER_TEMPLATE
