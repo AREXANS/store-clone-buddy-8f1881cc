@@ -148,6 +148,7 @@ const ScriptManagement: FC = () => {
   const [recordingKey, setRecordingKey] = useState('');
   const [recordingsLoading, setRecordingsLoading] = useState(false);
   const recordingScopeRef = useRef(recordingScope);
+  const recordingKeyRef = useRef(recordingKey);
 
   const SUPABASE_API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
   
@@ -199,6 +200,10 @@ const ScriptManagement: FC = () => {
   }, [recordingScope]);
 
   useEffect(() => {
+    recordingKeyRef.current = recordingKey;
+  }, [recordingKey]);
+
+  useEffect(() => {
     fetchScripts();
     fetchRecordings('public');
 
@@ -220,7 +225,8 @@ const ScriptManagement: FC = () => {
   }, [recordingScope, recordingKey]);
 
   const fetchRecordings = async (scope = recordingScope, silent = false) => {
-    if ((scope === 'mine' || scope === 'all') && !recordingKey.trim()) {
+    const activeKey = recordingKeyRef.current.trim();
+    if ((scope === 'mine' || scope === 'all') && !activeKey) {
       if (!silent) toast({ title: 'Key diperlukan', description: 'Masukkan AXS key untuk melihat rekaman milik sendiri', variant: 'destructive' });
       return;
     }
@@ -228,7 +234,7 @@ const ScriptManagement: FC = () => {
     if (!silent) setRecordingsLoading(true);
     try {
       const params = new URLSearchParams({ scope, limit: '80' });
-      if (recordingKey.trim()) params.set('key', recordingKey.trim());
+      if (activeKey) params.set('key', activeKey);
       const res = await fetch(`${SUPABASE_API_BASE}/sync-recordings?${params.toString()}`);
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error || 'Gagal mengambil rekaman');
