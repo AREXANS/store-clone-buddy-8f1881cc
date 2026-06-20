@@ -96,7 +96,7 @@ serve(async (req) => {
         if (!valid.ok) {
           return new Response(JSON.stringify({ success: false, error: valid.error }), { status: 401, headers: jsonHeaders });
         }
-        query = query.or(`is_public.eq.true,owner_key.eq.${key}`);
+        query = query.or(`is_public.eq.true,owner_key.eq.${encodeURIComponent(key)}`);
       } else {
         query = query.eq("is_public", true);
       }
