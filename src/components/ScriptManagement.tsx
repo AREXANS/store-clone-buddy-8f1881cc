@@ -147,6 +147,7 @@ const ScriptManagement: FC = () => {
   const [recordingScope, setRecordingScope] = useState<'public' | 'mine' | 'all'>('public');
   const [recordingKey, setRecordingKey] = useState('');
   const [recordingsLoading, setRecordingsLoading] = useState(false);
+  const recordingScopeRef = useRef(recordingScope);
 
   const SUPABASE_API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
   
@@ -194,13 +195,17 @@ const ScriptManagement: FC = () => {
   };
 
   useEffect(() => {
+    recordingScopeRef.current = recordingScope;
+  }, [recordingScope]);
+
+  useEffect(() => {
     fetchScripts();
     fetchRecordings('public');
 
     const channel = supabase
       .channel('lua-recording-events')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lua_recording_events' }, () => {
-        fetchRecordings(recordingScope, true);
+        fetchRecordings(recordingScopeRef.current, true);
       })
       .subscribe();
 
