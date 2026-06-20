@@ -196,6 +196,17 @@ const ScriptManagement: FC = () => {
   useEffect(() => {
     fetchScripts();
     fetchRecordings('public');
+
+    const channel = supabase
+      .channel('lua-recording-events')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lua_recording_events' }, () => {
+        fetchRecordings(recordingScope, true);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {
