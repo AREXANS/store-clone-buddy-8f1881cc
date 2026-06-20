@@ -200,6 +200,54 @@ export type Database = {
         }
         Relationships: []
       }
+      lua_recordings: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_seconds: number | null
+          game_id: string | null
+          id: string
+          is_public: boolean
+          owner_hwid: string | null
+          owner_key: string | null
+          owner_username: string | null
+          recording_data: Json
+          source: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          game_id?: string | null
+          id?: string
+          is_public?: boolean
+          owner_hwid?: string | null
+          owner_key?: string | null
+          owner_username?: string | null
+          recording_data?: Json
+          source?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          game_id?: string | null
+          id?: string
+          is_public?: boolean
+          owner_hwid?: string | null
+          owner_key?: string | null
+          owner_username?: string | null
+          recording_data?: Json
+          source?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lua_script_versions: {
         Row: {
           content: string
