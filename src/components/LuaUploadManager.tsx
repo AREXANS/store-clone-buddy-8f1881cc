@@ -45,16 +45,26 @@ interface ScriptVersion {
  */
 const PROTECTION_WRAPPER = (apiBase: string, scriptName: string, _userScript: string) => `--[[
 ============================================================
- ArexansTools — Auto-Protected Bootstrap
- Integrasi: Key System + Whitelist + Session Cache
- Payload script besar di-stream terpisah (anti loadstring-nil)
+ ArexansTools — Auto-Protected Bootstrap (v3)
+ - Session cache (file-presence only, no extra network round-trip)
+ - Whitelist check
+ - Floating Key System UI (cyan-blue style)
+ - Payload streamed terpisah supaya script besar tetap aman
 ============================================================
 ]]
 local HttpService = game:GetService("HttpService")
+local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
+local username    = LocalPlayer.Name
 
 local API_BASE         = "${apiBase}"
 local SCRIPT_NAME      = "${scriptName}"
+
 local function urlEncode(str)
     str = tostring(str or "")
     return (str:gsub("([^%w%-%_%.%~])", function(c) return string.format("%%%02X", string.byte(c)) end))
@@ -68,22 +78,19 @@ local VALIDATE_KEY_API = API_BASE .. "/validate-key"
 local SESSION_FOLDER   = "ArexansTools"
 local SESSION_FILE     = SESSION_FOLDER .. "/ArexansTools_Session.json"
 
-local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
-local username    = LocalPlayer.Name
+if not _G.Arexans_Connections then _G.Arexans_Connections = {} end
+local function ConnectEvent(event, func)
+    local conn = event:Connect(func)
+    table.insert(_G.Arexans_Connections, conn)
+    return conn
+end
 
--- Universal HWID
 local function getHwid()
-    local ok, id = pcall(function()
-        if syn and syn.crypt and syn.crypt.hash then
-            return game:GetService("RbxAnalyticsService"):GetClientId()
-        end
-        return game:GetService("RbxAnalyticsService"):GetClientId()
-    end)
+    local ok, id = pcall(function() return game:GetService("RbxAnalyticsService"):GetClientId() end)
     return ok and id or (LocalPlayer.UserId .. "_fallback")
 end
 local HWID = getHwid()
 
--- Filesystem helpers (executor-safe)
 local function safeRead()
     if not (isfile and readfile) then return nil end
     if not isfile(SESSION_FILE) then return nil end
@@ -102,13 +109,6 @@ local function safeWrite(tbl)
     end)
 end
 
-local function safeDelete()
-    if delfile and isfile and isfile(SESSION_FILE) then
-        pcall(delfile, SESSION_FILE)
-    end
-end
-
--- HTTP request abstraction (executor-safe)
 local function httpRequest(opts)
     local req = (syn and syn.request) or (http and http.request) or (fluxus and fluxus.request) or request or http_request
     if not req then
@@ -121,44 +121,41 @@ end
 
 local function loadLuaString(source, label)
     local loader = loadstring or load
-    if type(loader) ~= "function" then
-        warn("[ArexansTools] Executor tidak mendukung loadstring/load.")
-        return nil
-    end
-    if type(source) ~= "string" or source == "" then
-        warn("[ArexansTools] Source kosong: " .. tostring(label or "unknown"))
-        return nil
-    end
+    if type(loader) ~= "function" then warn("[ArexansTools] Executor tanpa loadstring/load."); return nil end
+    if type(source) ~= "string" or source == "" then return nil end
     local fn, compileErr = loader(source)
-    if type(fn) ~= "function" then
-        warn("[ArexansTools] " .. tostring(label or "script") .. " gagal dikompilasi: " .. tostring(compileErr))
-        return nil
-    end
+    if type(fn) ~= "function" then warn("[ArexansTools] " .. tostring(label) .. " compile error: " .. tostring(compileErr)); return nil end
     return fn
 end
 
--- 1) Validate AXS key from session file
+local function MakeDraggable(guiObject, dragHandle)
+    local dragInput, dragStart, startPos
+    ConnectEvent(dragHandle.InputBegan, function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input; dragStart = input.Position; startPos = guiObject.Position
+        end
+    end)
+    ConnectEvent(UserInputService.InputChanged, function(input)
+        if dragInput and (input.UserInputType == Enum.UserInputType.MouseMovement or input == dragInput) then
+            local d = input.Position - dragStart
+            guiObject.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
+        end
+    end)
+    ConnectEvent(UserInputService.InputEnded, function(input)
+        if dragInput and input.UserInputType == dragInput.UserInputType then dragInput = nil end
+    end)
+end
+
+-- 1) Session cache: file-presence only (tidak validasi online → tidak nge-block payload)
 local function tryCachedKey()
     local data = safeRead()
-    if not data or not data.key or data.key == "" then return false end
-    local res = httpRequest({
-        Url = VALIDATE_KEY_API,
-        Method = "POST",
-        Headers = { ["Content-Type"] = "application/json" },
-        Body = HttpService:JSONEncode({ key = data.key, hwid = HWID, robloxUsername = username }),
-    })
-    if not res or not res.Body then return false end
-    local ok, parsed = pcall(function() return HttpService:JSONDecode(res.Body) end)
-    if ok and parsed and parsed.success and parsed.valid then
-        print("[ArexansTools] Session key valid (role: " .. tostring(parsed.role) .. ")")
+    if data and data.key and data.key ~= "" then
+        print("[ArexansTools] Session ditemukan (role: " .. tostring(data.role or "Unknown") .. ")")
         return true
     end
-    -- invalid / expired → hapus
-    safeDelete()
     return false
 end
 
--- 2) Whitelist check
 local function checkWhitelist()
     local res = httpRequest({ Url = WHITELIST_API, Method = "GET" })
     if not res or not res.Body then return false end
@@ -171,193 +168,180 @@ local function checkWhitelist()
     return false
 end
 
--- 3) Prompt key — UI floating window (mengikuti style keysystem loader)
 local function showKeyPromptUI()
-    local CoreGui = game:GetService("CoreGui")
-    local UserInputService = game:GetService("UserInputService")
-    local TweenService = game:GetService("TweenService")
     local parentGui = CoreGui
     local okp, pg = pcall(function() return Players.LocalPlayer:WaitForChild("PlayerGui") end)
     if not okp or not pg then pg = CoreGui end
+    pcall(function() if parentGui:FindFirstChild("ArexansKeySystemGUI") then parentGui.ArexansKeySystemGUI:Destroy() end end)
+    pcall(function() if pg:FindFirstChild("ArexansKeySystemGUI") then pg.ArexansKeySystemGUI:Destroy() end end)
 
-    -- Cleanup duplicate
-    pcall(function() if parentGui:FindFirstChild("ArexansKeyPromptGui") then parentGui.ArexansKeyPromptGui:Destroy() end end)
-    pcall(function() if pg:FindFirstChild("ArexansKeyPromptGui") then pg.ArexansKeyPromptGui:Destroy() end end)
-
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "ArexansKeyPromptGui"
-    ScreenGui.ResetOnSpawn = false
-    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    ScreenGui.DisplayOrder = 999
-    local parentOk = pcall(function() ScreenGui.Parent = CoreGui end)
-    if not parentOk then ScreenGui.Parent = pg end
-
-    local Main = Instance.new("Frame", ScreenGui)
-    Main.Size = UDim2.new(0, 320, 0, 230)
-    Main.Position = UDim2.new(0.5, -160, 0.5, -115)
-    Main.BackgroundColor3 = Color3.fromRGB(18, 20, 32)
-    Main.BorderSizePixel = 0
-    Main.Active = true
-    Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
-    local stroke = Instance.new("UIStroke", Main)
-    stroke.Color = Color3.fromRGB(0, 220, 255); stroke.Thickness = 1.4; stroke.Transparency = 0.2
-
-    local Header = Instance.new("Frame", Main)
-    Header.Size = UDim2.new(1, 0, 0, 38)
-    Header.BackgroundColor3 = Color3.fromRGB(10, 12, 22)
-    Header.BorderSizePixel = 0
-    Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 12)
-
-    local Title = Instance.new("TextLabel", Header)
-    Title.Size = UDim2.new(1, -16, 1, 0); Title.Position = UDim2.new(0, 12, 0, 0)
-    Title.BackgroundTransparency = 1
-    Title.Text = "ArexansTools — Key System"
-    Title.Font = Enum.Font.GothamBold; Title.TextSize = 14
-    Title.TextColor3 = Color3.fromRGB(0, 220, 255)
-    Title.TextXAlignment = Enum.TextXAlignment.Left
-
-    local Subtitle = Instance.new("TextLabel", Main)
-    Subtitle.Size = UDim2.new(1, -24, 0, 16)
-    Subtitle.Position = UDim2.new(0, 12, 0, 44)
-    Subtitle.BackgroundTransparency = 1
-    Subtitle.Text = "Masukkan AXS Key Anda untuk melanjutkan"
-    Subtitle.Font = Enum.Font.Gotham; Subtitle.TextSize = 11
-    Subtitle.TextColor3 = Color3.fromRGB(180, 190, 210)
-    Subtitle.TextXAlignment = Enum.TextXAlignment.Left
-
-    local InputBox = Instance.new("TextBox", Main)
-    InputBox.Size = UDim2.new(1, -24, 0, 38)
-    InputBox.Position = UDim2.new(0, 12, 0, 70)
-    InputBox.BackgroundColor3 = Color3.fromRGB(28, 32, 48)
-    InputBox.BorderSizePixel = 0
-    InputBox.PlaceholderText = "AXS-XXXXXXXX"
-    InputBox.PlaceholderColor3 = Color3.fromRGB(120, 130, 150)
-    InputBox.Text = ""
-    InputBox.Font = Enum.Font.Code; InputBox.TextSize = 14
-    InputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    InputBox.ClearTextOnFocus = false
-    Instance.new("UICorner", InputBox).CornerRadius = UDim.new(0, 8)
-    local ibs = Instance.new("UIStroke", InputBox)
-    ibs.Color = Color3.fromRGB(0, 220, 255); ibs.Transparency = 0.6
-
-    local SubmitBtn = Instance.new("TextButton", Main)
-    SubmitBtn.Size = UDim2.new(1, -24, 0, 38)
-    SubmitBtn.Position = UDim2.new(0, 12, 0, 118)
-    SubmitBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 220)
-    SubmitBtn.BorderSizePixel = 0
-    SubmitBtn.Text = "VALIDASI KEY"
-    SubmitBtn.Font = Enum.Font.GothamBold; SubmitBtn.TextSize = 13
-    SubmitBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    SubmitBtn.AutoButtonColor = true
-    Instance.new("UICorner", SubmitBtn).CornerRadius = UDim.new(0, 8)
-
-    local CancelBtn = Instance.new("TextButton", Main)
-    CancelBtn.Size = UDim2.new(1, -24, 0, 26)
-    CancelBtn.Position = UDim2.new(0, 12, 0, 164)
-    CancelBtn.BackgroundColor3 = Color3.fromRGB(40, 44, 60)
-    CancelBtn.BorderSizePixel = 0
-    CancelBtn.Text = "Batal"
-    CancelBtn.Font = Enum.Font.Gotham; CancelBtn.TextSize = 11
-    CancelBtn.TextColor3 = Color3.fromRGB(200, 200, 210)
-    Instance.new("UICorner", CancelBtn).CornerRadius = UDim.new(0, 6)
-
-    local Status = Instance.new("TextLabel", Main)
-    Status.Size = UDim2.new(1, -24, 0, 24)
-    Status.Position = UDim2.new(0, 12, 0, 196)
-    Status.BackgroundTransparency = 1
-    Status.Text = ""
-    Status.Font = Enum.Font.Gotham; Status.TextSize = 11
-    Status.TextColor3 = Color3.fromRGB(255, 180, 0)
-    Status.TextWrapped = true
-
-    -- Draggable
-    local dragging, dragStart, startPos
-    Header.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true; dragStart = input.Position; startPos = Main.Position
-            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+    local function ButtonFx(button, flash)
+        button.AutoButtonColor = false
+        local orig = button.BackgroundTransparency
+        local us = button:FindFirstChild("BFX") or Instance.new("UIScale", button); us.Name = "BFX"
+        button.MouseButton1Down:Connect(function()
+            TweenService:Create(us, TweenInfo.new(0.1), {Scale = 0.95}):Play()
+            if flash then TweenService:Create(button, TweenInfo.new(0.1), {BackgroundTransparency = math.max(0, orig - 0.2)}):Play() end
+        end)
+        local function restore()
+            TweenService:Create(us, TweenInfo.new(0.1), {Scale = 1}):Play()
+            if flash then TweenService:Create(button, TweenInfo.new(0.2), {BackgroundTransparency = orig}):Play() end
         end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local d = input.Position - dragStart
-            Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
-        end
+        button.MouseButton1Up:Connect(restore); button.MouseLeave:Connect(restore)
+    end
+
+    local keyGui = Instance.new("ScreenGui")
+    keyGui.Name = "ArexansKeySystemGUI"; keyGui.ResetOnSpawn = false
+    keyGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling; keyGui.DisplayOrder = 999
+    local pOk = pcall(function() keyGui.Parent = CoreGui end)
+    if not pOk then keyGui.Parent = pg end
+
+    local Frame = Instance.new("Frame", keyGui)
+    Frame.Size = UDim2.new(0, 280, 0, 150); Frame.Position = UDim2.new(0.5, -140, 0.5, -75)
+    Frame.BackgroundColor3 = Color3.fromRGB(10, 10, 10); Frame.BackgroundTransparency = 0.2; Frame.BorderSizePixel = 0
+    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 8)
+    local fs = Instance.new("UIStroke", Frame); fs.Color = Color3.fromRGB(0, 150, 255); fs.Thickness = 3
+
+    local TitleBar = Instance.new("TextButton", Frame)
+    TitleBar.Size = UDim2.new(1, 0, 0, 35); TitleBar.BackgroundTransparency = 1; TitleBar.Text = ""; TitleBar.AutoButtonColor = false
+
+    local TitleLbl = Instance.new("TextLabel", TitleBar)
+    TitleLbl.Size = UDim2.new(1, -40, 1, 0); TitleLbl.Position = UDim2.new(0, 10, 0, 0)
+    TitleLbl.BackgroundTransparency = 1; TitleLbl.Text = "Arexans Key System"
+    TitleLbl.Font = Enum.Font.GothamBold; TitleLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TitleLbl.TextSize = 16; TitleLbl.TextXAlignment = Enum.TextXAlignment.Left
+    local grad = Instance.new("UIGradient", TitleLbl)
+    grad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 150, 255)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 150, 255)),
+    })
+    grad.Rotation = 45
+    task.spawn(function()
+        while TitleLbl.Parent do grad.Rotation = (tick() * 50) % 360; RunService.Heartbeat:Wait() end
     end)
 
-    -- Result via event-like flag
+    local CloseBtn = Instance.new("TextButton", TitleBar)
+    CloseBtn.Size = UDim2.new(0, 25, 0, 25); CloseBtn.Position = UDim2.new(1, -30, 0.5, 0); CloseBtn.AnchorPoint = Vector2.new(0, 0.5)
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50); CloseBtn.BackgroundTransparency = 1
+    CloseBtn.Text = "X"; CloseBtn.Font = Enum.Font.GothamBold; CloseBtn.TextColor3 = Color3.fromRGB(255, 100, 100); CloseBtn.TextSize = 16
+    Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 4)
+    local cs = Instance.new("UIStroke", CloseBtn); cs.Color = Color3.fromRGB(255, 100, 100); cs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    ButtonFx(CloseBtn, true)
+
+    local Sep = Instance.new("Frame", Frame)
+    Sep.Size = UDim2.new(1, -20, 0, 1); Sep.Position = UDim2.new(0, 10, 0, 35)
+    Sep.BackgroundColor3 = Color3.fromRGB(0, 150, 255); Sep.BackgroundTransparency = 0.5; Sep.BorderSizePixel = 0
+
+    local KeyBox = Instance.new("TextBox", Frame)
+    KeyBox.Size = UDim2.new(1, -20, 0, 35); KeyBox.Position = UDim2.new(0, 10, 0, 45)
+    KeyBox.BackgroundColor3 = Color3.fromRGB(30, 30, 40); KeyBox.BackgroundTransparency = 1
+    KeyBox.TextColor3 = Color3.fromRGB(0, 150, 255); KeyBox.PlaceholderText = "Masukkan key..."
+    KeyBox.PlaceholderColor3 = Color3.fromRGB(0, 100, 180); KeyBox.Text = ""
+    KeyBox.Font = Enum.Font.GothamBold; KeyBox.TextSize = 14; KeyBox.ClearTextOnFocus = false
+    Instance.new("UICorner", KeyBox).CornerRadius = UDim.new(0, 6)
+    local ks = Instance.new("UIStroke", KeyBox); ks.Color = Color3.fromRGB(0, 150, 255); ks.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+    local Btns = Instance.new("Frame", Frame)
+    Btns.Size = UDim2.new(1, -20, 0, 35); Btns.Position = UDim2.new(0, 10, 0, 90); Btns.BackgroundTransparency = 1
+
+    local GetKeyBtn = Instance.new("TextButton", Btns)
+    GetKeyBtn.Size = UDim2.new(0.48, 0, 1, 0); GetKeyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255); GetKeyBtn.BackgroundTransparency = 1
+    GetKeyBtn.Text = "Get Key"; GetKeyBtn.Font = Enum.Font.GothamBold; GetKeyBtn.TextColor3 = Color3.fromRGB(0, 150, 255); GetKeyBtn.TextSize = 14
+    Instance.new("UICorner", GetKeyBtn).CornerRadius = UDim.new(0, 6)
+    local gks = Instance.new("UIStroke", GetKeyBtn); gks.Color = Color3.fromRGB(0, 150, 255); gks.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+    local LoginBtn = Instance.new("TextButton", Btns)
+    LoginBtn.Size = UDim2.new(0.48, 0, 1, 0); LoginBtn.Position = UDim2.new(0.52, 0, 0, 0)
+    LoginBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255); LoginBtn.BackgroundTransparency = 1
+    LoginBtn.Text = "Login"; LoginBtn.Font = Enum.Font.GothamBold; LoginBtn.TextColor3 = Color3.fromRGB(0, 150, 255); LoginBtn.TextSize = 14
+    Instance.new("UICorner", LoginBtn).CornerRadius = UDim.new(0, 6)
+    local lgs = Instance.new("UIStroke", LoginBtn); lgs.Color = Color3.fromRGB(0, 150, 255); lgs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+    local Status = Instance.new("TextLabel", Frame)
+    Status.Size = UDim2.new(1, -20, 0, 20); Status.Position = UDim2.new(0, 10, 1, -25); Status.BackgroundTransparency = 1
+    Status.Text = ""; Status.Font = Enum.Font.GothamBold; Status.TextColor3 = Color3.fromRGB(0, 150, 255); Status.TextSize = 14
+
+    pcall(function() MakeDraggable(Frame, TitleBar) end)
+    ButtonFx(GetKeyBtn, true); ButtonFx(LoginBtn, true)
+
     local result = { done = false, key = nil, cancelled = false }
     local busy = false
 
-    local function setStatus(msg, color)
-        Status.Text = msg or ""
-        Status.TextColor3 = color or Color3.fromRGB(255, 180, 0)
-    end
+    CloseBtn.MouseButton1Click:Connect(function()
+        result.cancelled = true; result.done = true
+        pcall(function() keyGui:Destroy() end)
+    end)
 
-    SubmitBtn.MouseButton1Click:Connect(function()
+    GetKeyBtn.MouseButton1Click:Connect(function()
+        if setclipboard then
+            setclipboard("https://tools.arexans.my.id")
+            Status.Text = "Link disalin!"; Status.TextColor3 = Color3.fromRGB(100, 255, 100)
+        else
+            Status.Text = "Clipboard tidak didukung"; Status.TextColor3 = Color3.fromRGB(255, 100, 100)
+        end
+    end)
+
+    local function attemptLogin()
         if busy then return end
-        local key = InputBox.Text
-        if not key or key == "" then setStatus("Key tidak boleh kosong", Color3.fromRGB(255, 100, 100)); return end
-        busy = true
-        SubmitBtn.Text = "MEMVALIDASI..."
-        setStatus("Menghubungi server...", Color3.fromRGB(0, 220, 255))
+        local key = KeyBox.Text
+        if not key or key == "" then
+            Status.Text = "Masukkan key terlebih dahulu"; Status.TextColor3 = Color3.fromRGB(255, 200, 50); return
+        end
+        busy = true; Status.Text = "Memvalidasi..."; Status.TextColor3 = Color3.fromRGB(255, 255, 100); LoginBtn.Text = "..."
         task.spawn(function()
             local res = httpRequest({
                 Url = VALIDATE_KEY_API, Method = "POST",
                 Headers = { ["Content-Type"] = "application/json" },
                 Body = HttpService:JSONEncode({ key = key, hwid = HWID, robloxUsername = username }),
             })
-            busy = false; SubmitBtn.Text = "VALIDASI KEY"
-            if not res or not res.Body then setStatus("Gagal terhubung ke server", Color3.fromRGB(255, 100, 100)); return end
+            busy = false; LoginBtn.Text = "Login"
+            if not res or not res.Body then
+                Status.Text = "Gagal terhubung ke server"; Status.TextColor3 = Color3.fromRGB(255, 100, 100); return
+            end
             local ok, parsed = pcall(function() return HttpService:JSONDecode(res.Body) end)
             if ok and parsed and parsed.success and parsed.valid then
                 safeWrite({ key = key, savedAt = os.time(), role = parsed.role })
-                setStatus("Berhasil! Memuat script...", Color3.fromRGB(0, 255, 150))
+                Status.Text = (parsed.role or "Member") .. " | Valid"
+                Status.TextColor3 = Color3.fromRGB(100, 255, 100)
                 task.wait(0.6)
                 result.key = key; result.done = true
-                pcall(function() ScreenGui:Destroy() end)
+                pcall(function() keyGui:Destroy() end)
             else
                 local err = (parsed and (parsed.error or parsed.message)) or "Key tidak valid"
-                setStatus(tostring(err), Color3.fromRGB(255, 100, 100))
+                Status.Text = tostring(err); Status.TextColor3 = Color3.fromRGB(255, 100, 100)
             end
         end)
-    end)
+    end
 
-    CancelBtn.MouseButton1Click:Connect(function()
-        result.cancelled = true; result.done = true
-        pcall(function() ScreenGui:Destroy() end)
-    end)
+    LoginBtn.MouseButton1Click:Connect(attemptLogin)
+    KeyBox.FocusLost:Connect(function(enter) if enter then attemptLogin() end end)
 
-    -- Block until done
     local timeout = tick() + 600
     while not result.done and tick() < timeout do task.wait(0.2) end
-    if not result.done then pcall(function() ScreenGui:Destroy() end) end
+    if not result.done then pcall(function() keyGui:Destroy() end) end
     return result.key
 end
 
 local function promptAndSaveKey()
     local key = showKeyPromptUI()
-    if not key or key == "" then return false end
-    -- Already validated + saved in UI handler; double-check session
-    return tryCachedKey()
+    return key ~= nil and key ~= ""
 end
 
--- 4) Fake fallback
 local function runFake()
     local res = httpRequest({ Url = FAKE_SCRIPT_API, Method = "GET" })
     if res and res.Body then
-        local fakeFn = loadLuaString(res.Body, "fake script")
-        if fakeFn then pcall(fakeFn) end
+        local fn = loadLuaString(res.Body, "fake")
+        if fn then pcall(fn) end
     else
         warn("[ArexansTools] Akses ditolak.")
     end
 end
 
--- ===== Main gate =====
 local authorized = false
-
 if tryCachedKey() then
     authorized = true
+    print("[ArexansTools] Akses diizinkan melalui cache lokal.")
 elseif checkWhitelist() then
     authorized = true
     print("[ArexansTools] Whitelist verified for " .. username)
@@ -365,16 +349,10 @@ elseif promptAndSaveKey() then
     authorized = true
 end
 
-if not authorized then
-    runFake()
-    return
-end
+if not authorized then runFake(); return end
 
 print("[ArexansTools] Access granted. Fetching payload...")
 
--- ============================================================
--- USER SCRIPT (PROTECTED) — streamed from secure payload endpoint
--- ============================================================
 local payloadRes = httpRequest({ Url = PAYLOAD_URL, Method = "GET" })
 if not payloadRes or not payloadRes.Body or payloadRes.Body == "" then
     warn("[ArexansTools] Gagal mengambil payload script.")
