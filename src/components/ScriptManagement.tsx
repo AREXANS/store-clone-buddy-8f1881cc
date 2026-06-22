@@ -12,7 +12,8 @@ import { toast } from '@/hooks/use-toast';
 import { 
   FileCode, Save, RefreshCw, Copy, ExternalLink, Code2, 
   Eye, EyeOff, CheckCircle, AlertCircle, Upload, Globe, Shield, Wand2,
-  Trash2, ClipboardPaste, Database, Download, Users, Lock
+  Trash2, ClipboardPaste, Database, Download, Users, Lock,
+  History as HistoryIcon, Undo2, RotateCcw
 } from 'lucide-react';
 import {
   Select,
@@ -21,6 +22,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 interface LuaScript {
   id: string;
@@ -144,11 +152,12 @@ const ScriptManagement: FC = () => {
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [selectedEndpoint, setSelectedEndpoint] = useState<'supabase' | 'current'>('supabase');
   const [recordings, setRecordings] = useState<LuaRecording[]>([]);
-  const [recordingScope, setRecordingScope] = useState<'public' | 'mine' | 'all'>('public');
-  const [recordingKey, setRecordingKey] = useState('');
   const [recordingsLoading, setRecordingsLoading] = useState(false);
-  const recordingScopeRef = useRef(recordingScope);
-  const recordingKeyRef = useRef(recordingKey);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const [historyScript, setHistoryScript] = useState<LuaScript | null>(null);
+  const [versions, setVersions] = useState<Record<string, unknown>[]>([]);
+  const [previewVersion, setPreviewVersion] = useState<Record<string, unknown> | null>(null);
 
   const SUPABASE_API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
   
@@ -196,21 +205,13 @@ const ScriptManagement: FC = () => {
   };
 
   useEffect(() => {
-    recordingScopeRef.current = recordingScope;
-  }, [recordingScope]);
-
-  useEffect(() => {
-    recordingKeyRef.current = recordingKey;
-  }, [recordingKey]);
-
-  useEffect(() => {
     fetchScripts();
-    fetchRecordings('public');
+    fetchRecordings();
 
     const channel = supabase
       .channel('lua-recording-events')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lua_recording_events' }, () => {
-        fetchRecordings(recordingScopeRef.current, true);
+        fetchRecordings(true);
       })
       .subscribe();
 
@@ -220,26 +221,18 @@ const ScriptManagement: FC = () => {
   }, []);
 
   useEffect(() => {
-    const timer = window.setInterval(() => fetchRecordings(recordingScope, true), 10000);
+    const timer = window.setInterval(() => fetchRecordings(true), 10000);
     return () => window.clearInterval(timer);
-  }, [recordingScope, recordingKey]);
+  }, []);
 
-  const fetchRecordings = async (scope = recordingScope, silent = false) => {
-    const activeKey = recordingKeyRef.current.trim();
-    if ((scope === 'mine' || scope === 'all') && !activeKey) {
-      if (!silent) toast({ title: 'Key diperlukan', description: 'Masukkan AXS key untuk melihat rekaman milik sendiri', variant: 'destructive' });
-      return;
-    }
-
+  const fetchRecordings = async (silent = false) => {
     if (!silent) setRecordingsLoading(true);
     try {
-      const params = new URLSearchParams({ scope, limit: '80' });
-      if (activeKey) params.set('key', activeKey);
+      const params = new URLSearchParams({ scope: 'all', limit: '80' });
       const res = await fetch(`${SUPABASE_API_BASE}/sync-recordings?${params.toString()}`);
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error || 'Gagal mengambil rekaman');
       setRecordings(json.recordings || []);
-      setRecordingScope(scope as 'public' | 'mine' | 'all');
     } catch (error) {
       if (!silent) toast({ title: 'Error', description: error instanceof Error ? error.message : 'Gagal mengambil rekaman', variant: 'destructive' });
     } finally {
@@ -346,6 +339,12 @@ const ScriptManagement: FC = () => {
     toast({ title: 'Copied!', description: 'Loadstring code berhasil disalin' });
   };
 
+  const filteredRecordings = recordings.filter(r =>
+    r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (r.game_id && r.game_id.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (r.owner_username && r.owner_username.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   const getScriptTypeColor = (name: string) => {
     switch (name) {
       case 'keysystem': return 'bg-primary/20 text-primary';
@@ -366,6 +365,60 @@ const ScriptManagement: FC = () => {
 
   const hasChanges = (script: LuaScript) => {
     return editedContent[script.id] !== script.content;
+  };
+
+  const openHistory = async (script: LuaScript) => {
+    setHistoryScript(script);
+    setPreviewVersion(null);
+    const { data, error } = await supabase
+      .from('lua_script_versions')
+      .select('*')
+      .eq('script_id', script.id)
+      .order('version_number', { ascending: false });
+    if (error) {
+      toast({ title: 'Error', description: 'Gagal load history', variant: 'destructive' });
+      return;
+    }
+    setVersions(data || []);
+  };
+
+  const restoreVersion = async (version: Record<string, unknown>) => {
+    if (!historyScript) return;
+    if (!confirm(`Restore versi #${version.version_number}? Versi saat ini akan disimpan ke history.`)) return;
+    const { error } = await supabase.from('lua_scripts').update({
+      content: version.content, updated_at: new Date().toISOString(),
+    }).eq('id', historyScript.id);
+    if (error) {
+      toast({ title: 'Error', description: 'Gagal restore', variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Berhasil', description: `Restored ke v${version.version_number}` });
+    setHistoryScript(null);
+    fetchScripts();
+  };
+
+  const undoToPrevious = async (script: LuaScript) => {
+    const { data } = await supabase
+      .from('lua_script_versions')
+      .select('*')
+      .eq('script_id', script.id)
+      .order('version_number', { ascending: false })
+      .limit(1);
+    if (!data || data.length === 0) {
+      toast({ title: 'Tidak ada history', description: 'Belum ada versi sebelumnya' });
+      return;
+    }
+    const prev = data[0];
+    if (!confirm(`Undo ke versi #${prev.version_number} (${new Date(prev.created_at).toLocaleString('id-ID')})?`)) return;
+    const { error } = await supabase.from('lua_scripts').update({
+      content: prev.content, updated_at: new Date().toISOString(),
+    }).eq('id', script.id);
+    if (error) {
+      toast({ title: 'Error', description: 'Gagal undo', variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Undo berhasil', description: `Kembali ke v${prev.version_number}` });
+    fetchScripts();
   };
 
   const handleFileUpload = (scriptId: string, event: React.ChangeEvent<HTMLInputElement>) => {
@@ -464,54 +517,42 @@ const ScriptManagement: FC = () => {
         <CardHeader className="pb-3 px-3 sm:px-6">
           <CardTitle className="text-sm sm:text-base flex items-center gap-2">
             <Database className="w-4 h-4 text-primary" />
-            Rekaman Main Lua
+            Daftar Rekaman Main Lua
           </CardTitle>
           <CardDescription className="text-xs">
-            Rekaman public dan milik sendiri tersinkron dengan main Lua
+            Daftar semua rekaman yang tersinkron dengan main Lua
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 px-3 sm:px-6">
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
             <Input
-              value={recordingKey}
-              onChange={(e) => setRecordingKey(e.target.value)}
-              placeholder="AXS key untuk rekaman milik sendiri"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari rekaman..."
               className="font-mono text-xs bg-black/30"
             />
-            <Button variant="outline" size="sm" onClick={() => fetchRecordings(recordingScope)} disabled={recordingsLoading} className="text-xs">
+            <Button variant="outline" size="sm" onClick={() => fetchRecordings(false)} disabled={recordingsLoading} className="text-xs">
               <RefreshCw className={`w-3 h-3 ${recordingsLoading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <Button variant={recordingScope === 'public' ? 'default' : 'outline'} size="sm" onClick={() => fetchRecordings('public')} className="text-xs">
-              <Users className="w-3 h-3" /> Public
-            </Button>
-            <Button variant={recordingScope === 'mine' ? 'default' : 'outline'} size="sm" onClick={() => fetchRecordings('mine')} className="text-xs">
-              <Lock className="w-3 h-3" /> Milik Saya
-            </Button>
-            <Button variant={recordingScope === 'all' ? 'default' : 'outline'} size="sm" onClick={() => fetchRecordings('all')} className="text-xs">
-              <Database className="w-3 h-3" /> Semua
-            </Button>
-          </div>
           <ScrollArea className="max-h-64 rounded border border-primary/20 bg-black/20 p-2">
-            {recordings.length === 0 ? (
+            {filteredRecordings.length === 0 ? (
               <p className="py-8 text-center text-xs text-muted-foreground">Belum ada rekaman</p>
             ) : (
               <div className="space-y-2">
-                {recordings.map((recording) => (
+                {filteredRecordings.map((recording) => (
                   <div key={recording.id} className="rounded bg-muted/30 p-2 text-xs">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-1.5">
                           <p className="truncate font-medium">{recording.title}</p>
-                          <span className={`rounded px-1.5 py-0.5 text-[10px] ${recording.is_public ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                            {recording.is_public ? 'Public' : 'Private'}
+                          <span className={`rounded px-1.5 py-0.5 text-[10px] bg-primary/20 text-primary`}>
+                            {recording.game_id || 'All game'}
                           </span>
-                          {recording.owned && <span className="rounded bg-secondary/20 px-1.5 py-0.5 text-[10px] text-secondary">Own</span>}
                         </div>
                         <p className="mt-0.5 text-[10px] text-muted-foreground">
-                          {recording.owner_username || 'Unknown'} · {recording.game_id || 'All game'} · {new Date(recording.updated_at).toLocaleString('id-ID')}
+                          {recording.owner_username || 'Unknown'} · {new Date(recording.updated_at).toLocaleString('id-ID')}
                         </p>
                       </div>
                       <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => copyRecordingData(recording)} title="Salin data rekaman">
@@ -622,6 +663,38 @@ const ScriptManagement: FC = () => {
                       <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                       <span className="ml-1 hidden xs:inline">Clear All</span>
                     </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(editedContent[script.id] ?? script.content || '');
+                        toast({ title: 'Copied!', description: 'Isi editor disalin ke clipboard' });
+                      }}
+                      className="text-xs"
+                      title="Salin isi editor"
+                    >
+                      <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => undoToPrevious(script)}
+                      className="text-xs"
+                      title="Undo ke versi sebelumnya"
+                    >
+                      <Undo2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openHistory(script)}
+                      className="text-xs"
+                      title="Lihat history"
+                    >
+                      <HistoryIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                    </Button>
+
                     <Button
                       variant="ghost"
                       size="sm"
@@ -800,12 +873,62 @@ const ScriptManagement: FC = () => {
              <h4 className="font-semibold mb-1 sm:mb-2 text-xs sm:text-sm">💡 Contoh Penggunaan di Roblox:</h4>
              <div className="overflow-x-auto">
                <code className="text-xs font-mono text-primary whitespace-nowrap block">
-                 {`loadstring(game:HttpGet(\"${import.meta.env.PROD ? `${currentDomain}/loader` : `${SUPABASE_API_BASE}/get-loader?name=keysystem`}\"))()`}
+                 {`loadstring(game:HttpGet("${import.meta.env.PROD ? `${currentDomain}/loader` : `${SUPABASE_API_BASE}/get-loader?name=keysystem`}"))()`}
                </code>
              </div>
            </div>
         </CardContent>
       </Card>
+
+      {/* History dialog */}
+      <Dialog open={!!historyScript} onOpenChange={(o) => { if (!o) { setHistoryScript(null); setPreviewVersion(null); } }}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HistoryIcon className="w-4 h-4" />
+              History: {historyScript?.display_name}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Versi tersimpan otomatis tiap kali script diupdate.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 overflow-hidden flex-1">
+            <ScrollArea className="border rounded p-2 max-h-[60vh]">
+              {versions.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-8">Belum ada versi tersimpan</p>
+              ) : (
+                <div className="space-y-1">
+                  {versions.map((v) => (
+                    <button
+                      key={v.id as string}
+                      onClick={() => setPreviewVersion(v)}
+                      className={`w-full text-left p-2 rounded text-xs hover:bg-muted/50 transition ${previewVersion?.id === v.id ? 'bg-primary/10 border border-primary/30' : ''}`}
+                    >
+                      <div className="font-medium">Versi #{v.version_number as string}</div>
+                      <div className="text-[10px] text-muted-foreground">{new Date(v.created_at as string).toLocaleString('id-ID')}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+            <div className="flex flex-col gap-2 overflow-hidden">
+              {previewVersion ? (
+                <>
+                  <ScrollArea className="border rounded p-2 max-h-[50vh] bg-black/30">
+                    <pre className="text-[10px] font-mono whitespace-pre-wrap break-all">{(previewVersion.content as string).substring(0, 5000)}{(previewVersion.content as string).length > 5000 ? '\n...(truncated)' : ''}</pre>
+                  </ScrollArea>
+                  <Button onClick={() => restoreVersion(previewVersion)} className="w-full">
+                    <RotateCcw className="w-3 h-3 mr-1" />
+                    Restore versi #{previewVersion.version_number as string}
+                  </Button>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-8">Pilih versi untuk preview</p>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
