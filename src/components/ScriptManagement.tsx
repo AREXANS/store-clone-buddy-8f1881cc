@@ -668,7 +668,7 @@ const ScriptManagement: FC = () => {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        navigator.clipboard.writeText(editedContent[script.id] ?? script.content || '');
+                        navigator.clipboard.writeText((editedContent[script.id] ?? script.content) || '');
                         toast({ title: 'Copied!', description: 'Isi editor disalin ke clipboard' });
                       }}
                       className="text-xs"
