@@ -23,6 +23,7 @@ function sanitize(record: Record<string, unknown>, requesterKey?: string | null)
     description: record.description,
     owner_username: record.owner_username,
     game_id: record.game_id,
+    game_name: record.game_name,
     recording_data: record.recording_data,
     is_public: record.is_public,
     duration_seconds: record.duration_seconds,
@@ -81,7 +82,7 @@ serve(async (req) => {
 
       let query = supabase
         .from("lua_recordings")
-        .select("id,title,description,owner_username,owner_key,game_id,recording_data,is_public,duration_seconds,source,created_at,updated_at")
+        .select("id,title,description,owner_username,owner_key,game_id,game_name,recording_data,is_public,duration_seconds,source,created_at,updated_at")
         .order("updated_at", { ascending: false })
         .limit(limit);
 
@@ -145,6 +146,7 @@ serve(async (req) => {
       owner_key: key,
       owner_hwid: typeof body.hwid === "string" ? body.hwid.slice(0, 180) : null,
       game_id: body.gameId || body.game_id ? String(body.gameId || body.game_id).slice(0, 80) : null,
+      game_name: body.gameName || body.game_name ? String(body.gameName || body.game_name).slice(0, 150) : null,
       recording_data: recordingData,
       is_public: Boolean(body.isPublic ?? body.is_public),
       duration_seconds: Number.isFinite(Number(body.durationSeconds ?? body.duration_seconds))
@@ -156,7 +158,7 @@ serve(async (req) => {
     const { data, error } = await supabase
       .from("lua_recordings")
       .insert(row)
-      .select("id,title,description,owner_username,owner_key,game_id,recording_data,is_public,duration_seconds,source,created_at,updated_at")
+      .select("id,title,description,owner_username,owner_key,game_id,game_name,recording_data,is_public,duration_seconds,source,created_at,updated_at")
       .single();
 
     if (error) throw error;
