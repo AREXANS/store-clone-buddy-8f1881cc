@@ -48,6 +48,7 @@ interface LuaRecording {
   description: string | null;
   owner_username: string | null;
   game_id: string | null;
+  game_name?: string | null;
   recording_data: unknown;
   is_public: boolean;
   duration_seconds: number | null;
@@ -342,6 +343,7 @@ const ScriptManagement: FC = () => {
   const filteredRecordings = recordings.filter(r =>
     r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (r.game_id && r.game_id.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (r.game_name && r.game_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (r.owner_username && r.owner_username.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
@@ -548,7 +550,7 @@ const ScriptManagement: FC = () => {
                         <div className="flex flex-wrap items-center gap-1.5">
                           <p className="truncate font-medium">{recording.title}</p>
                           <span className={`rounded px-1.5 py-0.5 text-[10px] bg-primary/20 text-primary`}>
-                            {recording.game_id || 'All game'}
+                            {recording.game_name || recording.game_id || 'All game'}
                           </span>
                         </div>
                         <p className="mt-0.5 text-[10px] text-muted-foreground">
