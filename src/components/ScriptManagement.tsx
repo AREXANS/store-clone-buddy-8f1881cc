@@ -552,7 +552,7 @@ const ScriptManagement: FC = () => {
             Rekaman Main Lua
           </CardTitle>
           <CardDescription className="text-xs">
-            Rekaman public dan milik sendiri tersinkron dengan main Lua
+            Semua rekaman tersinkron realtime dengan main Lua
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 px-3 sm:px-6">
@@ -560,31 +560,31 @@ const ScriptManagement: FC = () => {
             <Input
               value={recordingKey}
               onChange={(e) => setRecordingKey(e.target.value)}
-              placeholder="AXS key untuk rekaman milik sendiri"
+              placeholder="AXS key (opsional, untuk memuat rekaman private milik sendiri)"
               className="font-mono text-xs bg-black/30"
             />
-            <Button variant="outline" size="sm" onClick={() => fetchRecordings(recordingScope)} disabled={recordingsLoading} className="text-xs">
+            <Button variant="outline" size="sm" onClick={() => fetchRecordings()} disabled={recordingsLoading} className="text-xs">
               <RefreshCw className={`w-3 h-3 ${recordingsLoading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <Button variant={recordingScope === 'public' ? 'default' : 'outline'} size="sm" onClick={() => fetchRecordings('public')} className="text-xs">
-              <Users className="w-3 h-3" /> Public
-            </Button>
-            <Button variant={recordingScope === 'mine' ? 'default' : 'outline'} size="sm" onClick={() => fetchRecordings('mine')} className="text-xs">
-              <Lock className="w-3 h-3" /> Milik Saya
-            </Button>
-            <Button variant={recordingScope === 'all' ? 'default' : 'outline'} size="sm" onClick={() => fetchRecordings('all')} className="text-xs">
-              <Database className="w-3 h-3" /> Semua
-            </Button>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={recordingSearch}
+              onChange={(e) => setRecordingSearch(e.target.value)}
+              placeholder="Cari judul, user, atau nama game..."
+              className="pl-7 text-xs bg-black/30"
+            />
           </div>
           <ScrollArea className="max-h-64 rounded border border-primary/20 bg-black/20 p-2">
-            {recordings.length === 0 ? (
-              <p className="py-8 text-center text-xs text-muted-foreground">Belum ada rekaman</p>
+            {filteredRecordings.length === 0 ? (
+              <p className="py-8 text-center text-xs text-muted-foreground">
+                {recordings.length === 0 ? 'Belum ada rekaman' : 'Tidak ada yang cocok dengan pencarian'}
+              </p>
             ) : (
               <div className="space-y-2">
-                {recordings.map((recording) => (
+                {filteredRecordings.map((recording) => (
                   <div key={recording.id} className="rounded bg-muted/30 p-2 text-xs">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
@@ -596,7 +596,7 @@ const ScriptManagement: FC = () => {
                           {recording.owned && <span className="rounded bg-secondary/20 px-1.5 py-0.5 text-[10px] text-secondary">Own</span>}
                         </div>
                         <p className="mt-0.5 text-[10px] text-muted-foreground">
-                          {recording.owner_username || 'Unknown'} · {recording.game_id || 'All game'} · {new Date(recording.updated_at).toLocaleString('id-ID')}
+                          {recording.owner_username || 'Unknown'} · 🎮 {gameNameFor(recording.game_id)} · {new Date(recording.updated_at).toLocaleString('id-ID')}
                         </p>
                       </div>
                       <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => copyRecordingData(recording)} title="Salin data rekaman">
