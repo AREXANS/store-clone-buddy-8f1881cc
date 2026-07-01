@@ -12,7 +12,7 @@ import { toast } from '@/hooks/use-toast';
 import { 
   FileCode, Save, RefreshCw, Copy, ExternalLink, Code2, 
   Eye, EyeOff, CheckCircle, AlertCircle, Upload, Globe, Shield, Wand2,
-  Trash2, ClipboardPaste, Database, Download, Users, Lock
+  Trash2, ClipboardPaste, Database, Download, Search, Undo2, Redo2
 } from 'lucide-react';
 import {
   Select,
