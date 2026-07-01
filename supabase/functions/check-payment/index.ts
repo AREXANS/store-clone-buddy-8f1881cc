@@ -55,7 +55,7 @@ serve(async (req) => {
 
     if (gateway === "cashify" && s.cashify_license_key) {
       // === CASHIFY: Check status ===
-      // Docs: POST https://cashify.my.id/api/generate/check-status
+      // Docs: POST https://api.casaku.id/api/generate/check-status
       // Body: { transactionId }
       // Response: { status: 200, data: { transactionId, amount, status: "paid"|"pending", expiredAt } }
       try {

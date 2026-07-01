@@ -44,7 +44,7 @@ serve(async (req) => {
           expiredInMinutes: 15,
         };
 
-        const res = await fetch("https://cashify.my.id/api/generate/qris", {
+        const res = await fetch("https://api.casaku.id/api/generate/qris", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

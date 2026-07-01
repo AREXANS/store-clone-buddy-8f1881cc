@@ -29,14 +29,14 @@ serve(async (req) => {
 
     if (gateway === "cashify" && s.cashify_license_key) {
       // === CASHIFY: Cancel status ===
-      // Docs: POST https://cashify.my.id/api/generate/cancel-status
+      // Docs: POST https://api.casaku.id/api/generate/cancel-status
       // Body: { transactionId }
       try {
         const { data: mapping } = await supabase
           .from("app_settings").select("value").eq("key", `cashify_tx_${transactionId}`).maybeSingle();
 
         if (mapping?.value) {
-          const res = await fetch("https://cashify.my.id/api/generate/cancel-status", {
+          const res = await fetch("https://api.casaku.id/api/generate/cancel-status", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
