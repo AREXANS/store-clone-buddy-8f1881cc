@@ -151,11 +151,16 @@ const ScriptManagement: FC = () => {
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [selectedEndpoint, setSelectedEndpoint] = useState<'supabase' | 'current'>('supabase');
   const [recordings, setRecordings] = useState<LuaRecording[]>([]);
-  const [recordingScope, setRecordingScope] = useState<'public' | 'mine' | 'all'>('public');
   const [recordingKey, setRecordingKey] = useState('');
   const [recordingsLoading, setRecordingsLoading] = useState(false);
-  const recordingScopeRef = useRef(recordingScope);
+  const [recordingSearch, setRecordingSearch] = useState('');
+  const [gameNames, setGameNames] = useState<Record<string, string>>({});
   const recordingKeyRef = useRef(recordingKey);
+
+  // Per-script version navigation state
+  const [versionsByScript, setVersionsByScript] = useState<Record<string, ScriptVersion[]>>({});
+  // versionCursor: -1 = current DB content, 0..n-1 = index into versions[] (0 = most recent snapshot)
+  const [versionCursor, setVersionCursor] = useState<Record<string, number>>({});
 
   const SUPABASE_API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
   
@@ -203,21 +208,17 @@ const ScriptManagement: FC = () => {
   };
 
   useEffect(() => {
-    recordingScopeRef.current = recordingScope;
-  }, [recordingScope]);
-
-  useEffect(() => {
     recordingKeyRef.current = recordingKey;
   }, [recordingKey]);
 
   useEffect(() => {
     fetchScripts();
-    fetchRecordings('public');
+    fetchRecordings();
 
     const channel = supabase
       .channel('lua-recording-events')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lua_recording_events' }, () => {
-        fetchRecordings(recordingScopeRef.current, true);
+        fetchRecordings(true);
       })
       .subscribe();
 
@@ -227,26 +228,26 @@ const ScriptManagement: FC = () => {
   }, []);
 
   useEffect(() => {
-    const timer = window.setInterval(() => fetchRecordings(recordingScope, true), 10000);
+    const timer = window.setInterval(() => fetchRecordings(true), 15000);
     return () => window.clearInterval(timer);
-  }, [recordingScope, recordingKey]);
+  }, [recordingKey]);
 
-  const fetchRecordings = async (scope = recordingScope, silent = false) => {
+  const fetchRecordings = async (silent = false) => {
     const activeKey = recordingKeyRef.current.trim();
-    if ((scope === 'mine' || scope === 'all') && !activeKey) {
-      if (!silent) toast({ title: 'Key diperlukan', description: 'Masukkan AXS key untuk melihat rekaman milik sendiri', variant: 'destructive' });
-      return;
-    }
+    const scope = activeKey ? 'all' : 'public';
 
     if (!silent) setRecordingsLoading(true);
     try {
-      const params = new URLSearchParams({ scope, limit: '80' });
+      const params = new URLSearchParams({ scope, limit: '100' });
       if (activeKey) params.set('key', activeKey);
       const res = await fetch(`${SUPABASE_API_BASE}/sync-recordings?${params.toString()}`);
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error || 'Gagal mengambil rekaman');
-      setRecordings(json.recordings || []);
-      setRecordingScope(scope as 'public' | 'mine' | 'all');
+      const list: LuaRecording[] = json.recordings || [];
+      setRecordings(list);
+      // Kick off game-name resolution for any new place IDs
+      const uniqueIds = Array.from(new Set(list.map(r => r.game_id).filter((v): v is string => !!v && /^\d+$/.test(v))));
+      uniqueIds.forEach(id => { if (!gameNames[id]) resolveGameName(id); });
     } catch (error) {
       if (!silent) toast({ title: 'Error', description: error instanceof Error ? error.message : 'Gagal mengambil rekaman', variant: 'destructive' });
     } finally {
@@ -254,9 +255,86 @@ const ScriptManagement: FC = () => {
     }
   };
 
+  const resolveGameName = async (placeId: string) => {
+    setGameNames(prev => (prev[placeId] ? prev : { ...prev, [placeId]: '…' }));
+    try {
+      const res = await fetch(`https://games.roproxy.com/v1/games/multiget-place-details?placeIds=${placeId}`);
+      if (!res.ok) throw new Error('roproxy failed');
+      const arr = await res.json();
+      const name = Array.isArray(arr) && arr[0]?.name ? String(arr[0].name) : `Place ${placeId}`;
+      setGameNames(prev => ({ ...prev, [placeId]: name }));
+    } catch {
+      setGameNames(prev => ({ ...prev, [placeId]: `Place ${placeId}` }));
+    }
+  };
+
+  const gameNameFor = (id: string | null) => {
+    if (!id) return 'All game';
+    if (/^\d+$/.test(id)) return gameNames[id] || `Place ${id}`;
+    return id;
+  };
+
+  const filteredRecordings = recordings.filter(r => {
+    const q = recordingSearch.trim().toLowerCase();
+    if (!q) return true;
+    const gname = gameNameFor(r.game_id).toLowerCase();
+    return (
+      r.title.toLowerCase().includes(q) ||
+      (r.owner_username || '').toLowerCase().includes(q) ||
+      gname.includes(q) ||
+      (r.game_id || '').toLowerCase().includes(q)
+    );
+  });
+
   const copyRecordingData = async (recording: LuaRecording) => {
     await navigator.clipboard.writeText(JSON.stringify(recording.recording_data, null, 2));
     toast({ title: 'Copied!', description: `Data rekaman "${recording.title}" disalin` });
+  };
+
+  const loadVersions = async (scriptId: string): Promise<ScriptVersion[]> => {
+    if (versionsByScript[scriptId]) return versionsByScript[scriptId];
+    const { data, error } = await supabase
+      .from('lua_script_versions')
+      .select('id, version_number, content, created_at')
+      .eq('script_id', scriptId)
+      .order('version_number', { ascending: false });
+    if (error) {
+      toast({ title: 'Error', description: 'Gagal memuat riwayat versi', variant: 'destructive' });
+      return [];
+    }
+    const list = (data || []) as ScriptVersion[];
+    setVersionsByScript(prev => ({ ...prev, [scriptId]: list }));
+    return list;
+  };
+
+  const navigateVersion = async (script: LuaScript, direction: 'prev' | 'next') => {
+    const versions = await loadVersions(script.id);
+    if (versions.length === 0) {
+      toast({ title: 'Tidak ada riwayat', description: 'Belum ada versi lama untuk script ini' });
+      return;
+    }
+    const current = versionCursor[script.id] ?? -1;
+    let next: number;
+    if (direction === 'prev') {
+      next = Math.min(current + 1, versions.length - 1);
+    } else {
+      next = Math.max(current - 1, -1);
+    }
+    if (next === current) {
+      toast({ title: direction === 'prev' ? 'Sudah versi terlama' : 'Sudah versi terbaru' });
+      return;
+    }
+    const content = next === -1 ? script.content : versions[next].content;
+    setEditedContent(prev => ({ ...prev, [script.id]: content }));
+    setVersionCursor(prev => ({ ...prev, [script.id]: next }));
+    const label = next === -1 ? 'Versi tersimpan (terbaru)' : `Versi #${versions[next].version_number}`;
+    toast({ title: label, description: new Date(next === -1 ? script.updated_at : versions[next].created_at).toLocaleString('id-ID') });
+  };
+
+  const copyScriptContent = async (script: LuaScript) => {
+    const content = editedContent[script.id] ?? '';
+    await navigator.clipboard.writeText(content);
+    toast({ title: 'Copied!', description: `Isi "${script.display_name}" disalin (${content.length} karakter)` });
   };
 
   const wrapWithWhitelist = (userScript: string): string => {
