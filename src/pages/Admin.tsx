@@ -740,7 +740,7 @@ const Admin = () => {
                             size="sm"
                             onClick={() => updateSetting(setting.key, 'cashify')}
                           >
-                            Cashify QRIS
+                            Casaku QRIS
                           </Button>
                           <Button
                             variant={setting.value === 'pakasir' ? 'default' : 'outline'}
