@@ -736,6 +736,7 @@ const ScriptManagement: FC = () => {
                     >
                       <Redo2 className="w-3 h-3 sm:w-4 sm:h-4" />
                       <span className="ml-1 hidden xs:inline">Next</span>
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
