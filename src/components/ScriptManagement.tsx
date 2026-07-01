@@ -708,6 +708,35 @@ const ScriptManagement: FC = () => {
                       <span className="ml-1 hidden xs:inline">Clear All</span>
                     </Button>
                     <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyScriptContent(script)}
+                      className="text-xs"
+                      title="Salin isi script ke clipboard"
+                    >
+                      <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="ml-1 hidden xs:inline">Copy</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigateVersion(script, 'prev')}
+                      className="text-xs"
+                      title="Versi sebelumnya (undo)"
+                    >
+                      <Undo2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="ml-1 hidden xs:inline">Prev</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigateVersion(script, 'next')}
+                      className="text-xs"
+                      title="Versi selanjutnya (redo)"
+                    >
+                      <Redo2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="ml-1 hidden xs:inline">Next</span>
+                    <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowPreview(prev => ({ ...prev, [script.id]: !prev[script.id] }))}
