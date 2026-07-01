@@ -55,7 +55,7 @@ serve(async (req) => {
         const { data: mapping } = await supabase
           .from("app_settings").select("value").eq("key", `cashify_tx_${transactionId}`).maybeSingle();
         if (mapping?.value) {
-          const res = await fetch("https://cashify.my.id/api/generate/check-status", {
+          const res = await fetch("https://api.casaku.id/api/generate/check-status", {
             method: "POST",
             headers: { "Content-Type": "application/json", "x-license-key": s.cashify_license_key },
             body: JSON.stringify({ transactionId: mapping.value }),

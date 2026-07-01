@@ -55,7 +55,7 @@ serve(async (req) => {
 
     if (gateway === "cashify" && s.cashify_license_key) {
       // === CASHIFY: Check status ===
-      // Docs: POST https://cashify.my.id/api/generate/check-status
+      // Docs: POST https://api.casaku.id/api/generate/check-status
       // Body: { transactionId }
       // Response: { status: 200, data: { transactionId, amount, status: "paid"|"pending", expiredAt } }
       try {
@@ -63,7 +63,7 @@ serve(async (req) => {
           .from("app_settings").select("value").eq("key", `cashify_tx_${transactionId}`).maybeSingle();
 
         if (mapping?.value) {
-          const res = await fetch("https://cashify.my.id/api/generate/check-status", {
+          const res = await fetch("https://api.casaku.id/api/generate/check-status", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

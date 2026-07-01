@@ -59,7 +59,7 @@ serve(async (req) => {
 
         console.log("Cashify request body:", JSON.stringify(cashifyBody));
 
-        const cashifyRes = await fetch("https://cashify.my.id/api/generate/qris", {
+        const cashifyRes = await fetch("https://api.casaku.id/api/generate/qris", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
