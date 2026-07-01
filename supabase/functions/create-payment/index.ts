@@ -68,14 +68,17 @@ serve(async (req) => {
           body: JSON.stringify(cashifyBody),
         });
 
-        const cashifyData = await cashifyRes.json();
-        console.log("Cashify response:", JSON.stringify(cashifyData));
+        const rawText = await cashifyRes.text();
+        let cashifyData: any = null;
+        try { cashifyData = JSON.parse(rawText); } catch { cashifyData = null; }
+        console.log("Cashify response status:", cashifyRes.status, "body preview:", rawText.slice(0, 200));
 
-        if (cashifyData.status !== 200 || !cashifyData.data) {
-          const msg = cashifyData.message || "Gagal generate QRIS Cashify";
-          const isSubIssue = /langganan|subscription|pricing|unauthor|forbidden/i.test(msg);
+        if (!cashifyData || cashifyData.status !== 200 || !cashifyData.data) {
+          const msg = (cashifyData && cashifyData.message) || `Layanan Cashify tidak merespon (HTTP ${cashifyRes.status})`;
+          const isSubIssue = !cashifyData || /langganan|subscription|pricing|unauthor|forbidden|<!doctype|<html/i.test(rawText) || /langganan|subscription|pricing|unauthor|forbidden/i.test(msg);
           return new Response(JSON.stringify({
             success: false,
+            fallback: true,
             error: isSubIssue
               ? "Layanan pembayaran Cashify sedang tidak aktif (langganan kedaluwarsa). Silakan hubungi admin atau coba gateway lain."
               : msg,
@@ -98,9 +101,13 @@ serve(async (req) => {
         }
       } catch (err) {
         console.error("Cashify API error:", err);
-        return new Response(JSON.stringify({ error: "Gagal menghubungi Cashify" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({
+          success: false,
+          fallback: true,
+          error: "Gagal menghubungi Cashify. Layanan sedang tidak tersedia, silakan coba gateway lain.",
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
+
     } else if (gateway === "pakasir" && pakasirMode === "live" && s.pakasir_slug && s.pakasir_api_key) {
       // === PAKASIR LIVE QRIS ===
       // Docs: POST https://app.pakasir.com/api/transactioncreate/qris
