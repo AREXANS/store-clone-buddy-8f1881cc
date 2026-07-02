@@ -69,6 +69,8 @@ serve(async (req) => {
     const scriptName = url.searchParams.get("name");
     const rawParam = (url.searchParams.get("raw") || "").toLowerCase();
     const forceRaw = rawParam === "1" || rawParam === "true";
+    const slotParam = (url.searchParams.get("slot") || "primary").toLowerCase();
+    const useBackup = slotParam === "backup";
 
     if (!forceRaw && isBrowser(req)) {
       const deniedUrl = `https://tools.arexans.my.id/access-denied?name=${encodeURIComponent(scriptName || "unknown")}`;
@@ -95,7 +97,7 @@ serve(async (req) => {
 
     const { data: script, error } = await supabase
       .from("lua_scripts")
-      .select("name, content, raw_content, script_type, is_active")
+      .select("name, content, backup_content, raw_content, script_type, is_active")
       .eq("name", scriptName)
       .eq("is_active", true)
       .maybeSingle();
@@ -107,13 +109,17 @@ serve(async (req) => {
       });
     }
 
+    const activeContent = useBackup
+      ? ((script as any).backup_content || script.content || "")
+      : (script.content || "");
+
     const isUploaded = script.script_type === "uploaded" || script.name.startsWith("uploaded_");
 
     let loaderScript: string;
     if (isUploaded) {
-      const scriptUrl = `${supabaseUrl}/functions/v1/get-script?name=${encodeURIComponent(script.name)}&raw=1`;
+      const scriptUrl = `${supabaseUrl}/functions/v1/get-script?name=${encodeURIComponent(script.name)}&raw=1${useBackup ? "&slot=backup" : ""}`;
       loaderScript =
-        `-- Arexans Uploaded Loader v4.3\n` +
+        `-- Arexans Uploaded Loader v4.4 [${useBackup ? "BACKUP" : "PRIMARY"}]\n` +
         `do\n` +
         `  local url=${obfuscateString(scriptUrl)}\n` +
         `  local src\n` +
@@ -128,14 +134,14 @@ serve(async (req) => {
         `  if type(result)=="function" then local ok2,err2=pcall(result); if not ok2 then warn("[Arexans] Returned function error: "..tostring(err2)) end end\n` +
         `end\n`;
     } else {
-      const obfuscatedContent = obfuscateString(script.content);
+      const obfuscatedContent = obfuscateString(activeContent);
       const vS = randVar();
       const vExec = randVar();
       const vErr = randVar();
       const vLoad = randVar();
 
       loaderScript =
-        `-- Arexans Loader v4.3\n` +
+        `-- Arexans Loader v4.4 [${useBackup ? "BACKUP" : "PRIMARY"}]\n` +
         `do\n` +
         `  local ${vLoad}=loadstring or load\n` +
         `  if type(${vLoad})~="function" then warn("[Arexans] Executor missing loadstring/load"); return end\n` +
