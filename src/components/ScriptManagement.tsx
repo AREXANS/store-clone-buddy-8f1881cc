@@ -28,6 +28,7 @@ interface LuaScript {
   display_name: string;
   description: string | null;
   content: string;
+  backup_content?: string | null;
   script_type: string;
   is_active: boolean;
   created_at: string;
