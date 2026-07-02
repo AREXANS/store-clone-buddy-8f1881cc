@@ -710,9 +710,14 @@ const ScriptManagement: FC = () => {
                           {recording.owner_username || 'Unknown'} · 🎮 {gameNameFor(recording.game_id)} · {new Date(recording.updated_at).toLocaleString('id-ID')}
                         </p>
                       </div>
-                      <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => copyRecordingData(recording)} title="Salin data rekaman">
-                        <Download className="w-3 h-3" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => copyRecordingData(recording)} title="Salin data rekaman">
+                          <Download className="w-3 h-3" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive hover:text-destructive" onClick={() => deleteRecording(recording)} title="Hapus rekaman">
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
