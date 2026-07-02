@@ -353,7 +353,9 @@ const ScriptManagement: FC = () => {
       toast({ title: direction === 'prev' ? 'Sudah versi terlama' : 'Sudah versi terbaru' });
       return;
     }
-    const content = next === -1 ? script.content : versions[next].content;
+    const slot = getSlot(script.id);
+    const baseContent = slot === 'primary' ? (script.content ?? '') : (script.backup_content ?? '');
+    const content = next === -1 ? baseContent : versions[next].content;
     setEditedContent(prev => ({ ...prev, [script.id]: content }));
     setVersionCursor(prev => ({ ...prev, [script.id]: next }));
     const label = next === -1 ? 'Versi tersimpan (terbaru)' : `Versi #${versions[next].version_number}`;
