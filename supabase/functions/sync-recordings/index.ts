@@ -115,6 +115,22 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || "export").toLowerCase();
     const key = typeof body.key === "string" ? body.key.trim() : "";
+    const adminKey = typeof body.adminKey === "string" ? body.adminKey.trim() : "";
+
+    // Admin delete: bypasses key ownership using admin password stored in app_settings
+    if (action === "admin_delete") {
+      const id = String(body.id || "");
+      if (!id) return new Response(JSON.stringify({ success: false, error: "ID wajib diisi" }), { status: 400, headers: jsonHeaders });
+      if (!adminKey) return new Response(JSON.stringify({ success: false, error: "adminKey wajib diisi" }), { status: 401, headers: jsonHeaders });
+      const { data: adminRow } = await supabase.from("app_settings").select("value").eq("key", "admin_key").maybeSingle();
+      if (!adminRow || String(adminRow.value || "") !== adminKey) {
+        return new Response(JSON.stringify({ success: false, error: "Admin key salah" }), { status: 401, headers: jsonHeaders });
+      }
+      const { error } = await supabase.from("lua_recordings").delete().eq("id", id);
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true }), { headers: jsonHeaders });
+    }
+
     const valid = await validateKey(supabase, key);
     if (!valid.ok) {
       return new Response(JSON.stringify({ success: false, error: valid.error }), { status: 401, headers: jsonHeaders });
