@@ -57,6 +57,8 @@ serve(async (req) => {
     const forceRaw = rawParam === "1" || rawParam === "true";
     const payloadParam = (url.searchParams.get("payload") || "").toLowerCase();
     const wantPayload = payloadParam === "1" || payloadParam === "true";
+    const slotParam = (url.searchParams.get("slot") || "primary").toLowerCase();
+    const useBackup = slotParam === "backup";
 
     if (!scriptName) {
       return new Response("-- Access Denied: Invalid request", {
@@ -83,7 +85,7 @@ serve(async (req) => {
 
     const { data: script, error } = await supabase
       .from("lua_scripts")
-      .select("content, raw_content, is_active")
+      .select("content, backup_content, raw_content, is_active")
       .eq("name", scriptName)
       .eq("is_active", true)
       .maybeSingle();
@@ -95,19 +97,21 @@ serve(async (req) => {
       });
     }
 
-    // ===== Payload mode: return ONLY the raw user script (post-auth fetch).
-    // Falls back to unwrapping legacy `content` if raw_content is missing.
+    const activeContent = useBackup
+      ? ((script as any).backup_content || script.content || "")
+      : (script.content || "");
+
     if (wantPayload) {
-      let payload: string | null = (script as any).raw_content ?? null;
+      let payload: string | null = useBackup ? null : ((script as any).raw_content ?? null);
       if (!payload) {
         const marker = "-- USER SCRIPT (PROTECTED)";
-        const idx = (script.content || "").indexOf(marker);
+        const idx = activeContent.indexOf(marker);
         if (idx !== -1) {
-          const after = script.content.substring(idx + marker.length);
+          const after = activeContent.substring(idx + marker.length);
           const nl = after.indexOf("\n");
           payload = nl !== -1 ? after.substring(nl + 1) : after;
         } else {
-          payload = script.content || "";
+          payload = activeContent;
         }
       }
       return new Response(payload, {
@@ -116,7 +120,7 @@ serve(async (req) => {
       });
     }
 
-    return new Response(script.content, {
+    return new Response(activeContent, {
       status: 200,
       headers: { ...corsHeaders, ...noCacheHeaders, "Content-Type": "text/plain; charset=utf-8" },
     });

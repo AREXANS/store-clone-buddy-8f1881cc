@@ -320,6 +320,42 @@ const ScriptManagement: FC = () => {
     toast({ title: 'Copied!', description: `Data rekaman "${recording.title}" disalin` });
   };
 
+  const deleteRecording = async (recording: LuaRecording) => {
+    if (!confirm(`Hapus rekaman "${recording.title}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+    try {
+      // Try owner-key delete first if user provided a key
+      const activeKey = recordingKeyRef.current.trim();
+      if (activeKey && recording.owned) {
+        const res = await fetch(`${SUPABASE_API_BASE}/sync-recordings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'delete', key: activeKey, id: recording.id }),
+        });
+        const j = await res.json();
+        if (res.ok && j.success) {
+          toast({ title: 'Berhasil', description: 'Rekaman dihapus' });
+          fetchRecordings(true);
+          return;
+        }
+      }
+      // Admin delete fallback (uses admin_key from app_settings)
+      const { data: adminRow } = await supabase.from('app_settings').select('value').eq('key', 'admin_key').maybeSingle();
+      const adminKey = adminRow?.value;
+      if (!adminKey) throw new Error('Admin key tidak tersedia');
+      const res = await fetch(`${SUPABASE_API_BASE}/sync-recordings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'admin_delete', adminKey, id: recording.id }),
+      });
+      const j = await res.json();
+      if (!res.ok || !j.success) throw new Error(j.error || 'Gagal hapus');
+      toast({ title: 'Berhasil', description: 'Rekaman dihapus (admin)' });
+      fetchRecordings(true);
+    } catch (e) {
+      toast({ title: 'Error', description: e instanceof Error ? e.message : 'Gagal menghapus rekaman', variant: 'destructive' });
+    }
+  };
+
   const loadVersions = async (scriptId: string): Promise<ScriptVersion[]> => {
     if (versionsByScript[scriptId]) return versionsByScript[scriptId];
     const { data, error } = await supabase
@@ -472,35 +508,33 @@ const ScriptManagement: FC = () => {
     }
   };
 
-  const getScriptUrl = (scriptName: string) => {
-    return `${getApiBase()}/get-script?name=${scriptName}`;
+  const slotSuffix = (id: string) => (getSlot(id) === 'backup' ? '&slot=backup' : '');
+
+  const getScriptUrl = (script: LuaScript) => {
+    return `${getApiBase()}/get-script?name=${script.name}${slotSuffix(script.id)}`;
   };
 
-  const copyScriptUrl = (scriptName: string) => {
-    navigator.clipboard.writeText(getScriptUrl(scriptName));
-    toast({ title: 'Copied!', description: 'URL script berhasil disalin' });
+  const copyScriptUrl = (script: LuaScript) => {
+    navigator.clipboard.writeText(getScriptUrl(script));
+    toast({ title: 'Copied!', description: `URL script (${getSlot(script.id)}) disalin` });
   };
 
-  const getLoaderUrlForBrowser = (scriptName: string) => {
-    // Pretty URL for the main keysystem loader on the published domain (browser will see Access Denied).
-    if (scriptName === 'keysystem' && import.meta.env.PROD && currentDomain) {
+  const getLoaderUrlForBrowser = (script: LuaScript) => {
+    if (script.name === 'keysystem' && import.meta.env.PROD && currentDomain && getSlot(script.id) === 'primary') {
       return `${currentDomain}/loader`;
     }
-    return `${getApiBase()}/get-loader?name=${encodeURIComponent(scriptName)}`;
+    return `${getApiBase()}/get-loader?name=${encodeURIComponent(script.name)}${slotSuffix(script.id)}`;
   };
 
-  const getLoaderUrlForExecutor = (scriptName: string) => {
-    // Force-raw mode bypasses browser redirect heuristics so executors get pure Lua.
-    // Always prefer Cloud API base to avoid needing /api proxy on the current domain.
-    return `${SUPABASE_API_BASE}/get-loader?name=${encodeURIComponent(scriptName)}`;
+  const getLoaderUrlForExecutor = (script: LuaScript) => {
+    return `${SUPABASE_API_BASE}/get-loader?name=${encodeURIComponent(script.name)}${slotSuffix(script.id)}`;
   };
 
-  const copyLoadstringCode = (scriptName: string) => {
-    const url = getLoaderUrlForExecutor(scriptName);
+  const copyLoadstringCode = (script: LuaScript) => {
+    const url = getLoaderUrlForExecutor(script);
     const code = `loadstring(game:HttpGet("${url}"))()`;
-
     navigator.clipboard.writeText(code);
-    toast({ title: 'Copied!', description: 'Loadstring code berhasil disalin' });
+    toast({ title: 'Copied!', description: `Loadstring (${getSlot(script.id)}) disalin` });
   };
 
   const getScriptTypeColor = (name: string) => {
@@ -674,9 +708,14 @@ const ScriptManagement: FC = () => {
                           {recording.owner_username || 'Unknown'} · 🎮 {gameNameFor(recording.game_id)} · {new Date(recording.updated_at).toLocaleString('id-ID')}
                         </p>
                       </div>
-                      <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => copyRecordingData(recording)} title="Salin data rekaman">
-                        <Download className="w-3 h-3" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => copyRecordingData(recording)} title="Salin data rekaman">
+                          <Download className="w-3 h-3" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive hover:text-destructive" onClick={() => deleteRecording(recording)} title="Hapus rekaman">
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -910,15 +949,15 @@ const ScriptManagement: FC = () => {
                   <div className="flex flex-col gap-2">
                     <Input
                       readOnly
-                      value={getScriptUrl(script.name)}
+                      value={getScriptUrl(script)}
                       className="font-mono text-xs bg-black/30 w-full"
                     />
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => copyScriptUrl(script.name)} className="flex-1 text-xs">
+                      <Button variant="outline" size="sm" onClick={() => copyScriptUrl(script)} className="flex-1 text-xs">
                         <Copy className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                         Copy URL
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => window.open(getScriptUrl(script.name), '_blank')} className="flex-shrink-0">
+                      <Button variant="outline" size="sm" onClick={() => window.open(getScriptUrl(script), '_blank')} className="flex-shrink-0">
                         <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4" />
                       </Button>
                     </div>
@@ -930,10 +969,10 @@ const ScriptManagement: FC = () => {
                   <div className="flex flex-col gap-2">
                     <div className="p-2 rounded bg-black/50 overflow-x-auto">
                       <code className="text-xs font-mono text-secondary whitespace-nowrap block">
-                        {`loadstring(game:HttpGet("${getLoaderUrlForExecutor(script.name)}"))()`}
+                        {`loadstring(game:HttpGet("${getLoaderUrlForExecutor(script)}"))()`}
                       </code>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => copyLoadstringCode(script.name)} className="w-full text-xs">
+                    <Button variant="outline" size="sm" onClick={() => copyLoadstringCode(script)} className="w-full text-xs">
                       <Copy className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                       Copy Loadstring
                     </Button>
