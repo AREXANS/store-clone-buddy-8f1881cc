@@ -312,6 +312,7 @@ export type Database = {
       }
       lua_scripts: {
         Row: {
+          backup_content: string | null
           content: string
           created_at: string
           description: string | null
@@ -324,6 +325,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          backup_content?: string | null
           content?: string
           created_at?: string
           description?: string | null
@@ -336,6 +338,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          backup_content?: string | null
           content?: string
           created_at?: string
           description?: string | null

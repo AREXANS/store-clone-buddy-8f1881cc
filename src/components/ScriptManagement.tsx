@@ -28,6 +28,7 @@ interface LuaScript {
   display_name: string;
   description: string | null;
   content: string;
+  backup_content?: string | null;
   script_type: string;
   is_active: boolean;
   created_at: string;
@@ -146,6 +147,8 @@ const ScriptManagement: FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
   const [editedContent, setEditedContent] = useState<Record<string, string>>({});
+  const [backupEdited, setBackupEdited] = useState<Record<string, string>>({});
+  const [activeSlot, setActiveSlot] = useState<Record<string, 'primary' | 'backup'>>({});
   const [showPreview, setShowPreview] = useState<Record<string, boolean>>({});
   const [enableWhitelistWrap, setEnableWhitelistWrap] = useState<Record<string, boolean>>({});
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -194,10 +197,15 @@ const ScriptManagement: FC = () => {
         const sorted = [...data].sort(
           (a, b) => ALLOWED.indexOf(a.name) - ALLOWED.indexOf(b.name)
         );
-        setScripts(sorted);
-        const content: Record<string, string> = {};
-        sorted.forEach(s => { content[s.id] = s.content; });
-        setEditedContent(content);
+        setScripts(sorted as LuaScript[]);
+        const primary: Record<string, string> = {};
+        const backup: Record<string, string> = {};
+        sorted.forEach((s: any) => {
+          primary[s.id] = s.content ?? '';
+          backup[s.id] = s.backup_content ?? '';
+        });
+        setEditedContent(primary);
+        setBackupEdited(backup);
       }
     } catch (error) {
       console.error('Failed to fetch scripts:', error);
@@ -247,7 +255,7 @@ const ScriptManagement: FC = () => {
       setRecordings(list);
       // Kick off game-name resolution for any new place IDs
       const uniqueIds = Array.from(new Set(list.map(r => r.game_id).filter((v): v is string => !!v && /^\d+$/.test(v))));
-      uniqueIds.forEach(id => { if (!gameNames[id]) resolveGameName(id); });
+      uniqueIds.forEach(id => { const cur = gameNames[id]; if (!cur || cur === `Place ${id}`) resolveGameName(id); });
     } catch (error) {
       if (!silent) toast({ title: 'Error', description: error instanceof Error ? error.message : 'Gagal mengambil rekaman', variant: 'destructive' });
     } finally {
@@ -256,16 +264,37 @@ const ScriptManagement: FC = () => {
   };
 
   const resolveGameName = async (placeId: string) => {
-    setGameNames(prev => (prev[placeId] ? prev : { ...prev, [placeId]: '…' }));
-    try {
-      const res = await fetch(`https://games.roproxy.com/v1/games/multiget-place-details?placeIds=${placeId}`);
-      if (!res.ok) throw new Error('roproxy failed');
-      const arr = await res.json();
-      const name = Array.isArray(arr) && arr[0]?.name ? String(arr[0].name) : `Place ${placeId}`;
-      setGameNames(prev => ({ ...prev, [placeId]: name }));
-    } catch {
-      setGameNames(prev => ({ ...prev, [placeId]: `Place ${placeId}` }));
+    setGameNames(prev => (prev[placeId] && prev[placeId] !== `Place ${placeId}` ? prev : { ...prev, [placeId]: prev[placeId] || '…' }));
+    // Two-step public lookup: placeId -> universeId -> game name
+    const attempts: Array<() => Promise<string | null>> = [
+      async () => {
+        const r = await fetch(`https://apis.roproxy.com/universes/v1/places/${placeId}/universe`);
+        if (!r.ok) return null;
+        const j = await r.json();
+        const uid = j?.universeId;
+        if (!uid) return null;
+        const g = await fetch(`https://games.roproxy.com/v1/games?universeIds=${uid}`);
+        if (!g.ok) return null;
+        const gj = await g.json();
+        return gj?.data?.[0]?.name || gj?.data?.[0]?.sourceName || null;
+      },
+      async () => {
+        const r = await fetch(`https://economy.roproxy.com/v2/assets/${placeId}/details`);
+        if (!r.ok) return null;
+        const j = await r.json();
+        return j?.Name || null;
+      },
+    ];
+    for (const run of attempts) {
+      try {
+        const name = await run();
+        if (name) {
+          setGameNames(prev => ({ ...prev, [placeId]: name }));
+          return;
+        }
+      } catch { /* try next */ }
     }
+    setGameNames(prev => ({ ...prev, [placeId]: `Place ${placeId}` }));
   };
 
   const gameNameFor = (id: string | null) => {
@@ -324,7 +353,9 @@ const ScriptManagement: FC = () => {
       toast({ title: direction === 'prev' ? 'Sudah versi terlama' : 'Sudah versi terbaru' });
       return;
     }
-    const content = next === -1 ? script.content : versions[next].content;
+    const slot = getSlot(script.id);
+    const baseContent = slot === 'primary' ? (script.content ?? '') : (script.backup_content ?? '');
+    const content = next === -1 ? baseContent : versions[next].content;
     setEditedContent(prev => ({ ...prev, [script.id]: content }));
     setVersionCursor(prev => ({ ...prev, [script.id]: next }));
     const label = next === -1 ? 'Versi tersimpan (terbaru)' : `Versi #${versions[next].version_number}`;
@@ -343,28 +374,69 @@ const ScriptManagement: FC = () => {
       .replace('{{USER_SCRIPT}}', userScript);
   };
 
+  const getSlot = (id: string): 'primary' | 'backup' => activeSlot[id] || 'primary';
+
+  const switchSlot = (script: LuaScript, next: 'primary' | 'backup') => {
+    const cur = getSlot(script.id);
+    if (cur === next) return;
+    // Cache current buffer into the map for cur slot; load buffer for next slot.
+    const currentBuf = editedContent[script.id] ?? '';
+    const otherBuf = backupEdited[script.id] ?? '';
+    // swap buffers between the two maps
+    setEditedContent(prev => ({ ...prev, [script.id]: otherBuf }));
+    setBackupEdited(prev => ({ ...prev, [script.id]: currentBuf }));
+    setActiveSlot(prev => ({ ...prev, [script.id]: next }));
+    // Reset version cursor since slot changed context
+    setVersionCursor(prev => ({ ...prev, [script.id]: -1 }));
+  };
+
+  const swapSlots = async (script: LuaScript) => {
+    if (!confirm(`Tukar isi Primary ↔ Backup untuk "${script.display_name}"? Ini akan mengubah script yang aktif dipakai.`)) return;
+    setSaving(script.id);
+    try {
+      const { error } = await supabase
+        .from('lua_scripts')
+        .update({
+          content: script.backup_content ?? '',
+          backup_content: script.content ?? '',
+          updated_at: new Date().toISOString(),
+        } as any)
+        .eq('id', script.id);
+      if (error) throw error;
+      toast({ title: 'Berhasil', description: 'Primary ↔ Backup ditukar' });
+      await fetchScripts();
+    } catch (e) {
+      toast({ title: 'Error', description: 'Gagal menukar slot', variant: 'destructive' });
+    } finally {
+      setSaving(null);
+    }
+  };
+
   const handleSaveScript = async (script: LuaScript) => {
     setSaving(script.id);
     try {
+      const slot = getSlot(script.id);
       let contentToSave = editedContent[script.id];
-      
-      if (enableWhitelistWrap[script.id] && script.script_type === 'main') {
+
+      if (slot === 'primary' && enableWhitelistWrap[script.id] && script.script_type === 'main') {
         contentToSave = wrapWithWhitelist(editedContent[script.id]);
       }
 
+      const payload: any = { updated_at: new Date().toISOString() };
+      if (slot === 'primary') payload.content = contentToSave;
+      else payload.backup_content = contentToSave;
+
       const { error } = await supabase
         .from('lua_scripts')
-        .update({ 
-          content: contentToSave,
-          updated_at: new Date().toISOString()
-        })
+        .update(payload)
         .eq('id', script.id);
 
       if (error) throw error;
-      
-      const message = enableWhitelistWrap[script.id] && script.script_type === 'main'
-        ? `Script "${script.display_name}" berhasil disimpan dengan whitelist protection`
-        : `Script "${script.display_name}" berhasil disimpan`;
+
+      const slotLabel = slot === 'primary' ? 'Primary' : 'Backup';
+      const message = slot === 'primary' && enableWhitelistWrap[script.id] && script.script_type === 'main'
+        ? `${slotLabel} "${script.display_name}" disimpan dengan whitelist protection`
+        : `${slotLabel} "${script.display_name}" berhasil disimpan`;
       
       toast({ title: 'Berhasil', description: message });
       fetchScripts();
@@ -450,7 +522,10 @@ const ScriptManagement: FC = () => {
   };
 
   const hasChanges = (script: LuaScript) => {
-    return editedContent[script.id] !== script.content;
+    const slot = getSlot(script.id);
+    const buf = editedContent[script.id] ?? '';
+    const dbVal = slot === 'primary' ? (script.content ?? '') : (script.backup_content ?? '');
+    return buf !== dbVal;
   };
 
   const handleFileUpload = (scriptId: string, event: React.ChangeEvent<HTMLInputElement>) => {
@@ -654,7 +729,33 @@ const ScriptManagement: FC = () => {
               {/* Script Editor */}
               <div className="space-y-2">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <Label className="text-xs sm:text-sm font-medium">Script Content</Label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Label className="text-xs sm:text-sm font-medium">Script Content</Label>
+                    <Select
+                      value={getSlot(script.id)}
+                      onValueChange={(v) => switchSlot(script, v as 'primary' | 'backup')}
+                    >
+                      <SelectTrigger className="h-7 w-[130px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="primary">🟢 Primary</SelectItem>
+                        <SelectItem value="backup">🟠 Backup</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => swapSlots(script)}
+                      className="h-7 text-xs"
+                      title="Tukar Primary ↔ Backup (di database)"
+                    >
+                      ⇄ Swap
+                    </Button>
+                    <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                      {getSlot(script.id) === 'primary' ? 'Slot aktif dipakai loader' : 'Cadangan (tidak dipakai)'}
+                    </span>
+                  </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <input
                       type="file"
