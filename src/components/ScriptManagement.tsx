@@ -508,35 +508,33 @@ const ScriptManagement: FC = () => {
     }
   };
 
-  const getScriptUrl = (scriptName: string) => {
-    return `${getApiBase()}/get-script?name=${scriptName}`;
+  const slotSuffix = (id: string) => (getSlot(id) === 'backup' ? '&slot=backup' : '');
+
+  const getScriptUrl = (script: LuaScript) => {
+    return `${getApiBase()}/get-script?name=${script.name}${slotSuffix(script.id)}`;
   };
 
-  const copyScriptUrl = (scriptName: string) => {
-    navigator.clipboard.writeText(getScriptUrl(scriptName));
-    toast({ title: 'Copied!', description: 'URL script berhasil disalin' });
+  const copyScriptUrl = (script: LuaScript) => {
+    navigator.clipboard.writeText(getScriptUrl(script));
+    toast({ title: 'Copied!', description: `URL script (${getSlot(script.id)}) disalin` });
   };
 
-  const getLoaderUrlForBrowser = (scriptName: string) => {
-    // Pretty URL for the main keysystem loader on the published domain (browser will see Access Denied).
-    if (scriptName === 'keysystem' && import.meta.env.PROD && currentDomain) {
+  const getLoaderUrlForBrowser = (script: LuaScript) => {
+    if (script.name === 'keysystem' && import.meta.env.PROD && currentDomain && getSlot(script.id) === 'primary') {
       return `${currentDomain}/loader`;
     }
-    return `${getApiBase()}/get-loader?name=${encodeURIComponent(scriptName)}`;
+    return `${getApiBase()}/get-loader?name=${encodeURIComponent(script.name)}${slotSuffix(script.id)}`;
   };
 
-  const getLoaderUrlForExecutor = (scriptName: string) => {
-    // Force-raw mode bypasses browser redirect heuristics so executors get pure Lua.
-    // Always prefer Cloud API base to avoid needing /api proxy on the current domain.
-    return `${SUPABASE_API_BASE}/get-loader?name=${encodeURIComponent(scriptName)}`;
+  const getLoaderUrlForExecutor = (script: LuaScript) => {
+    return `${SUPABASE_API_BASE}/get-loader?name=${encodeURIComponent(script.name)}${slotSuffix(script.id)}`;
   };
 
-  const copyLoadstringCode = (scriptName: string) => {
-    const url = getLoaderUrlForExecutor(scriptName);
+  const copyLoadstringCode = (script: LuaScript) => {
+    const url = getLoaderUrlForExecutor(script);
     const code = `loadstring(game:HttpGet("${url}"))()`;
-
     navigator.clipboard.writeText(code);
-    toast({ title: 'Copied!', description: 'Loadstring code berhasil disalin' });
+    toast({ title: 'Copied!', description: `Loadstring (${getSlot(script.id)}) disalin` });
   };
 
   const getScriptTypeColor = (name: string) => {
