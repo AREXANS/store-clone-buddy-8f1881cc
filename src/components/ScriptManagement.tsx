@@ -320,6 +320,42 @@ const ScriptManagement: FC = () => {
     toast({ title: 'Copied!', description: `Data rekaman "${recording.title}" disalin` });
   };
 
+  const deleteRecording = async (recording: LuaRecording) => {
+    if (!confirm(`Hapus rekaman "${recording.title}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+    try {
+      // Try owner-key delete first if user provided a key
+      const activeKey = recordingKeyRef.current.trim();
+      if (activeKey && recording.owned) {
+        const res = await fetch(`${SUPABASE_API_BASE}/sync-recordings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'delete', key: activeKey, id: recording.id }),
+        });
+        const j = await res.json();
+        if (res.ok && j.success) {
+          toast({ title: 'Berhasil', description: 'Rekaman dihapus' });
+          fetchRecordings(true);
+          return;
+        }
+      }
+      // Admin delete fallback (uses admin_key from app_settings)
+      const { data: adminRow } = await supabase.from('app_settings').select('value').eq('key', 'admin_key').maybeSingle();
+      const adminKey = adminRow?.value;
+      if (!adminKey) throw new Error('Admin key tidak tersedia');
+      const res = await fetch(`${SUPABASE_API_BASE}/sync-recordings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'admin_delete', adminKey, id: recording.id }),
+      });
+      const j = await res.json();
+      if (!res.ok || !j.success) throw new Error(j.error || 'Gagal hapus');
+      toast({ title: 'Berhasil', description: 'Rekaman dihapus (admin)' });
+      fetchRecordings(true);
+    } catch (e) {
+      toast({ title: 'Error', description: e instanceof Error ? e.message : 'Gagal menghapus rekaman', variant: 'destructive' });
+    }
+  };
+
   const loadVersions = async (scriptId: string): Promise<ScriptVersion[]> => {
     if (versionsByScript[scriptId]) return versionsByScript[scriptId];
     const { data, error } = await supabase
