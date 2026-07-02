@@ -197,10 +197,15 @@ const ScriptManagement: FC = () => {
         const sorted = [...data].sort(
           (a, b) => ALLOWED.indexOf(a.name) - ALLOWED.indexOf(b.name)
         );
-        setScripts(sorted);
-        const content: Record<string, string> = {};
-        sorted.forEach(s => { content[s.id] = s.content; });
-        setEditedContent(content);
+        setScripts(sorted as LuaScript[]);
+        const primary: Record<string, string> = {};
+        const backup: Record<string, string> = {};
+        sorted.forEach((s: any) => {
+          primary[s.id] = s.content ?? '';
+          backup[s.id] = s.backup_content ?? '';
+        });
+        setEditedContent(primary);
+        setBackupEdited(backup);
       }
     } catch (error) {
       console.error('Failed to fetch scripts:', error);
