@@ -729,7 +729,33 @@ const ScriptManagement: FC = () => {
               {/* Script Editor */}
               <div className="space-y-2">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <Label className="text-xs sm:text-sm font-medium">Script Content</Label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Label className="text-xs sm:text-sm font-medium">Script Content</Label>
+                    <Select
+                      value={getSlot(script.id)}
+                      onValueChange={(v) => switchSlot(script, v as 'primary' | 'backup')}
+                    >
+                      <SelectTrigger className="h-7 w-[130px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="primary">🟢 Primary</SelectItem>
+                        <SelectItem value="backup">🟠 Backup</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => swapSlots(script)}
+                      className="h-7 text-xs"
+                      title="Tukar Primary ↔ Backup (di database)"
+                    >
+                      ⇄ Swap
+                    </Button>
+                    <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                      {getSlot(script.id) === 'primary' ? 'Slot aktif dipakai loader' : 'Cadangan (tidak dipakai)'}
+                    </span>
+                  </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <input
                       type="file"
