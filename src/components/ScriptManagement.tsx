@@ -247,7 +247,7 @@ const ScriptManagement: FC = () => {
       setRecordings(list);
       // Kick off game-name resolution for any new place IDs
       const uniqueIds = Array.from(new Set(list.map(r => r.game_id).filter((v): v is string => !!v && /^\d+$/.test(v))));
-      uniqueIds.forEach(id => { if (!gameNames[id]) resolveGameName(id); });
+      uniqueIds.forEach(id => { const cur = gameNames[id]; if (!cur || cur === `Place ${id}`) resolveGameName(id); });
     } catch (error) {
       if (!silent) toast({ title: 'Error', description: error instanceof Error ? error.message : 'Gagal mengambil rekaman', variant: 'destructive' });
     } finally {
