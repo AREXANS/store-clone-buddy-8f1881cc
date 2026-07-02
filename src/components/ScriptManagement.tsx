@@ -147,6 +147,8 @@ const ScriptManagement: FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
   const [editedContent, setEditedContent] = useState<Record<string, string>>({});
+  const [backupEdited, setBackupEdited] = useState<Record<string, string>>({});
+  const [activeSlot, setActiveSlot] = useState<Record<string, 'primary' | 'backup'>>({});
   const [showPreview, setShowPreview] = useState<Record<string, boolean>>({});
   const [enableWhitelistWrap, setEnableWhitelistWrap] = useState<Record<string, boolean>>({});
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
