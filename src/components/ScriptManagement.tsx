@@ -520,7 +520,10 @@ const ScriptManagement: FC = () => {
   };
 
   const hasChanges = (script: LuaScript) => {
-    return editedContent[script.id] !== script.content;
+    const slot = getSlot(script.id);
+    const buf = editedContent[script.id] ?? '';
+    const dbVal = slot === 'primary' ? (script.content ?? '') : (script.backup_content ?? '');
+    return buf !== dbVal;
   };
 
   const handleFileUpload = (scriptId: string, event: React.ChangeEvent<HTMLInputElement>) => {
