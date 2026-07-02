@@ -949,15 +949,15 @@ const ScriptManagement: FC = () => {
                   <div className="flex flex-col gap-2">
                     <Input
                       readOnly
-                      value={getScriptUrl(script.name)}
+                      value={getScriptUrl(script)}
                       className="font-mono text-xs bg-black/30 w-full"
                     />
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => copyScriptUrl(script.name)} className="flex-1 text-xs">
+                      <Button variant="outline" size="sm" onClick={() => copyScriptUrl(script)} className="flex-1 text-xs">
                         <Copy className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                         Copy URL
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => window.open(getScriptUrl(script.name), '_blank')} className="flex-shrink-0">
+                      <Button variant="outline" size="sm" onClick={() => window.open(getScriptUrl(script), '_blank')} className="flex-shrink-0">
                         <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4" />
                       </Button>
                     </div>
@@ -969,10 +969,10 @@ const ScriptManagement: FC = () => {
                   <div className="flex flex-col gap-2">
                     <div className="p-2 rounded bg-black/50 overflow-x-auto">
                       <code className="text-xs font-mono text-secondary whitespace-nowrap block">
-                        {`loadstring(game:HttpGet("${getLoaderUrlForExecutor(script.name)}"))()`}
+                        {`loadstring(game:HttpGet("${getLoaderUrlForExecutor(script)}"))()`}
                       </code>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => copyLoadstringCode(script.name)} className="w-full text-xs">
+                    <Button variant="outline" size="sm" onClick={() => copyLoadstringCode(script)} className="w-full text-xs">
                       <Copy className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                       Copy Loadstring
                     </Button>
