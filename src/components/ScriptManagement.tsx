@@ -256,16 +256,37 @@ const ScriptManagement: FC = () => {
   };
 
   const resolveGameName = async (placeId: string) => {
-    setGameNames(prev => (prev[placeId] ? prev : { ...prev, [placeId]: '…' }));
-    try {
-      const res = await fetch(`https://games.roproxy.com/v1/games/multiget-place-details?placeIds=${placeId}`);
-      if (!res.ok) throw new Error('roproxy failed');
-      const arr = await res.json();
-      const name = Array.isArray(arr) && arr[0]?.name ? String(arr[0].name) : `Place ${placeId}`;
-      setGameNames(prev => ({ ...prev, [placeId]: name }));
-    } catch {
-      setGameNames(prev => ({ ...prev, [placeId]: `Place ${placeId}` }));
+    setGameNames(prev => (prev[placeId] && prev[placeId] !== `Place ${placeId}` ? prev : { ...prev, [placeId]: prev[placeId] || '…' }));
+    // Two-step public lookup: placeId -> universeId -> game name
+    const attempts: Array<() => Promise<string | null>> = [
+      async () => {
+        const r = await fetch(`https://apis.roproxy.com/universes/v1/places/${placeId}/universe`);
+        if (!r.ok) return null;
+        const j = await r.json();
+        const uid = j?.universeId;
+        if (!uid) return null;
+        const g = await fetch(`https://games.roproxy.com/v1/games?universeIds=${uid}`);
+        if (!g.ok) return null;
+        const gj = await g.json();
+        return gj?.data?.[0]?.name || gj?.data?.[0]?.sourceName || null;
+      },
+      async () => {
+        const r = await fetch(`https://economy.roproxy.com/v2/assets/${placeId}/details`);
+        if (!r.ok) return null;
+        const j = await r.json();
+        return j?.Name || null;
+      },
+    ];
+    for (const run of attempts) {
+      try {
+        const name = await run();
+        if (name) {
+          setGameNames(prev => ({ ...prev, [placeId]: name }));
+          return;
+        }
+      } catch { /* try next */ }
     }
+    setGameNames(prev => ({ ...prev, [placeId]: `Place ${placeId}` }));
   };
 
   const gameNameFor = (id: string | null) => {
