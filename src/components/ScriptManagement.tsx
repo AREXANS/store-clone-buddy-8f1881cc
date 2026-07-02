@@ -372,28 +372,69 @@ const ScriptManagement: FC = () => {
       .replace('{{USER_SCRIPT}}', userScript);
   };
 
+  const getSlot = (id: string): 'primary' | 'backup' => activeSlot[id] || 'primary';
+
+  const switchSlot = (script: LuaScript, next: 'primary' | 'backup') => {
+    const cur = getSlot(script.id);
+    if (cur === next) return;
+    // Cache current buffer into the map for cur slot; load buffer for next slot.
+    const currentBuf = editedContent[script.id] ?? '';
+    const otherBuf = backupEdited[script.id] ?? '';
+    // swap buffers between the two maps
+    setEditedContent(prev => ({ ...prev, [script.id]: otherBuf }));
+    setBackupEdited(prev => ({ ...prev, [script.id]: currentBuf }));
+    setActiveSlot(prev => ({ ...prev, [script.id]: next }));
+    // Reset version cursor since slot changed context
+    setVersionCursor(prev => ({ ...prev, [script.id]: -1 }));
+  };
+
+  const swapSlots = async (script: LuaScript) => {
+    if (!confirm(`Tukar isi Primary ↔ Backup untuk "${script.display_name}"? Ini akan mengubah script yang aktif dipakai.`)) return;
+    setSaving(script.id);
+    try {
+      const { error } = await supabase
+        .from('lua_scripts')
+        .update({
+          content: script.backup_content ?? '',
+          backup_content: script.content ?? '',
+          updated_at: new Date().toISOString(),
+        } as any)
+        .eq('id', script.id);
+      if (error) throw error;
+      toast({ title: 'Berhasil', description: 'Primary ↔ Backup ditukar' });
+      await fetchScripts();
+    } catch (e) {
+      toast({ title: 'Error', description: 'Gagal menukar slot', variant: 'destructive' });
+    } finally {
+      setSaving(null);
+    }
+  };
+
   const handleSaveScript = async (script: LuaScript) => {
     setSaving(script.id);
     try {
+      const slot = getSlot(script.id);
       let contentToSave = editedContent[script.id];
-      
-      if (enableWhitelistWrap[script.id] && script.script_type === 'main') {
+
+      if (slot === 'primary' && enableWhitelistWrap[script.id] && script.script_type === 'main') {
         contentToSave = wrapWithWhitelist(editedContent[script.id]);
       }
 
+      const payload: any = { updated_at: new Date().toISOString() };
+      if (slot === 'primary') payload.content = contentToSave;
+      else payload.backup_content = contentToSave;
+
       const { error } = await supabase
         .from('lua_scripts')
-        .update({ 
-          content: contentToSave,
-          updated_at: new Date().toISOString()
-        })
+        .update(payload)
         .eq('id', script.id);
 
       if (error) throw error;
-      
-      const message = enableWhitelistWrap[script.id] && script.script_type === 'main'
-        ? `Script "${script.display_name}" berhasil disimpan dengan whitelist protection`
-        : `Script "${script.display_name}" berhasil disimpan`;
+
+      const slotLabel = slot === 'primary' ? 'Primary' : 'Backup';
+      const message = slot === 'primary' && enableWhitelistWrap[script.id] && script.script_type === 'main'
+        ? `${slotLabel} "${script.display_name}" disimpan dengan whitelist protection`
+        : `${slotLabel} "${script.display_name}" berhasil disimpan`;
       
       toast({ title: 'Berhasil', description: message });
       fetchScripts();
