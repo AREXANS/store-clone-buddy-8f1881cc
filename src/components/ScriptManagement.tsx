@@ -686,7 +686,9 @@ const ScriptManagement: FC = () => {
               className="pl-7 text-xs bg-black/30"
             />
           </div>
-          <ScrollArea className="max-h-64 rounded border border-primary/20 bg-black/20 p-2">
+          <ScrollArea className="h-[480px] rounded border border-primary/20 bg-black/20 p-2">
+            <div className="pr-3 pb-2">
+
             {filteredRecordings.length === 0 ? (
               <p className="py-8 text-center text-xs text-muted-foreground">
                 {recordings.length === 0 ? 'Belum ada rekaman' : 'Tidak ada yang cocok dengan pencarian'}
@@ -721,7 +723,9 @@ const ScriptManagement: FC = () => {
                 ))}
               </div>
             )}
+            </div>
           </ScrollArea>
+
         </CardContent>
       </Card>
 
