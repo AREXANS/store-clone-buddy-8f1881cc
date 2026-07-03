@@ -723,7 +723,9 @@ const ScriptManagement: FC = () => {
                 ))}
               </div>
             )}
+            </div>
           </ScrollArea>
+
         </CardContent>
       </Card>
 
