@@ -108,6 +108,34 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { headers: jsonHeaders });
     }
 
+    // upsert: replace all rows for this owner+game_id with one new row (bundle save)
+    if (action === "upsert" || action === "bundle") {
+      const gameId = body.gameId || body.game_id ? String(body.gameId || body.game_id).slice(0, 80) : null;
+      const title = String(body.title || (gameId ? `Teleports ${gameId}` : "Teleports")).trim().slice(0, 120);
+      const teleportData = body.teleportData ?? body.teleport_data ?? body.data;
+      if (teleportData === undefined || teleportData === null) {
+        return new Response(JSON.stringify({ success: false, error: "Data teleport kosong" }), { status: 400, headers: jsonHeaders });
+      }
+      if (gameId) {
+        await supabase.from("lua_teleports").delete().eq("owner_key", key).eq("game_id", gameId).eq("source", "main_lua_bundle");
+      }
+      const row = {
+        title,
+        description: null,
+        owner_username: typeof body.username === "string" ? body.username.slice(0, 80) : null,
+        owner_key: key,
+        owner_hwid: typeof body.hwid === "string" ? body.hwid.slice(0, 180) : null,
+        game_id: gameId,
+        teleport_data: teleportData,
+        is_public: Boolean(body.isPublic ?? body.is_public),
+        source: "main_lua_bundle",
+      };
+      const { data, error } = await supabase.from("lua_teleports").insert(row)
+        .select("id,title,description,owner_username,owner_key,game_id,teleport_data,is_public,source,created_at,updated_at").single();
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true, teleport: sanitize(data, key) }), { headers: jsonHeaders });
+    }
+
     const title = String(body.title || "").trim().slice(0, 120);
     if (!title) return new Response(JSON.stringify({ success: false, error: "Judul teleport wajib diisi" }), { status: 400, headers: jsonHeaders });
     const teleportData = body.teleportData ?? body.teleport_data ?? body.data;

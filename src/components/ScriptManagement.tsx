@@ -708,9 +708,6 @@ const ScriptManagement: FC = () => {
                           </p>
                           <div className="flex flex-wrap items-center gap-1.5">
                             <p className="truncate font-medium">{fileName}</p>
-                            <span className={`rounded px-1.5 py-0.5 text-[10px] ${recording.is_public ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                              {recording.is_public ? 'Public' : 'Private'}
-                            </span>
                             {recording.owned && <span className="rounded bg-secondary/20 px-1.5 py-0.5 text-[10px] text-secondary">Own</span>}
                           </div>
                           <p className="text-[10px] text-muted-foreground">
