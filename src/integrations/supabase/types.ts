@@ -352,6 +352,51 @@ export type Database = {
         }
         Relationships: []
       }
+      lua_teleports: {
+        Row: {
+          created_at: string
+          description: string | null
+          game_id: string | null
+          id: string
+          is_public: boolean
+          owner_hwid: string | null
+          owner_key: string | null
+          owner_username: string | null
+          source: string
+          teleport_data: Json
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          game_id?: string | null
+          id?: string
+          is_public?: boolean
+          owner_hwid?: string | null
+          owner_key?: string | null
+          owner_username?: string | null
+          source?: string
+          teleport_data?: Json
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          game_id?: string | null
+          id?: string
+          is_public?: boolean
+          owner_hwid?: string | null
+          owner_key?: string | null
+          owner_username?: string | null
+          source?: string
+          teleport_data?: Json
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       package_discounts: {
         Row: {
           created_at: string
