@@ -695,32 +695,40 @@ const ScriptManagement: FC = () => {
               </p>
             ) : (
               <div className="space-y-2">
-                {filteredRecordings.map((recording) => (
-                  <div key={recording.id} className="rounded bg-muted/30 p-2 text-xs">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <p className="truncate font-medium">{recording.title}</p>
-                          <span className={`rounded px-1.5 py-0.5 text-[10px] ${recording.is_public ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                            {recording.is_public ? 'Public' : 'Private'}
-                          </span>
-                          {recording.owned && <span className="rounded bg-secondary/20 px-1.5 py-0.5 text-[10px] text-secondary">Own</span>}
+                {filteredRecordings.map((recording) => {
+                  const gname = gameNameFor(recording.game_id);
+                  const placeId = recording.game_id && /^\d+$/.test(recording.game_id) ? recording.game_id : null;
+                  const fileName = /\.json$/i.test(recording.title) ? recording.title : `${recording.title}.json`;
+                  return (
+                    <div key={recording.id} className="rounded bg-muted/30 p-2 text-xs">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <p className="truncate text-[11px] font-semibold text-primary">
+                            {gname}{placeId ? <span className="text-muted-foreground"> • {placeId}</span> : null}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <p className="truncate font-medium">{fileName}</p>
+                            <span className={`rounded px-1.5 py-0.5 text-[10px] ${recording.is_public ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                              {recording.is_public ? 'Public' : 'Private'}
+                            </span>
+                            {recording.owned && <span className="rounded bg-secondary/20 px-1.5 py-0.5 text-[10px] text-secondary">Own</span>}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            {recording.owner_username || 'Unknown'} • {new Date(recording.updated_at).toLocaleString('id-ID')}
+                          </p>
                         </div>
-                        <p className="mt-0.5 text-[10px] text-muted-foreground">
-                          {recording.owner_username || 'Unknown'} · 🎮 {gameNameFor(recording.game_id)} · {new Date(recording.updated_at).toLocaleString('id-ID')}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => copyRecordingData(recording)} title="Salin data rekaman">
-                          <Download className="w-3 h-3" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive hover:text-destructive" onClick={() => deleteRecording(recording)} title="Hapus rekaman">
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => copyRecordingData(recording)} title="Salin data rekaman">
+                            <Download className="w-3 h-3" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive hover:text-destructive" onClick={() => deleteRecording(recording)} title="Hapus rekaman">
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             </div>
