@@ -833,7 +833,35 @@ const LuaUploadManager: FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit dialog */}
+      <Dialog open={!!editScript} onOpenChange={(o) => { if (!o) setEditScript(null); }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-4 h-4" />
+              Edit: {editScript?.display_name}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Ubah isi script mentah. Wrapper key system + whitelist akan otomatis diterapkan saat disimpan.
+            </DialogDescription>
+          </DialogHeader>
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            className="w-full flex-1 min-h-[400px] font-mono text-xs bg-black/50 border border-primary/30 rounded p-3 outline-none focus:border-primary"
+            spellCheck={false}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setEditScript(null)}>Batal</Button>
+            <Button onClick={saveEdit} disabled={savingEdit}>
+              {savingEdit ? <><RefreshCw className="w-3 h-3 mr-1 animate-spin" />Menyimpan...</> : <><Save className="w-3 h-3 mr-1" />Simpan</>}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 };
 
