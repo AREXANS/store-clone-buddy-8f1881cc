@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { toast } from '@/hooks/use-toast';
 import {
   Upload, Trash2, RefreshCw, FileCode, Copy, ExternalLink, Shield,
-  History as HistoryIcon, Undo2, Redo2, RotateCcw,
+  History as HistoryIcon, Undo2, Redo2, RotateCcw, Download, Replace, Pencil, Save,
 } from 'lucide-react';
+
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -385,6 +386,11 @@ const LuaUploadManager: FC = () => {
   const [historyScript, setHistoryScript] = useState<UploadedScript | null>(null);
   const [previewVersion, setPreviewVersion] = useState<ScriptVersion | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const replaceInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [editScript, setEditScript] = useState<UploadedScript | null>(null);
+  const [editContent, setEditContent] = useState<string>('');
+  const [savingEdit, setSavingEdit] = useState(false);
+
 
   const SUPABASE_API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
@@ -553,6 +559,77 @@ const LuaUploadManager: FC = () => {
     toast({ title: 'Copied!', description: 'Kode terintegrasi lengkap disalin' });
   };
 
+  const downloadRawFile = (script: UploadedScript) => {
+    // Download raw (unwrapped) content — no key system / whitelist integration
+    const raw = (script as any).raw_content || unwrap(script.content || '');
+    const fileName = /\.(lua|txt)$/i.test(script.display_name) ? script.display_name : `${script.display_name}.lua`;
+    const blob = new Blob([raw], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({ title: 'Downloaded', description: `"${fileName}" berhasil diunduh (tanpa integrasi)` });
+  };
+
+  const handleReplaceUpload = async (script: UploadedScript, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    if (!['.lua', '.txt'].includes(ext)) {
+      toast({ title: 'Error', description: 'Hanya .lua atau .txt', variant: 'destructive' });
+      event.target.value = '';
+      return;
+    }
+    if (!confirm(`Ganti isi "${script.display_name}" dengan "${file.name}"? Versi lama tetap tersimpan di history.`)) {
+      event.target.value = '';
+      return;
+    }
+    try {
+      const raw = await file.text();
+      const wrapped = wrap(script.name, raw);
+      const { error } = await supabase.from('lua_scripts')
+        .update({ content: wrapped, raw_content: raw, display_name: file.name, updated_at: new Date().toISOString() } as any)
+        .eq('id', script.id);
+      if (error) throw error;
+      toast({ title: 'Berhasil', description: `"${script.display_name}" diganti dengan "${file.name}"` });
+      fetchScripts();
+    } catch {
+      toast({ title: 'Error', description: 'Gagal mengganti file', variant: 'destructive' });
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  const openEditor = (script: UploadedScript) => {
+    setEditScript(script);
+    const raw = (script as any).raw_content || unwrap(script.content || '');
+    setEditContent(raw);
+  };
+
+  const saveEdit = async () => {
+    if (!editScript) return;
+    setSavingEdit(true);
+    try {
+      const wrapped = wrap(editScript.name, editContent);
+      const { error } = await supabase.from('lua_scripts')
+        .update({ content: wrapped, raw_content: editContent, updated_at: new Date().toISOString() } as any)
+        .eq('id', editScript.id);
+      if (error) throw error;
+      toast({ title: 'Berhasil', description: `"${editScript.display_name}" diupdate` });
+      setEditScript(null);
+      fetchScripts();
+    } catch {
+      toast({ title: 'Error', description: 'Gagal menyimpan', variant: 'destructive' });
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex items-start justify-between gap-2">
@@ -626,7 +703,23 @@ const LuaUploadManager: FC = () => {
                         </div>
                         <p className="text-[10px] text-muted-foreground">{new Date(script.updated_at).toLocaleString('id-ID')}</p>
                       </div>
-                      <div className="flex gap-1 flex-shrink-0">
+                      <div className="flex gap-1 flex-shrink-0 flex-wrap">
+                        <input
+                          type="file"
+                          accept=".lua,.txt"
+                          ref={(el) => (replaceInputRefs.current[script.id] = el)}
+                          onChange={(e) => handleReplaceUpload(script, e)}
+                          className="hidden"
+                        />
+                        <Button variant="ghost" size="sm" onClick={() => downloadRawFile(script)} title="Download file mentah (tanpa integrasi key/whitelist)" className="h-8 px-2">
+                          <Download className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => replaceInputRefs.current[script.id]?.click()} title="Upload ulang / ganti file" className="h-8 px-2">
+                          <Replace className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => openEditor(script)} title="Edit isi script" className="h-8 px-2">
+                          <Pencil className="w-4 h-4" />
+                        </Button>
                         <Button variant="ghost" size="sm" onClick={() => undoToPrevious(script)} title="Undo ke versi sebelumnya" className="h-8 px-2">
                           <Undo2 className="w-4 h-4" />
                         </Button>
@@ -649,15 +742,22 @@ const LuaUploadManager: FC = () => {
                           <ExternalLink className="w-3 h-3" />
                         </Button>
                       </div>
-                      <Button variant="outline" size="sm" className="w-full text-xs h-7" onClick={() => copyLoadstring(script.name)}>
-                        <Copy className="w-3 h-3 mr-1" />
-                        Copy Loadstring
-                      </Button>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => copyLoadstring(script.name)}>
+                          <Copy className="w-3 h-3 mr-1" />
+                          Loadstring
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => downloadRawFile(script)}>
+                          <Download className="w-3 h-3 mr-1" />
+                          Download Raw
+                        </Button>
+                      </div>
                       <Button variant="outline" size="sm" className="w-full text-xs h-7" onClick={() => copyIntegratedCode(script)}>
                         <FileCode className="w-3 h-3 mr-1" />
                         Copy Kode Terintegrasi Lengkap
                       </Button>
                     </div>
+
                   </div>
                 ))}
               </div>
@@ -733,7 +833,35 @@ const LuaUploadManager: FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit dialog */}
+      <Dialog open={!!editScript} onOpenChange={(o) => { if (!o) setEditScript(null); }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-4 h-4" />
+              Edit: {editScript?.display_name}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Ubah isi script mentah. Wrapper key system + whitelist akan otomatis diterapkan saat disimpan.
+            </DialogDescription>
+          </DialogHeader>
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            className="w-full flex-1 min-h-[400px] font-mono text-xs bg-black/50 border border-primary/30 rounded p-3 outline-none focus:border-primary"
+            spellCheck={false}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setEditScript(null)}>Batal</Button>
+            <Button onClick={saveEdit} disabled={savingEdit}>
+              {savingEdit ? <><RefreshCw className="w-3 h-3 mr-1 animate-spin" />Menyimpan...</> : <><Save className="w-3 h-3 mr-1" />Simpan</>}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 };
 
