@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { toast } from '@/hooks/use-toast';
 import {
   Upload, Trash2, RefreshCw, FileCode, Copy, ExternalLink, Shield,
-  History as HistoryIcon, Undo2, Redo2, RotateCcw,
+  History as HistoryIcon, Undo2, Redo2, RotateCcw, Download, Replace, Pencil, Save,
 } from 'lucide-react';
+
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import {
