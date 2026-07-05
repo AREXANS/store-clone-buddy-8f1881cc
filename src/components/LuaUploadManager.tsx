@@ -559,6 +559,77 @@ const LuaUploadManager: FC = () => {
     toast({ title: 'Copied!', description: 'Kode terintegrasi lengkap disalin' });
   };
 
+  const downloadRawFile = (script: UploadedScript) => {
+    // Download raw (unwrapped) content — no key system / whitelist integration
+    const raw = (script as any).raw_content || unwrap(script.content || '');
+    const fileName = /\.(lua|txt)$/i.test(script.display_name) ? script.display_name : `${script.display_name}.lua`;
+    const blob = new Blob([raw], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({ title: 'Downloaded', description: `"${fileName}" berhasil diunduh (tanpa integrasi)` });
+  };
+
+  const handleReplaceUpload = async (script: UploadedScript, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    if (!['.lua', '.txt'].includes(ext)) {
+      toast({ title: 'Error', description: 'Hanya .lua atau .txt', variant: 'destructive' });
+      event.target.value = '';
+      return;
+    }
+    if (!confirm(`Ganti isi "${script.display_name}" dengan "${file.name}"? Versi lama tetap tersimpan di history.`)) {
+      event.target.value = '';
+      return;
+    }
+    try {
+      const raw = await file.text();
+      const wrapped = wrap(script.name, raw);
+      const { error } = await supabase.from('lua_scripts')
+        .update({ content: wrapped, raw_content: raw, display_name: file.name, updated_at: new Date().toISOString() } as any)
+        .eq('id', script.id);
+      if (error) throw error;
+      toast({ title: 'Berhasil', description: `"${script.display_name}" diganti dengan "${file.name}"` });
+      fetchScripts();
+    } catch {
+      toast({ title: 'Error', description: 'Gagal mengganti file', variant: 'destructive' });
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  const openEditor = (script: UploadedScript) => {
+    setEditScript(script);
+    const raw = (script as any).raw_content || unwrap(script.content || '');
+    setEditContent(raw);
+  };
+
+  const saveEdit = async () => {
+    if (!editScript) return;
+    setSavingEdit(true);
+    try {
+      const wrapped = wrap(editScript.name, editContent);
+      const { error } = await supabase.from('lua_scripts')
+        .update({ content: wrapped, raw_content: editContent, updated_at: new Date().toISOString() } as any)
+        .eq('id', editScript.id);
+      if (error) throw error;
+      toast({ title: 'Berhasil', description: `"${editScript.display_name}" diupdate` });
+      setEditScript(null);
+      fetchScripts();
+    } catch {
+      toast({ title: 'Error', description: 'Gagal menyimpan', variant: 'destructive' });
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex items-start justify-between gap-2">
