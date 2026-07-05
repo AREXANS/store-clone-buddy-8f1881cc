@@ -386,6 +386,11 @@ const LuaUploadManager: FC = () => {
   const [historyScript, setHistoryScript] = useState<UploadedScript | null>(null);
   const [previewVersion, setPreviewVersion] = useState<ScriptVersion | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const replaceInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [editScript, setEditScript] = useState<UploadedScript | null>(null);
+  const [editContent, setEditContent] = useState<string>('');
+  const [savingEdit, setSavingEdit] = useState(false);
+
 
   const SUPABASE_API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
