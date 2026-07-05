@@ -703,7 +703,23 @@ const LuaUploadManager: FC = () => {
                         </div>
                         <p className="text-[10px] text-muted-foreground">{new Date(script.updated_at).toLocaleString('id-ID')}</p>
                       </div>
-                      <div className="flex gap-1 flex-shrink-0">
+                      <div className="flex gap-1 flex-shrink-0 flex-wrap">
+                        <input
+                          type="file"
+                          accept=".lua,.txt"
+                          ref={(el) => (replaceInputRefs.current[script.id] = el)}
+                          onChange={(e) => handleReplaceUpload(script, e)}
+                          className="hidden"
+                        />
+                        <Button variant="ghost" size="sm" onClick={() => downloadRawFile(script)} title="Download file mentah (tanpa integrasi key/whitelist)" className="h-8 px-2">
+                          <Download className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => replaceInputRefs.current[script.id]?.click()} title="Upload ulang / ganti file" className="h-8 px-2">
+                          <Replace className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => openEditor(script)} title="Edit isi script" className="h-8 px-2">
+                          <Pencil className="w-4 h-4" />
+                        </Button>
                         <Button variant="ghost" size="sm" onClick={() => undoToPrevious(script)} title="Undo ke versi sebelumnya" className="h-8 px-2">
                           <Undo2 className="w-4 h-4" />
                         </Button>
@@ -726,15 +742,22 @@ const LuaUploadManager: FC = () => {
                           <ExternalLink className="w-3 h-3" />
                         </Button>
                       </div>
-                      <Button variant="outline" size="sm" className="w-full text-xs h-7" onClick={() => copyLoadstring(script.name)}>
-                        <Copy className="w-3 h-3 mr-1" />
-                        Copy Loadstring
-                      </Button>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => copyLoadstring(script.name)}>
+                          <Copy className="w-3 h-3 mr-1" />
+                          Loadstring
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => downloadRawFile(script)}>
+                          <Download className="w-3 h-3 mr-1" />
+                          Download Raw
+                        </Button>
+                      </div>
                       <Button variant="outline" size="sm" className="w-full text-xs h-7" onClick={() => copyIntegratedCode(script)}>
                         <FileCode className="w-3 h-3 mr-1" />
                         Copy Kode Terintegrasi Lengkap
                       </Button>
                     </div>
+
                   </div>
                 ))}
               </div>
