@@ -139,8 +139,7 @@ serve(async (req) => {
     if (action === "delete" || action === "remove") {
       const id = String(body.id || "");
       if (!id) return new Response(JSON.stringify({ success: false, error: "ID wajib diisi" }), { status: 400, headers: jsonHeaders });
-      const isDeveloper = String(valid.role || "").toUpperCase() === "DEVELOPER"
-        || Boolean(body.developerOverride) || Boolean(body.isDeveloper);
+      const isDeveloper = String(valid.role || "").toUpperCase() === "DEVELOPER";
       let del = supabase.from("lua_recordings").delete().eq("id", id);
       if (!isDeveloper) del = del.eq("owner_key", key);
       const { error } = await del;
