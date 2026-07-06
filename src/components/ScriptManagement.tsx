@@ -186,7 +186,7 @@ const ScriptManagement: FC = () => {
   const fetchScripts = async () => {
     setLoading(true);
     try {
-      const ALLOWED = ['keysystem', 'main', 'library'];
+      const ALLOWED = ['keysystem', 'main', 'library', 'game'];
       const { data, error } = await supabase
         .from('lua_scripts')
         .select('*')
@@ -542,6 +542,7 @@ const ScriptManagement: FC = () => {
       case 'keysystem': return 'bg-primary/20 text-primary';
       case 'main': return 'bg-secondary/20 text-secondary';
       case 'library': return 'bg-cyan-500/20 text-cyan-400';
+      case 'game': return 'bg-emerald-500/20 text-emerald-400';
       default: return 'bg-muted text-muted-foreground';
     }
   };
@@ -551,6 +552,7 @@ const ScriptManagement: FC = () => {
       case 'keysystem': return 'Keysystem Loader';
       case 'main': return 'Main Script';
       case 'library': return 'UI Library';
+      case 'game': return 'Game Script';
       default: return name;
     }
   };
@@ -1021,7 +1023,7 @@ const ScriptManagement: FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sm px-3 sm:px-6">
-          <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-3">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
             <div className="p-2 sm:p-3 rounded bg-muted/30">
               <h4 className="font-semibold text-primary mb-1 sm:mb-2 text-xs sm:text-sm">1. Keysystem Loader</h4>
               <p className="text-muted-foreground text-xs">
@@ -1038,6 +1040,12 @@ const ScriptManagement: FC = () => {
               <h4 className="font-semibold text-cyan-400 mb-1 sm:mb-2 text-xs sm:text-sm">3. UI Library</h4>
               <p className="text-muted-foreground text-xs">
                 Endpoint: <code className="font-mono">/get-script?name=library</code>. Library komponen UI yang dipakai bersama.
+              </p>
+            </div>
+            <div className="p-2 sm:p-3 rounded bg-muted/30">
+              <h4 className="font-semibold text-emerald-400 mb-1 sm:mb-2 text-xs sm:text-sm">4. Game Script</h4>
+              <p className="text-muted-foreground text-xs">
+                Endpoint: <code className="font-mono">/get-script?name=game</code>. Script khusus per-game/map (fitur spesifik game).
               </p>
             </div>
           </div>
