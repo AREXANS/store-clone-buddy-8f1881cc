@@ -3,8 +3,28 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-webhook-key, x-webhook-signature",
 };
+
+const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
+
+// Generic client-facing error to prevent enumeration / info leakage
+function genericError(status = 400) {
+  return new Response(JSON.stringify({ success: false, error: "Invalid request" }), { status, headers: jsonHeaders });
+}
+function okAck() {
+  return new Response(JSON.stringify({ success: true }), { status: 200, headers: jsonHeaders });
+}
+
+async function timingSafeEqual(a: string, b: string): Promise<boolean> {
+  const enc = new TextEncoder();
+  const ab = enc.encode(a);
+  const bb = enc.encode(b);
+  if (ab.length !== bb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < ab.length; i++) diff |= ab[i] ^ bb[i];
+  return diff === 0;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -16,127 +36,119 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const body = await req.json();
-    console.log("Webhook received:", JSON.stringify(body));
+    let body: Record<string, unknown> = {};
+    try {
+      body = await req.json();
+    } catch {
+      return genericError(400);
+    }
 
-    // Detect webhook source: Pakasir sends order_id+project, Cashify sends transactionId
+    // Detect source
     const isPakasir = !!body.order_id && !!body.project;
     const isCashify = !!body.transactionId && !body.project;
 
     if (isPakasir) {
-      // === PAKASIR WEBHOOK ===
-      const transactionId = body.order_id;
+      // === PAKASIR: verify shared secret (mandatory) ===
+      const { data: pakSetting } = await supabase
+        .from("app_settings").select("value").eq("key", "pakasir_webhook_key").maybeSingle();
+      const expected = (pakSetting?.value || "").toString().trim();
+      if (!expected) {
+        console.error("[payment-webhook] pakasir_webhook_key not configured");
+        return genericError(503);
+      }
+      const provided = (body.webhook_key || body.key || req.headers.get("x-webhook-key") || "").toString();
+      if (!(await timingSafeEqual(provided, expected))) return genericError(401);
+
+      const transactionId = String(body.order_id || "");
+      if (!transactionId) return genericError(400);
       const status = String(body.status || "").toLowerCase();
       const okStatuses = ["completed", "paid", "success", "settled"];
-
-      if (!okStatuses.includes(status)) {
-        return new Response(JSON.stringify({ success: true, message: "Status not paid" }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
+      if (!okStatuses.includes(status)) return okAck();
 
       const { data: transaction } = await supabase
         .from("transactions").select("*").eq("transaction_id", transactionId).maybeSingle();
-
-      if (!transaction) {
-        return new Response(JSON.stringify({ error: "Transaction not found" }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-
-      if (transaction.status === "paid" || transaction.status === "claimed") {
-        return new Response(JSON.stringify({ success: true, message: "Already paid" }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
+      if (!transaction) return okAck();
+      if (transaction.status === "paid" || transaction.status === "claimed") return okAck();
 
       await supabase.from("transactions").update({ status: "claimed", paid_at: new Date().toISOString() }).eq("id", transaction.id);
       await handlePostPayment(supabase, transaction);
+      return okAck();
+    }
 
-      return new Response(JSON.stringify({ success: true, transactionId }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
-    } else if (isCashify) {
-      // === CASHIFY WEBHOOK ===
+    if (isCashify) {
+      // === CASHIFY: webhook key mandatory ===
       const { data: whSetting } = await supabase
         .from("app_settings").select("value").eq("key", "cashify_webhook_key").maybeSingle();
-      
-      const providedKey = body.webhook_key || body.key || req.headers.get("X-Webhook-Key");
-      if (whSetting?.value && providedKey !== whSetting.value) {
-        return new Response(JSON.stringify({ error: "Invalid webhook key" }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const expected = (whSetting?.value || "").toString().trim();
+      if (!expected) {
+        console.error("[payment-webhook] cashify_webhook_key not configured");
+        return genericError(503);
       }
+      const provided = (body.webhook_key || body.key || req.headers.get("x-webhook-key") || "").toString();
+      if (!(await timingSafeEqual(provided, expected))) return genericError(401);
 
-      const cashifyTxId = body.transactionId;
-      const status = body.status;
+      const cashifyTxId = body.transactionId ? String(body.transactionId) : "";
+      const status = String(body.status || "").toLowerCase();
+      if (status !== "paid" && status !== "success" && status !== "completed" && status !== "settled") return okAck();
+      if (!cashifyTxId) return genericError(400);
 
-      if (status !== "paid" && status !== "success") {
-        return new Response(JSON.stringify({ success: true, message: "Not paid" }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-
-      // Find our transaction by cashify mapping
+      // Require the mapping to exist (no amount-only lookups)
       const { data: mappings } = await supabase
         .from("app_settings").select("key, value").eq("value", cashifyTxId).like("key", "cashify_tx_%");
 
       if (!mappings || mappings.length === 0) {
+        // Fallback: only accept when explicit reference is provided (never amount alone)
         const ref = body.ref || body.reference;
         if (ref) {
-          const { data: tx } = await supabase.from("transactions").select("*").eq("transaction_id", ref).maybeSingle();
+          const { data: tx } = await supabase.from("transactions").select("*").eq("transaction_id", String(ref)).maybeSingle();
           if (tx && tx.status !== "paid" && tx.status !== "claimed") {
             await supabase.from("transactions").update({ status: "claimed", paid_at: new Date().toISOString() }).eq("id", tx.id);
             await handlePostPayment(supabase, tx);
           }
         }
-        return new Response(JSON.stringify({ success: true }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return okAck();
       }
 
       for (const mapping of mappings) {
-        const ourTxId = mapping.key.replace("cashify_tx_", "");
+        const ourTxId = String(mapping.key).replace("cashify_tx_", "");
         const { data: transaction } = await supabase
           .from("transactions").select("*").eq("transaction_id", ourTxId).maybeSingle();
-
         if (transaction && transaction.status !== "paid" && transaction.status !== "claimed") {
           await supabase.from("transactions").update({ status: "claimed", paid_at: new Date().toISOString() }).eq("id", transaction.id);
           await handlePostPayment(supabase, transaction);
         }
-        // Clean up mapping
         await supabase.from("app_settings").delete().eq("key", mapping.key);
       }
-
-      return new Response(JSON.stringify({ success: true }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    } else {
-      // Generic fallback
-      const transactionId = body.ref || body.transaction_id || body.reference || body.order_id;
-      if (!transactionId) {
-        return new Response(JSON.stringify({ error: "Missing transaction identifier" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-
-      const { data: transaction } = await supabase
-        .from("transactions").select("*").eq("transaction_id", transactionId).maybeSingle();
-
-      if (!transaction) {
-        return new Response(JSON.stringify({ error: "Transaction not found" }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-
-      if (transaction.status !== "paid" && transaction.status !== "claimed") {
-        await supabase.from("transactions").update({ status: "claimed", paid_at: new Date().toISOString() }).eq("id", transaction.id);
-        await handlePostPayment(supabase, transaction);
-      }
-
-      return new Response(JSON.stringify({ success: true, transactionId }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return okAck();
     }
+
+    // Generic fallback: REQUIRE explicit transaction identifier AND shared secret; NEVER match by amount.
+    const { data: genSetting } = await supabase
+      .from("app_settings").select("value").eq("key", "generic_webhook_key").maybeSingle();
+    const expected = (genSetting?.value || "").toString().trim();
+    if (!expected) return genericError(503);
+    const provided = (body.webhook_key || body.key || req.headers.get("x-webhook-key") || "").toString();
+    if (!(await timingSafeEqual(provided, expected))) return genericError(401);
+
+    const transactionId = String(body.ref || body.transaction_id || body.reference || body.order_id || "");
+    if (!transactionId) return genericError(400);
+
+    const { data: transaction } = await supabase
+      .from("transactions").select("*").eq("transaction_id", transactionId).maybeSingle();
+    if (!transaction) return okAck();
+    if (transaction.status !== "paid" && transaction.status !== "claimed") {
+      await supabase.from("transactions").update({ status: "claimed", paid_at: new Date().toISOString() }).eq("id", transaction.id);
+      await handlePostPayment(supabase, transaction);
+    }
+    return okAck();
   } catch (error: unknown) {
-    console.error("Webhook error:", error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // Log details server-side only; return generic message to caller.
+    console.error("[payment-webhook] internal error", error);
+    return new Response(JSON.stringify({ success: false, error: "Internal error" }), { status: 500, headers: jsonHeaders });
   }
 });
 
 async function handlePostPayment(supabase: any, transaction: any) {
-  // Handle XCoins topup
   if (transaction.package_name === "XCOINS_TOPUP" && transaction.license_key) {
     const userId = transaction.license_key;
     const { data: user } = await supabase.from("xcoins_balances").select("balance").eq("id", userId).single();
@@ -149,11 +161,9 @@ async function handlePostPayment(supabase: any, transaction: any) {
       });
     }
   } else if (transaction.license_key) {
-    // === CREATE LICENSE KEY for regular purchases ===
     await createLicenseKey(supabase, transaction);
   }
 
-  // Discord notification
   try {
     const { data: discordSetting } = await supabase
       .from("app_settings").select("value").eq("key", "discord_webhook_url").maybeSingle();
@@ -176,7 +186,7 @@ async function handlePostPayment(supabase: any, transaction: any) {
       });
     }
   } catch (e) {
-    console.error("Discord error:", e);
+    console.error("[payment-webhook] discord notify failed");
   }
 }
 
@@ -184,46 +194,24 @@ async function createLicenseKey(supabase: any, transaction: any) {
   try {
     const key = transaction.license_key;
     if (!key) return;
-
-    const { data } = await supabase
-      .from("app_settings")
-      .select("value")
-      .eq("key", "license_keys")
-      .maybeSingle();
-
-    let keys = [];
-    if (data) {
-      try { keys = JSON.parse(data.value || "[]"); } catch { keys = []; }
-    }
+    const { data } = await supabase.from("app_settings").select("value").eq("key", "license_keys").maybeSingle();
+    let keys: any[] = [];
+    if (data) { try { keys = JSON.parse(data.value || "[]"); } catch { keys = []; } }
 
     const existingIdx = keys.findIndex((k: any) => k.key === key);
     const isLifetime = transaction.package_name === "LIFETIME";
-    
+
     if (isLifetime) {
-      // LIFETIME: set expiry to year 2099, role = ADMIN
       const permanentExpiry = new Date("2099-12-31T23:59:59.000Z");
       if (existingIdx >= 0) {
         keys[existingIdx].expired = permanentExpiry.toISOString();
         keys[existingIdx].role = "ADMIN";
-        console.log(`Webhook: Upgraded key ${key} to LIFETIME ADMIN`);
       } else {
-        keys.push({
-          key,
-          expired: permanentExpiry.toISOString(),
-          created: new Date().toISOString(),
-          role: "ADMIN",
-          maxHwid: 1,
-          frozenUntil: null,
-          frozenRemainingMs: null,
-          hwids: [],
-          robloxUsers: []
-        });
-        console.log(`Webhook: Created LIFETIME ADMIN key ${key}`);
+        keys.push({ key, expired: permanentExpiry.toISOString(), created: new Date().toISOString(), role: "ADMIN", maxHwid: 1, frozenUntil: null, frozenRemainingMs: null, hwids: [], robloxUsers: [] });
       }
     } else {
       const expiryDate = new Date();
       expiryDate.setDate(expiryDate.getDate() + (Number(transaction.package_duration) || 30));
-
       if (existingIdx >= 0) {
         const existing = keys[existingIdx];
         const currentExpiry = new Date(existing.expired);
@@ -232,34 +220,15 @@ async function createLicenseKey(supabase: any, transaction: any) {
         baseDate.setDate(baseDate.getDate() + (Number(transaction.package_duration) || 30));
         keys[existingIdx].expired = baseDate.toISOString();
         keys[existingIdx].role = transaction.package_name || existing.role;
-        console.log(`Webhook: Extended key ${key} to ${baseDate.toISOString()}`);
       } else {
-        keys.push({
-          key,
-          expired: expiryDate.toISOString(),
-          created: new Date().toISOString(),
-          role: transaction.package_name || "NORMAL",
-          maxHwid: 1,
-          frozenUntil: null,
-          frozenRemainingMs: null,
-          hwids: [],
-          robloxUsers: []
-        });
-        console.log(`Webhook: Created new key ${key}, expires ${expiryDate.toISOString()}`);
+        keys.push({ key, expired: expiryDate.toISOString(), created: new Date().toISOString(), role: transaction.package_name || "NORMAL", maxHwid: 1, frozenUntil: null, frozenRemainingMs: null, hwids: [], robloxUsers: [] });
       }
     }
 
-    await supabase
-      .from("app_settings")
-      .upsert({
-        key: "license_keys",
-        value: JSON.stringify(keys),
-        updated_at: new Date().toISOString(),
-        description: "License keys database"
-      }, { onConflict: "key" });
-
-    console.log("License key saved via webhook");
+    await supabase.from("app_settings").upsert({
+      key: "license_keys", value: JSON.stringify(keys), updated_at: new Date().toISOString(), description: "License keys database"
+    }, { onConflict: "key" });
   } catch (error) {
-    console.error("Create key error:", error);
+    console.error("[payment-webhook] createLicenseKey failed");
   }
 }
