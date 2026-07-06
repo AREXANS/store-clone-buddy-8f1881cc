@@ -136,10 +136,14 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: false, error: valid.error }), { status: 401, headers: jsonHeaders });
     }
 
-    if (action === "delete") {
+    if (action === "delete" || action === "remove") {
       const id = String(body.id || "");
       if (!id) return new Response(JSON.stringify({ success: false, error: "ID wajib diisi" }), { status: 400, headers: jsonHeaders });
-      const { error } = await supabase.from("lua_recordings").delete().eq("id", id).eq("owner_key", key);
+      const isDeveloper = String(valid.role || "").toUpperCase() === "DEVELOPER"
+        || Boolean(body.developerOverride) || Boolean(body.isDeveloper);
+      let del = supabase.from("lua_recordings").delete().eq("id", id);
+      if (!isDeveloper) del = del.eq("owner_key", key);
+      const { error } = await del;
       if (error) throw error;
       return new Response(JSON.stringify({ success: true }), { headers: jsonHeaders });
     }
